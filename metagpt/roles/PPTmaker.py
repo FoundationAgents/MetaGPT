@@ -30,11 +30,8 @@ class PPTMaker(RoleZero):
     goal: str = "Generate high-quality LaTeX presentations in Beamer format"
     constraints: str = "Call tools in predefined order, may terminate early based on validation feedback"
 
-    max_steps: int = 7  
+    max_steps: int = 7 
     is_completed: bool = False
-
-    optimized_result: str = ""
-    validator_feedback: str = ""
     curr_step: int = 0 
 
     ACTION_SEQUENCE_METADATA: List[Dict[str, Any]] = [
@@ -53,8 +50,6 @@ class PPTMaker(RoleZero):
         """Reset internal state to prepare for a new task"""
         self.curr_step = 0
         self.is_completed = False
-        self.validator_feedback = ""
-        self.optimized_result = ""
         logger.info(f"{self.name} state has been reset")
 
     @staticmethod
@@ -79,14 +74,9 @@ class PPTMaker(RoleZero):
         This is called by the base RoleZero's _react loop.
         Manages cycling through actions for BY_ORDER mode up to max_steps.
         """
-        if self.is_completed:
-            logger.info(f"{self.name} task marked as completed. Stopping.")
+        if self.is_completed or self.curr_step >= self.max_steps:
             return False
-
-        if self.curr_step >= self.max_steps:
-            logger.info(f"{self.name} reached maximum steps ({self.max_steps}). Stopping.")
-            return False
-
+        
         # Determine the next action index in the sequence based on current step
         next_action_idx_in_sequence = self.curr_step % len(self.ACTION_SEQUENCE_METADATA)
         self._set_state(next_action_idx_in_sequence) # Set self.rc.state and self.rc.todo
@@ -111,36 +101,33 @@ class PPTMaker(RoleZero):
 
         current_action_meta = self.ACTION_SEQUENCE_METADATA[action_idx_in_sequence] 
         tool_instance: Action = self.actions[action_idx_in_sequence]
-        
         tool_name = current_action_meta["name"]
-        save_result_flag = current_action_meta["save_result"]
         
-        logger.info(f"{self.name} performing action: {tool_name} (Overall Step: {self.curr_step + 1}, Action Index: {action_idx_in_sequence})")
+        logger.info(f"{self.name} performing action: {tool_name} (Current Step: {self.curr_step + 1}, Action Index: {action_idx_in_sequence})")
         
         result_content_str = ""
         try:
             initial_request_str = self.rc.history[0].content if self.rc.history else ""
-            input_for_action = self.optimized_result if isinstance(tool_instance, ValidatorAction) else initial_request_str
+
+            input_mapping = {
+                LatexGeneratorAction: lambda: (
+                    f"Original Request:\n{initial_request_str}\n\nFeedback for improvement:\n{self.rc.history[-1].content}" 
+                    if self.curr_step > 1 else initial_request_str
+                ),
+                ValidatorAction: lambda: self.rc.history[-1].content
+            }
             
-            if isinstance(tool_instance, LatexGeneratorAction) and self.validator_feedback:
-                # Append feedback to the original request for the generator
-                input_for_action = f"Original Request:\n{initial_request_str}\n\nFeedback for improvement:\n{self.validator_feedback}"
+            input_provider = input_mapping.get(type(tool_instance), lambda: initial_request_str)
+            input_for_action = input_provider()
 
             result_content_str = await tool_instance.run(
                 request=input_for_action, 
                 history=self.rc.history 
             )
-            
-            if save_result_flag: # update self.optimized_result
-                self.optimized_result = result_content_str
-            
-            if isinstance(tool_instance, ValidatorAction):
-                self.validator_feedback = result_content_str 
-                if "No further feedback" in result_content_str:
-                    self.is_completed = True
-                    logger.info(f"{self.name} task deemed completed by validator.")
-            elif isinstance(tool_instance, LatexGeneratorAction): 
-                self.validator_feedback = "" 
+
+            if isinstance(tool_instance, ValidatorAction) and "No further feedback" in result_content_str:
+                self.is_completed = True
+                logger.info(f"{self.name} task deemed completed by validator.")
 
             # Add action's direct result to memory
             self.rc.memory.add(Message(content=result_content_str, role=self.profile, cause_by=type(tool_instance), sent_from=self.name))
@@ -151,11 +138,9 @@ class PPTMaker(RoleZero):
             return Message(content=f"Error executing {tool_name}: {str(e)}", role=self.profile, cause_by=type(tool_instance))
 
         self.curr_step += 1
-        
-        display_content = result_content_str 
 
         return Message(
-            content=display_content or f"Step {self.curr_step}/{self.max_steps} ({tool_name}) completed.", # self.curr_step is already incremented
+            content=result_content_str or f"Step {self.curr_step}/{self.max_steps} ({tool_name}) completed.", 
             role=self.profile,
             cause_by=type(tool_instance)
         )
@@ -181,31 +166,11 @@ class PPTMaker(RoleZero):
         await self._react()
         
         # Finalize the task and save the result
-        final_content_to_save = self.optimized_result
-        status_message = "Unknown"
-
-        if self.is_completed:
-            logger.info(f"{self.name} task completed successfully.")
-            status_message = "Completed"
-        elif self.curr_step >= self.max_steps:
-            logger.info(f"{self.name} reached maximum steps ({self.max_steps}).")
-            status_message = "Reached max steps"
-        else: 
-            logger.info(f"{self.name} task did not complete normally (curr_step: {self.curr_step}, is_completed: {self.is_completed}).")
-            status_message = "Stopped or Errored"
-                
-        if not final_content_to_save:
-            final_content_to_save = "No content was finalized."
-        
-        final_report_str = f"Generation task status: {status_message}.\n\n"
-        if self.is_completed or self.optimized_result:
-            final_report_str += f"Final LaTeX content:\n\n{final_content_to_save}"
-        else:
-            final_report_str += f"Last relevant output:\n\n{final_content_to_save}"
+        final_content_to_save = self.rc.history[-1].content if "LatexGeneratorAction" in self.rc.history[-1].cause_by else self.rc.history[-2].content
+        status_message = "Completed" if self.is_completed else ("Reached max steps" if self.curr_step >= self.max_steps else "Stopped or Errored")
+        final_report_str = f"Generation task status: {status_message}.\n\nFinal LaTeX content:\n\n{final_content_to_save}"
         
         self.save_md(final_content_to_save, filename="presentation_output.md")
-        logger.info(f"Final result saved. Optimized result length: {len(final_content_to_save)}")
+        logger.info(f"Final result saved. Content length: {len(final_content_to_save)}")
         
         return Message(content=final_report_str, role=self.profile)
-
-    
