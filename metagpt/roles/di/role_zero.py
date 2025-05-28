@@ -475,7 +475,7 @@ class RoleZero(Role):
             error_msg = str(e)
             return error_msg, False, command_rsp
 
-        # 为了对LLM不按格式生成进行容错
+        # To tolerate the LLM's failure to generate content in the prescribed format
         if isinstance(commands, dict):
             commands = commands["commands"] if "commands" in commands else [commands]
 
