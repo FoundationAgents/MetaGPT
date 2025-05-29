@@ -1,5 +1,6 @@
 import asyncio
 import os
+import platform
 import re
 from asyncio import Queue
 from asyncio.subprocess import PIPE, STDOUT
@@ -22,37 +23,56 @@ class Terminal:
     """
 
     def __init__(self):
-        self.shell_command = ["bash"]  # FIXME: should consider windows support later
-        self.command_terminator = "\n"
+        is_windows = platform.system().lower() == "windows"
+        if is_windows:
+            self.shell_command = ["cmd.exe", "/c"]
+            self.command_terminator = "\r\n"
+        else:
+            self.shell_command = ["bash"]
+            self.command_terminator = "\n"
+            
         self.stdout_queue = Queue(maxsize=1000)
         self.observer = TerminalReporter()
         self.process: Optional[asyncio.subprocess.Process] = None
-        #  The cmd in forbidden_terminal_commands will be replace by pass ana return the advise. example:{"cmd":"forbidden_reason/advice"}
+        # Commands in forbidden_terminal_commands will be replaced by 'pass' and return advice. Example: {"cmd":"forbidden_reason/advice"}
         self.forbidden_commands = {
             "run dev": "Use Deployer.deploy_to_public instead.",
-            # serve cmd have a space behind it,
+            # serve command has a space after it,
             "serve ": "Use Deployer.deploy_to_public instead.",
         }
 
     async def _start_process(self):
-        # Start a persistent shell process
-        self.process = await asyncio.create_subprocess_exec(
-            *self.shell_command,
-            stdin=PIPE,
-            stdout=PIPE,
-            stderr=STDOUT,
-            executable="bash",
-            env=os.environ.copy(),
-            cwd=DEFAULT_WORKSPACE_ROOT.absolute(),
-        )
-        await self._check_state()
+        """Start a persistent shell process"""
+        try:
+            env = os.environ.copy()
+            # No need to specify executable on Windows
+            kwargs = {
+                "stdin": PIPE,
+                "stdout": PIPE,
+                "stderr": STDOUT,
+                "env": env,
+                "cwd": DEFAULT_WORKSPACE_ROOT.absolute(),
+            }
+            
+            if not platform.system().lower() == "windows":
+                kwargs["executable"] = "bash"
+            
+            self.process = await asyncio.create_subprocess_exec(
+                *self.shell_command,
+                **kwargs
+            )
+            await self._check_state()
+        except Exception as e:
+            logger.error(f"Failed to start process: {str(e)}")
+            raise
 
     async def _check_state(self):
-        """
-        Check the state of the terminal, e.g. the current directory of the terminal process. Useful for agent to understand.
-        """
-        output = await self.run_command("pwd")
-        logger.info("The terminal is at:", output)
+        """Check terminal state, such as the current directory of the terminal process"""
+        if platform.system().lower() == "windows":
+            output = await self.run_command("cd")  # Use cd command on Windows
+        else:
+            output = await self.run_command("pwd")  # Use pwd command on Unix systems
+        logger.info("The terminal is at: %s", output)
 
     async def run_command(self, cmd: str, daemon=False) -> str:
         """
@@ -163,9 +183,65 @@ class Terminal:
                         await self.stdout_queue.put(line)
 
     async def close(self):
-        """Close the persistent shell process."""
-        self.process.stdin.close()
-        await self.process.wait()
+        """Safely close the persistent shell process"""
+        if self.process:
+            try:
+                if not self.process.stdin.is_closing():
+                    self.process.stdin.close()
+                if self.process.returncode is None:
+                    self.process.kill()
+                    await self.process.wait()
+                self.process = None
+            except Exception as e:
+                logger.error(f"Error closing process: {str(e)}")
+                # Ensure the process is terminated
+                if self.process and self.process.returncode is None:
+                    try:
+                        self.process.kill()
+                    except:
+                        pass
+                self.process = None
+
+    def _normalize_path(self, path: str) -> str:
+        """Normalize path to ensure it works correctly across different operating systems
+
+        Args:
+            path: Input path
+
+        Returns:
+            Normalized path
+        """
+        normalized = os.path.normpath(path)
+        if platform.system().lower() == "windows":
+            # Ensure backslashes are used on Windows
+            normalized = normalized.replace('/', '\\')
+        return normalized
+
+    async def cd(self, path: str):
+        """Change working directory
+
+        Args:
+            path: Target directory path
+        """
+        normalized_path = self._normalize_path(path)
+        if os.path.exists(normalized_path):
+            os.chdir(normalized_path)
+            if self.output_queue:
+                await self.output_queue.put(f"Changed directory to: {normalized_path}{self.command_terminator}")
+        else:
+            error_msg = f"Directory not found: {normalized_path}"
+            if self.output_queue:
+                await self.output_queue.put(error_msg + self.command_terminator)
+            raise FileNotFoundError(error_msg)
+
+    def __del__(self):
+        """Ensure process is closed when object is destroyed"""
+        if self.process and self.process.returncode is None:
+            try:
+                self.process.kill()
+            except:
+                pass
+            self.process = None
 
 
 @register_tool(include_functions=["run"])

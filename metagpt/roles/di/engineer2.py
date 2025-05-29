@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import platform
 from pathlib import Path
 
 from pydantic import Field
@@ -63,7 +64,21 @@ class Engineer2(RoleZero):
         Display the current terminal and editor state.
         This information will be dynamically added to the command prompt.
         """
-        current_directory = (await self.terminal.run_command("pwd")).strip()
+        print("platform.system():", platform.system())
+        if platform.system().lower() == "windows":
+            try:
+                current_directory = (await self.terminal.run_command("cd")).strip()
+                # Windows 'cd' command returns format as "DIR_PATH"
+                # Remove possible quotes and extra whitespace
+                current_directory = current_directory.strip('"').strip()
+                if not current_directory:  # If cd command has no output, use echo %CD%
+                    current_directory = (await self.terminal.run_command("echo %CD%")).strip()
+            except Exception as e:
+                logger.warning(f"Failed to get current directory with cd command: {e}")
+                current_directory = str(Path.cwd())
+        else:
+            current_directory = (await self.terminal.run_command("pwd")).strip()
+        
         self.editor._set_workdir(current_directory)
         state = {
             "editor_open_file": self.editor.current_file,
