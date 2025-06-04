@@ -50,9 +50,19 @@ class Firecrawl:
         return {
             'Content-Type': 'application/json',
             'Authorization': f'Bearer {self.api_key}',
-            'X-Origin': 'metagpt',
-            'X-Origin-Type': 'integration',
         }
+
+    def _prepare_request_data(self, data: Dict[str, Any]) -> Dict[str, Any]:
+        """Prepare request data with integration parameter.
+
+        Args:
+            data (Dict[str, Any]): The original request data.
+
+        Returns:
+            Dict[str, Any]: Request data with integration parameter added.
+        """
+        data['integration'] = 'metagpt'
+        return data
 
     def _handle_error(self, response: requests.Response, action: str) -> None:
         """Handle API errors.
@@ -93,6 +103,7 @@ class Firecrawl:
         json_data = {'url': url}
         if params:
             json_data.update(params)
+        json_data = self._prepare_request_data(json_data)
 
         response = requests.post(
             f'{self.api_url}/v1/map',
@@ -126,6 +137,7 @@ class Firecrawl:
         json_data = {'url': url}
         if params:
             json_data.update(params)
+        json_data = self._prepare_request_data(json_data)
 
         response = requests.post(
             f'{self.api_url}/v1/scrape',
@@ -159,6 +171,7 @@ class Firecrawl:
         json_data = {'query': query}
         if params:
             json_data.update(params)
+        json_data = self._prepare_request_data(json_data)
 
         response = requests.post(
             f'{self.api_url}/v1/search',
@@ -192,6 +205,7 @@ class Firecrawl:
         json_data = {'url': url}
         if params:
             json_data.update(params)
+        json_data = self._prepare_request_data(json_data)
 
         response = requests.post(
             f'{self.api_url}/v1/crawl',
@@ -252,6 +266,7 @@ class Firecrawl:
         json_data = {'urls': urls}
         if params:
             json_data.update(params)
+        json_data = self._prepare_request_data(json_data)
 
         response = requests.post(
             f'{self.api_url}/v1/extract',
