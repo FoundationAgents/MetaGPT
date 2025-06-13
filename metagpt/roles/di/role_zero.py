@@ -439,7 +439,7 @@ class RoleZero(Role):
             command_rsp = await self.llm.aask(regenerate_req)
         return command_rsp
 
-    async def _parse_commands(self, command_rsp) -> Tuple[List[Dict], bool]:
+    async def _parse_commands(self, command_rsp) -> Tuple[List[Dict], bool, str]:
         """Retrieves commands from the Large Language Model (LLM).
 
         This function attempts to retrieve a list of commands from the LLM by
