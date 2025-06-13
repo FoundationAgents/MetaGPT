@@ -22,18 +22,42 @@ usage = {
 }
 
 
-def mock_invoke_model(self: BedrockLLM, *args, **kwargs) -> dict:
-    provider = self.config.model.split(".")[0]
+def get_provider_name(model: str) -> str:
+    arr = model.split(".")
+    if len(arr) == 2:
+        provider, model_name = arr  # meta、mistral……
+    elif len(arr) == 3:
+        # some model_ids may contain country like us.xx.xxx
+        _, provider, model_name = arr
+    return provider
+
+
+def deal_special_provider(provider: str, model: str, stream: bool = False) -> str:
+    # for ai21
+    if "j2-" in model:
+        provider = f"{provider}-j2"
+    elif "jamba-" in model:
+        provider = f"{provider}-jamba"
+    elif "command-r" in model:
+        provider = f"{provider}-command-r"
+    if stream and "ai21" in model:
+        provider = f"{provider}-stream"
+    return provider
+
+
+async def mock_invoke_model(self: BedrockLLM, *args, **kwargs) -> dict:
+    provider = get_provider_name(self.config.model)
     self._update_costs(usage, self.config.model)
+    provider = deal_special_provider(provider, self.config.model)
     return BEDROCK_PROVIDER_RESPONSE_BODY[provider]
 
 
-def mock_invoke_model_stream(self: BedrockLLM, *args, **kwargs) -> dict:
+async def mock_invoke_model_stream(self: BedrockLLM, *args, **kwargs) -> dict:
     # use json object to mock EventStream
     def dict2bytes(x):
         return json.dumps(x).encode("utf-8")
 
-    provider = self.config.model.split(".")[0]
+    provider = get_provider_name(self.config.model)
 
     if provider == "amazon":
         response_body_bytes = dict2bytes({"outputText": "Hello World"})
@@ -44,6 +68,7 @@ def mock_invoke_model_stream(self: BedrockLLM, *args, **kwargs) -> dict:
     elif provider == "cohere":
         response_body_bytes = dict2bytes({"is_finished": False, "text": "Hello World"})
     else:
+        provider = deal_special_provider(provider, self.config.model, stream=True)
         response_body_bytes = dict2bytes(BEDROCK_PROVIDER_RESPONSE_BODY[provider])
 
     response_body_stream = {"body": [{"chunk": {"bytes": response_body_bytes}}]}
@@ -52,7 +77,8 @@ def mock_invoke_model_stream(self: BedrockLLM, *args, **kwargs) -> dict:
 
 
 def get_bedrock_request_body(model_id) -> dict:
-    provider = model_id.split(".")[0]
+    provider = get_provider_name(model_id)
+    provider = deal_special_provider(provider, model_id)
     return BEDROCK_PROVIDER_REQUEST_BODY[provider]
 
 

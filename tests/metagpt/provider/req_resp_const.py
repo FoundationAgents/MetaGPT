@@ -191,7 +191,7 @@ async def llm_general_chat_funcs_test(llm: BaseLLM, prompt: str, messages: list[
 BEDROCK_PROVIDER_REQUEST_BODY = {
     "mistral": {"prompt": "", "max_tokens": 0, "stop": [], "temperature": 0.0, "top_p": 0.0, "top_k": 0},
     "meta": {"prompt": "", "temperature": 0.0, "top_p": 0.0, "max_gen_len": 0},
-    "ai21": {
+    "ai21-j2": {
         "prompt": "",
         "temperature": 0.0,
         "topP": 0.0,
@@ -201,8 +201,32 @@ BEDROCK_PROVIDER_REQUEST_BODY = {
         "presencePenalty": {"scale": 0.0},
         "frequencyPenalty": {"scale": 0.0},
     },
+    "ai21-jamba": {
+        "messages": [],
+        "temperature": 0.0,
+        "topP": 0.0,
+        "max_tokens": 0,
+        "stopSequences": [],
+        "countPenalty": {"scale": 0.0},
+        "presencePenalty": {"scale": 0.0},
+        "frequencyPenalty": {"scale": 0.0},
+    },
     "cohere": {
         "prompt": "",
+        "temperature": 0.0,
+        "p": 0.0,
+        "k": 0.0,
+        "max_tokens": 0,
+        "stop_sequences": [],
+        "return_likelihoods": "NONE",
+        "stream": False,
+        "num_generations": 0,
+        "logit_bias": {},
+        "truncate": "NONE",
+    },
+    "cohere-command-r": {
+        "message": [],
+        "chat_history": [],
         "temperature": 0.0,
         "p": 0.0,
         "k": 0.0,
@@ -233,14 +257,37 @@ BEDROCK_PROVIDER_REQUEST_BODY = {
 BEDROCK_PROVIDER_RESPONSE_BODY = {
     "mistral": {"outputs": [{"text": "Hello World", "stop_reason": ""}]},
     "meta": {"generation": "Hello World", "prompt_token_count": 0, "generation_token_count": 0, "stop_reason": ""},
-    "ai21": {
+    "ai21-jamba": {
         "id": "",
         "prompt": {"text": "Hello World", "tokens": []},
-        "completions": [
-            {"data": {"text": "Hello World", "tokens": []}, "finishReason": {"reason": "length", "length": 2}}
-        ],
+        "choices": [{"message": {"content": "Hello World"}}],
+    },
+    "ai21-jamba-stream": {
+        "id": "",
+        "prompt": {"text": "Hello World", "tokens": []},
+        "choices": [{"delta": {"content": "Hello World"}}],
+    },
+    "ai21-j2": {
+        "id": "",
+        "prompt": {"text": "Hello World", "tokens": []},
+        "completions": [{"data": {"text": "Hello World"}, "finishReason": {"reason": "length", "length": 2}}],
     },
     "cohere": {
+        "generations": [
+            {
+                "finish_reason": "",
+                "id": "",
+                "text": "Hello World",
+                "likelihood": 0.0,
+                "token_likelihoods": [{"token": 0.0}],
+                "is_finished": True,
+                "index": 0,
+            }
+        ],
+        "id": "",
+        "prompt": "",
+    },
+    "cohere-command-r": {
         "generations": [
             {
                 "finish_reason": "",
