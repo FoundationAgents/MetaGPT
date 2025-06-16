@@ -22,13 +22,13 @@ usage = {
 }
 
 
-def mock_invoke_model(self: BedrockLLM, *args, **kwargs) -> dict:
+async def mock_invoke_model(self: BedrockLLM, *args, **kwargs) -> dict:
     provider = self.config.model.split(".")[0]
     self._update_costs(usage, self.config.model)
     return BEDROCK_PROVIDER_RESPONSE_BODY[provider]
 
 
-def mock_invoke_model_stream(self: BedrockLLM, *args, **kwargs) -> dict:
+async def mock_invoke_model_stream(self: BedrockLLM, *args, **kwargs) -> dict:
     # use json object to mock EventStream
     def dict2bytes(x):
         return json.dumps(x).encode("utf-8")
