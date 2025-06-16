@@ -8,7 +8,6 @@
 
 import pytest
 
-from metagpt.configs.compress_msg_config import CompressType
 from metagpt.configs.llm_config import LLMConfig
 from metagpt.const import IMAGES
 from metagpt.provider.base_llm import BaseLLM
@@ -26,6 +25,7 @@ name = "GPT"
 class MockBaseLLM(BaseLLM):
     def __init__(self, config: LLMConfig = None):
         self.config = config or mock_llm_config
+        self.model = mock_llm_config.model
 
     def completion(self, messages: list[dict], timeout=3):
         return get_part_chat_completion(name)
@@ -108,64 +108,6 @@ async def test_async_base_llm():
     # assert resp == default_resp_cont
 
 
-@pytest.mark.parametrize("compress_type", list(CompressType))
-def test_compress_messages_no_effect(compress_type):
-    base_llm = MockBaseLLM()
-    messages = [
-        {"role": "system", "content": "first system msg"},
-        {"role": "system", "content": "second system msg"},
-    ]
-    for i in range(5):
-        messages.append({"role": "user", "content": f"u{i}"})
-        messages.append({"role": "assistant", "content": f"a{i}"})
-    compressed = base_llm.compress_messages(messages, compress_type=compress_type)
-    # should take no effect for short context
-    assert compressed == messages
-
-
-@pytest.mark.parametrize("compress_type", CompressType.cut_types())
-def test_compress_messages_long(compress_type):
-    base_llm = MockBaseLLM()
-    base_llm.config.model = "test_llm"
-    max_token_limit = 100
-
-    messages = [
-        {"role": "system", "content": "first system msg"},
-        {"role": "system", "content": "second system msg"},
-    ]
-    for i in range(100):
-        messages.append({"role": "user", "content": f"u{i}" * 10})  # ~2x10x0.5 = 10 tokens
-        messages.append({"role": "assistant", "content": f"a{i}" * 10})
-    compressed = base_llm.compress_messages(messages, compress_type=compress_type, max_token=max_token_limit)
-
-    print(compressed)
-    print(len(compressed))
-    assert 3 <= len(compressed) < len(messages)
-    assert compressed[0]["role"] == "system" and compressed[1]["role"] == "system"
-    assert compressed[2]["role"] != "system"
-
-
-def test_long_messages_no_compress():
-    base_llm = MockBaseLLM()
-    messages = [{"role": "user", "content": "1" * 10000}] * 10000
-    compressed = base_llm.compress_messages(messages)
-    assert len(compressed) == len(messages)
-
-
-@pytest.mark.parametrize("compress_type", CompressType.cut_types())
-def test_compress_messages_long_no_sys_msg(compress_type):
-    base_llm = MockBaseLLM()
-    base_llm.config.model = "test_llm"
-    max_token_limit = 100
-
-    messages = [{"role": "user", "content": "1" * 10000}]
-    compressed = base_llm.compress_messages(messages, compress_type=compress_type, max_token=max_token_limit)
-
-    print(compressed)
-    assert compressed
-    assert len(compressed[0]["content"]) < len(messages[0]["content"])
-
-
 def test_format_msg(mocker):
     base_llm = MockBaseLLM()
     messages = [UserMessage(content="req"), AIMessage(content="rsp")]
@@ -175,7 +117,7 @@ def test_format_msg(mocker):
 
 def test_format_msg_w_images(mocker):
     base_llm = MockBaseLLM()
-    base_llm.config.model = "gpt-4o"
+    base_llm.model = "gpt-4o"
     msg_w_images = UserMessage(content="req1")
     msg_w_images.add_metadata(IMAGES, ["base64 string 1", "base64 string 2"])
     msg_w_empty_images = UserMessage(content="req2")

@@ -42,7 +42,9 @@ class BaseLLM(ABC):
     # OpenAI / Azure / Others
     aclient: Optional[Union[AsyncOpenAI]] = None
     cost_manager: Optional[CostManager] = None
-    model: Optional[str] = None  # deprecated
+    # Maintain model name in own instance in case the global config has changed,
+    # Should always use model not config.model within this class
+    model: Optional[str] = None
     pricing_plan: Optional[str] = None
 
     _reasoning_content: Optional[str] = None  # content from reasoning mode
@@ -87,7 +89,7 @@ class BaseLLM(ABC):
         return {"role": "system", "content": msg}
 
     def support_image_input(self) -> bool:
-        return any([m in self.config.model for m in MULTI_MODAL_MODELS])
+        return any([m in self.model for m in MULTI_MODAL_MODELS])
 
     def format_msg(self, messages: Union[str, "Message", list[dict], list["Message"], list[str]]) -> list[dict]:
         """convert messages to list[dict]."""
@@ -321,7 +323,7 @@ class BaseLLM(ABC):
 
     def with_model(self, model: str):
         """Set model and return self. For example, `with_model("gpt-3.5-turbo")`."""
-        self.config.model = model
+        self.model = model
         return self
 
     def get_timeout(self, timeout: int) -> int:
@@ -352,7 +354,7 @@ class BaseLLM(ABC):
         if compress_type == CompressType.NO_COMPRESS:
             return messages
 
-        max_token = TOKEN_MAX.get(self.config.model, max_token)
+        max_token = TOKEN_MAX.get(self.model, max_token)
         keep_token = int(max_token * threshold)
         compressed = []
 

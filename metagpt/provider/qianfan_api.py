@@ -37,6 +37,7 @@ class QianFanLLM(BaseLLM):
         self.cost_manager = CostManager(token_costs=self.token_costs)
 
     def __init_qianfan(self):
+        self.model = self.config.model
         if self.config.access_key and self.config.secret_key:
             # for system level auth, use access_key and secret_key, recommended by official
             # set environment variable due to official recommendation
@@ -61,14 +62,14 @@ class QianFanLLM(BaseLLM):
             ("ERNIE-Speed", "ernie_speed"),
             ("EB-turbo-AppBuilder", "ai_apaas"),
         ]
-        if self.config.model in [pair[0] for pair in support_system_pairs]:
+        if self.model in [pair[0] for pair in support_system_pairs]:
             # only some ERNIE models support
             self.use_system_prompt = True
         if self.config.endpoint in [pair[1] for pair in support_system_pairs]:
             self.use_system_prompt = True
 
-        assert not (self.config.model and self.config.endpoint), "Only set `model` or `endpoint` in the config"
-        assert self.config.model or self.config.endpoint, "Should set one of `model` or `endpoint` in the config"
+        assert not (self.model and self.config.endpoint), "Only set `model` or `endpoint` in the config"
+        assert self.model or self.config.endpoint, "Should set one of `model` or `endpoint` in the config"
 
         self.token_costs = copy.deepcopy(QIANFAN_MODEL_TOKEN_COSTS)
         self.token_costs.update(QIANFAN_ENDPOINT_TOKEN_COSTS)
@@ -87,8 +88,8 @@ class QianFanLLM(BaseLLM):
             kwargs["temperature"] = self.config.temperature
         if self.config.endpoint:
             kwargs["endpoint"] = self.config.endpoint
-        elif self.config.model:
-            kwargs["model"] = self.config.model
+        elif self.model:
+            kwargs["model"] = self.model
 
         if self.use_system_prompt:
             # if the model support system prompt, extract and pass it
@@ -99,7 +100,7 @@ class QianFanLLM(BaseLLM):
 
     def _update_costs(self, usage: dict):
         """update each request's token cost"""
-        model_or_endpoint = self.config.model or self.config.endpoint
+        model_or_endpoint = self.model or self.config.endpoint
         local_calc_usage = model_or_endpoint in self.token_costs
         super()._update_costs(usage, model_or_endpoint, local_calc_usage)
 
