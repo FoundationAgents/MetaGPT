@@ -321,6 +321,6 @@ class OpenAILLM(BaseLLM):
 
     def count_tokens(self, messages: list[dict]) -> int:
         try:
-            return count_message_tokens(messages, self.config.model)
+            return count_message_tokens(messages, self.model)
         except:
             return super().count_tokens(messages)

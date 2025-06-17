@@ -46,9 +46,9 @@ def deal_special_provider(provider: str, model: str, stream: bool = False) -> st
 
 
 async def mock_invoke_model(self: BedrockLLM, *args, **kwargs) -> dict:
-    provider = get_provider_name(self.config.model)
-    self._update_costs(usage, self.config.model)
-    provider = deal_special_provider(provider, self.config.model)
+    provider = get_provider_name(self.model)
+    self._update_costs(usage, self.model)
+    provider = deal_special_provider(provider, self.model)
     return BEDROCK_PROVIDER_RESPONSE_BODY[provider]
 
 
@@ -57,7 +57,7 @@ async def mock_invoke_model_stream(self: BedrockLLM, *args, **kwargs) -> dict:
     def dict2bytes(x):
         return json.dumps(x).encode("utf-8")
 
-    provider = get_provider_name(self.config.model)
+    provider = get_provider_name(self.model)
 
     if provider == "amazon":
         response_body_bytes = dict2bytes({"outputText": "Hello World"})
@@ -68,11 +68,11 @@ async def mock_invoke_model_stream(self: BedrockLLM, *args, **kwargs) -> dict:
     elif provider == "cohere":
         response_body_bytes = dict2bytes({"is_finished": False, "text": "Hello World"})
     else:
-        provider = deal_special_provider(provider, self.config.model, stream=True)
+        provider = deal_special_provider(provider, self.model, stream=True)
         response_body_bytes = dict2bytes(BEDROCK_PROVIDER_RESPONSE_BODY[provider])
 
     response_body_stream = {"body": [{"chunk": {"bytes": response_body_bytes}}]}
-    self._update_costs(usage, self.config.model)
+    self._update_costs(usage, self.model)
     return response_body_stream
 
 
