@@ -15,6 +15,7 @@ mock_llm_config = LLMConfig(
     app_id="mock_app_id",
     api_secret="mock_api_secret",
     domain="mock_domain",
+    model="mock_model",
 )
 
 

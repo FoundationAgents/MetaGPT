@@ -175,7 +175,7 @@ def test_format_msg(mocker):
 
 def test_format_msg_w_images(mocker):
     base_llm = MockBaseLLM()
-    base_llm.config.model = "gpt-4o"
+    base_llm.model = "gpt-4o"
     msg_w_images = UserMessage(content="req1")
     msg_w_images.add_metadata(IMAGES, ["base64 string 1", "base64 string 2"])
     msg_w_empty_images = UserMessage(content="req2")
