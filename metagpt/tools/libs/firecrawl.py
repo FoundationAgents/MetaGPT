@@ -11,7 +11,7 @@ Author: Ademílson Tonato <ftonato@sideguide.dev | ademilsonft@outlook.com>
 import os
 from typing import Any, Dict, List, Optional, Union
 
-import requests
+import aiohttp
 from metagpt.tools.tool_registry import register_tool
 
 
@@ -39,7 +39,7 @@ class Firecrawl:
         if not self.api_key:
             raise ValueError('No API key provided')
         self.api_url = api_url or os.getenv('FIRECRAWL_API_URL', 'https://api.firecrawl.dev')
-        self.request_timeout = 60
+        self.request_timeout = aiohttp.ClientTimeout(total=60)
 
     def _prepare_headers(self) -> Dict[str, str]:
         """Prepare headers for API requests.
@@ -64,29 +64,37 @@ class Firecrawl:
         data['integration'] = 'metagpt'
         return data
 
-    def _handle_error(self, response: requests.Response, action: str) -> None:
+    async def _handle_error(self, response: aiohttp.ClientResponse, action: str) -> None:
         """Handle API errors.
 
         Args:
-            response (requests.Response): The response from the API.
+            response (aiohttp.ClientResponse): The response from the API.
             action (str): Description of the action being performed.
 
         Raises:
-            requests.exceptions.HTTPError: If the API request fails.
+            aiohttp.ClientResponseError: If the API request fails.
         """
         try:
-            error_message = response.json().get('error', 'No error message provided.')
-            error_details = response.json().get('details', 'No additional error details provided.')
+            error_data = await response.json()
+            error_message = error_data.get('error', 'No error message provided.')
+            error_details = error_data.get('details', 'No additional error details provided.')
         except:
-            raise requests.exceptions.HTTPError(
-                f'Failed to parse Firecrawl error response as JSON. Status code: {response.status_code}',
-                response=response
+            raise aiohttp.ClientResponseError(
+                response.request_info,
+                response.history,
+                status=response.status,
+                message=f'Failed to parse Firecrawl error response as JSON. Status code: {response.status}'
             )
 
-        message = f"Error during {action}: Status code {response.status_code}. {error_message} - {error_details}"
-        raise requests.exceptions.HTTPError(message, response=response)
+        message = f"Error during {action}: Status code {response.status}. {error_message} - {error_details}"
+        raise aiohttp.ClientResponseError(
+            response.request_info,
+            response.history,
+            status=response.status,
+            message=message
+        )
 
-    def map_url(self, url: str, params: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+    async def map_url(self, url: str, params: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
         """Map a URL to discover all available links.
 
         Args:
@@ -97,7 +105,7 @@ class Firecrawl:
             Dict[str, Any]: A dictionary containing the mapped URLs and related information.
 
         Raises:
-            requests.exceptions.HTTPError: If the API request fails.
+            aiohttp.ClientResponseError: If the API request fails.
         """
         headers = self._prepare_headers()
         json_data = {'url': url}
@@ -105,22 +113,21 @@ class Firecrawl:
             json_data.update(params)
         json_data = self._prepare_request_data(json_data)
 
-        response = requests.post(
-            f'{self.api_url}/v1/map',
-            headers=headers,
-            json=json_data,
-            timeout=self.request_timeout
-        )
+        async with aiohttp.ClientSession(timeout=self.request_timeout) as session:
+            async with session.post(
+                f'{self.api_url}/v1/map',
+                headers=headers,
+                json=json_data
+            ) as response:
+                if response.status == 200:
+                    try:
+                        return await response.json()
+                    except:
+                        raise Exception('Failed to parse Firecrawl response as JSON.')
+                else:
+                    await self._handle_error(response, 'map URL')
 
-        if response.status_code == 200:
-            try:
-                return response.json()
-            except:
-                raise Exception('Failed to parse Firecrawl response as JSON.')
-        else:
-            self._handle_error(response, 'map URL')
-
-    def scrape_url(self, url: str, params: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+    async def scrape_url(self, url: str, params: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
         """Scrape content from a specific URL.
 
         Args:
@@ -131,7 +138,7 @@ class Firecrawl:
             Dict[str, Any]: A dictionary containing the scraped content and metadata.
 
         Raises:
-            requests.exceptions.HTTPError: If the API request fails.
+            aiohttp.ClientResponseError: If the API request fails.
         """
         headers = self._prepare_headers()
         json_data = {'url': url}
@@ -139,22 +146,21 @@ class Firecrawl:
             json_data.update(params)
         json_data = self._prepare_request_data(json_data)
 
-        response = requests.post(
-            f'{self.api_url}/v1/scrape',
-            headers=headers,
-            json=json_data,
-            timeout=self.request_timeout
-        )
+        async with aiohttp.ClientSession(timeout=self.request_timeout) as session:
+            async with session.post(
+                f'{self.api_url}/v1/scrape',
+                headers=headers,
+                json=json_data
+            ) as response:
+                if response.status == 200:
+                    try:
+                        return await response.json()
+                    except:
+                        raise Exception('Failed to parse Firecrawl response as JSON.')
+                else:
+                    await self._handle_error(response, 'scrape URL')
 
-        if response.status_code == 200:
-            try:
-                return response.json()
-            except:
-                raise Exception('Failed to parse Firecrawl response as JSON.')
-        else:
-            self._handle_error(response, 'scrape URL')
-
-    def search(self, query: str, params: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+    async def search(self, query: str, params: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
         """Perform a web search using Firecrawl.
 
         Args:
@@ -165,7 +171,7 @@ class Firecrawl:
             Dict[str, Any]: A dictionary containing search results and metadata.
 
         Raises:
-            requests.exceptions.HTTPError: If the API request fails.
+            aiohttp.ClientResponseError: If the API request fails.
         """
         headers = self._prepare_headers()
         json_data = {'query': query}
@@ -173,22 +179,21 @@ class Firecrawl:
             json_data.update(params)
         json_data = self._prepare_request_data(json_data)
 
-        response = requests.post(
-            f'{self.api_url}/v1/search',
-            headers=headers,
-            json=json_data,
-            timeout=self.request_timeout
-        )
+        async with aiohttp.ClientSession(timeout=self.request_timeout) as session:
+            async with session.post(
+                f'{self.api_url}/v1/search',
+                headers=headers,
+                json=json_data
+            ) as response:
+                if response.status == 200:
+                    try:
+                        return await response.json()
+                    except:
+                        raise Exception('Failed to parse Firecrawl response as JSON.')
+                else:
+                    await self._handle_error(response, 'search')
 
-        if response.status_code == 200:
-            try:
-                return response.json()
-            except:
-                raise Exception('Failed to parse Firecrawl response as JSON.')
-        else:
-            self._handle_error(response, 'search')
-
-    def crawl_url(self, url: str, params: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+    async def crawl_url(self, url: str, params: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
         """Start a crawl job for a given URL.
 
         Args:
@@ -199,7 +204,7 @@ class Firecrawl:
             Dict[str, Any]: A dictionary containing the crawl results and metadata.
 
         Raises:
-            requests.exceptions.HTTPError: If the API request fails.
+            aiohttp.ClientResponseError: If the API request fails.
         """
         headers = self._prepare_headers()
         json_data = {'url': url}
@@ -207,22 +212,21 @@ class Firecrawl:
             json_data.update(params)
         json_data = self._prepare_request_data(json_data)
 
-        response = requests.post(
-            f'{self.api_url}/v1/crawl',
-            headers=headers,
-            json=json_data,
-            timeout=self.request_timeout
-        )
+        async with aiohttp.ClientSession(timeout=self.request_timeout) as session:
+            async with session.post(
+                f'{self.api_url}/v1/crawl',
+                headers=headers,
+                json=json_data
+            ) as response:
+                if response.status == 200:
+                    try:
+                        return await response.json()
+                    except:
+                        raise Exception('Failed to parse Firecrawl response as JSON.')
+                else:
+                    await self._handle_error(response, 'start crawl job')
 
-        if response.status_code == 200:
-            try:
-                return response.json()
-            except:
-                raise Exception('Failed to parse Firecrawl response as JSON.')
-        else:
-            self._handle_error(response, 'start crawl job')
-
-    def get_crawl_status(self, job_id: str) -> Dict[str, Any]:
+    async def get_crawl_status(self, job_id: str) -> Dict[str, Any]:
         """Get the status of a crawl job.
 
         Args:
@@ -232,24 +236,24 @@ class Firecrawl:
             Dict[str, Any]: A dictionary containing the crawl job status and results.
 
         Raises:
-            requests.exceptions.HTTPError: If the API request fails.
+            aiohttp.ClientResponseError: If the API request fails.
         """
         headers = self._prepare_headers()
-        response = requests.get(
-            f'{self.api_url}/v1/crawl/{job_id}',
-            headers=headers,
-            timeout=self.request_timeout
-        )
 
-        if response.status_code == 200:
-            try:
-                return response.json()
-            except:
-                raise Exception('Failed to parse Firecrawl response as JSON.')
-        else:
-            self._handle_error(response, 'check crawl status')
+        async with aiohttp.ClientSession(timeout=self.request_timeout) as session:
+            async with session.get(
+                f'{self.api_url}/v1/crawl/{job_id}',
+                headers=headers
+            ) as response:
+                if response.status == 200:
+                    try:
+                        return await response.json()
+                    except:
+                        raise Exception('Failed to parse Firecrawl response as JSON.')
+                else:
+                    await self._handle_error(response, 'check crawl status')
 
-    def extract(self, urls: List[str], params: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+    async def extract(self, urls: List[str], params: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
         """Extract structured information from URLs.
 
         Args:
@@ -260,7 +264,7 @@ class Firecrawl:
             Dict[str, Any]: A dictionary containing the extracted information and metadata.
 
         Raises:
-            requests.exceptions.HTTPError: If the API request fails.
+            aiohttp.ClientResponseError: If the API request fails.
         """
         headers = self._prepare_headers()
         json_data = {'urls': urls}
@@ -268,22 +272,21 @@ class Firecrawl:
             json_data.update(params)
         json_data = self._prepare_request_data(json_data)
 
-        response = requests.post(
-            f'{self.api_url}/v1/extract',
-            headers=headers,
-            json=json_data,
-            timeout=self.request_timeout
-        )
+        async with aiohttp.ClientSession(timeout=self.request_timeout) as session:
+            async with session.post(
+                f'{self.api_url}/v1/extract',
+                headers=headers,
+                json=json_data
+            ) as response:
+                if response.status == 200:
+                    try:
+                        return await response.json()
+                    except:
+                        raise Exception('Failed to parse Firecrawl response as JSON.')
+                else:
+                    await self._handle_error(response, 'extract')
 
-        if response.status_code == 200:
-            try:
-                return response.json()
-            except:
-                raise Exception('Failed to parse Firecrawl response as JSON.')
-        else:
-            self._handle_error(response, 'extract')
-
-    def get_extract_status(self, job_id: str) -> Dict[str, Any]:
+    async def get_extract_status(self, job_id: str) -> Dict[str, Any]:
         """Get the status of an extract job.
 
         Args:
@@ -293,19 +296,19 @@ class Firecrawl:
             Dict[str, Any]: A dictionary containing the extract job status and results.
 
         Raises:
-            requests.exceptions.HTTPError: If the API request fails.
+            aiohttp.ClientResponseError: If the API request fails.
         """
         headers = self._prepare_headers()
-        response = requests.get(
-            f'{self.api_url}/v1/extract/{job_id}',
-            headers=headers,
-            timeout=self.request_timeout
-        )
 
-        if response.status_code == 200:
-            try:
-                return response.json()
-            except:
-                raise Exception('Failed to parse Firecrawl response as JSON.')
-        else:
-            self._handle_error(response, 'check extract status') 
+        async with aiohttp.ClientSession(timeout=self.request_timeout) as session:
+            async with session.get(
+                f'{self.api_url}/v1/extract/{job_id}',
+                headers=headers
+            ) as response:
+                if response.status == 200:
+                    try:
+                        return await response.json()
+                    except:
+                        raise Exception('Failed to parse Firecrawl response as JSON.')
+                else:
+                    await self._handle_error(response, 'check extract status') 
