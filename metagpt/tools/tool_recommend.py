@@ -30,24 +30,28 @@ Each tool is described in JSON format. When you call a tool, import the tool fro
 
 
 TOOL_RECOMMENDATION_PROMPT = """
-## User Requirement:
+## 用户需求 (User Requirement):
 {current_task}
 
-## Task
-Recommend up to {topk} tools from 'Available Tools' that can help solve the 'User Requirement'. 
+## 任务 (Task)
+从以下可用工具中选择最多 {topk} 个工具来帮助解决用户需求。
 
-## Available Tools:
+## 可用工具 (Available Tools):
 {available_tools}
 
-## Tool Selection and Instructions:
-- Select tools most relevant to completing the 'User Requirement'.
-- If you believe that no tools are suitable, indicate with an empty list.
-- Only list the names of the tools, not the full schema of each tool.
-- Ensure selected tools are listed in 'Available Tools'.
-- Output a json list of tool names:
+## 工具选择说明 (Tool Selection Instructions):
+- 选择与用户需求最相关的工具
+- 如果认为没有合适的工具，返回空列表 []
+- 只列出工具名称，不要包含工具的其他信息
+- 确保选择的工具在可用工具列表中
+- 必须以JSON数组格式输出工具名称列表
+
+## 输出格式 (Output Format):
 ```json
-["tool_name1", "tool_name2", ...]
+["tool_name1", "tool_name2", "tool_name3"]
 ```
+
+请直接输出JSON格式的工具名称列表，不要包含其他解释文字。
 """
 
 
@@ -75,7 +79,7 @@ class ToolRecommender(BaseModel):
             return validate_tool_names(v)
 
     async def recommend_tools(
-        self, context: str = "", plan: Plan = None, recall_topk: int = 20, topk: int = 5
+        self, context: str = "", plan: Plan | None = None, recall_topk: int = 20, topk: int = 5
     ) -> list[Tool]:
         """
         Recommends a list of tools based on the given context and plan. The recommendation process includes two stages: recall from a large pool and rank the recalled tools to select the final set.
@@ -108,7 +112,7 @@ class ToolRecommender(BaseModel):
 
         return ranked_tools
 
-    async def get_recommended_tool_info(self, fixed: list[str] = None, **kwargs) -> str:
+    async def get_recommended_tool_info(self, fixed: list[str] | None = None, **kwargs) -> str:
         """
         Wrap recommended tools with their info in a string, which can be used directly in a prompt.
         """
@@ -120,14 +124,14 @@ class ToolRecommender(BaseModel):
         tool_schemas = {tool.name: tool.schemas for tool in recommended_tools}
         return TOOL_INFO_PROMPT.format(tool_schemas=tool_schemas)
 
-    async def recall_tools(self, context: str = "", plan: Plan = None, topk: int = 20) -> list[Tool]:
+    async def recall_tools(self, context: str = "", plan: Plan | None = None, topk: int = 20) -> list[Tool]:
         """
         Retrieves a list of relevant tools from a large pool, based on the given context and plan.
         """
         raise NotImplementedError
 
     async def rank_tools(
-        self, recalled_tools: list[Tool], context: str = "", plan: Plan = None, topk: int = 5
+        self, recalled_tools: list[Tool], context: str = "", plan: Plan | None = None, topk: int = 5
     ) -> list[Tool]:
         """
         Default rank methods for a ToolRecommender. Use LLM to rank the recalled tools based on the given context, plan, and topk value.
@@ -140,21 +144,65 @@ class ToolRecommender(BaseModel):
             available_tools=available_tools,
             topk=topk,
         )
+        
+        # 打印完整的提示词用于调试
+        print("=" * 30)
+        print("Complete Prompt:")
+        print(prompt)
+        print("=" * 30)
+        
         rsp = await LLM().aask(prompt, stream=False)
+
+        # 打印原始响应数据用于调试
+        print("=" * 30)
+        print("Original LLM Response:")
+        print(rsp)
+        print("=" * 30)
 
         # 临时方案，待role zero的版本完成可将本注释内的代码直接替换掉
         # -------------开始---------------
         try:
             ranked_tools = CodeParser.parse_code(block=None, lang="json", text=rsp)
+            
+            # Check if parse_code returned an error message instead of JSON
+            if isinstance(ranked_tools, str) and not ranked_tools.strip().startswith('[') and not ranked_tools.strip().startswith('{'):
+                logger.warning(f"CodeParser returned error message instead of JSON: {ranked_tools}")
+                raise json.JSONDecodeError("Invalid JSON format", ranked_tools, 0)
+            
             ranked_tools = json.loads(
-                repair_llm_raw_output(output=ranked_tools, req_keys=[None], repair_type=RepairType.JSON)
+                repair_llm_raw_output(output=ranked_tools, req_keys=[], repair_type=RepairType.JSON)
             )
-        except json.JSONDecodeError:
-            ranked_tools = await LLM().aask(msg=JSON_REPAIR_PROMPT.format(json_data=rsp))
-            ranked_tools = json.loads(CodeParser.parse_code(block=None, lang="json", text=ranked_tools))
-        except Exception:
+        except json.JSONDecodeError as e:
+            logger.warning(f"JSON decode error: {e}, attempting repair...")
+            try:
+                repair_response = await LLM().aask(msg=JSON_REPAIR_PROMPT.format(json_data=rsp, json_decode_error=str(e)))
+                
+                # 打印JSON修复尝试的原始响应
+                print("=" * 30)
+                print("JSON Repair Response:")
+                print(repair_response)
+                print("=" * 30)
+                
+                ranked_tools = CodeParser.parse_code(block=None, lang="json", text=repair_response)
+                
+                # Check if the repair attempt also returned an error message
+                if isinstance(ranked_tools, str) and not ranked_tools.strip().startswith('[') and not ranked_tools.strip().startswith('{'):
+                    logger.warning(f"JSON repair also returned error message: {ranked_tools}")
+                    raise json.JSONDecodeError("Repair attempt failed", ranked_tools, 0)
+                
+                ranked_tools = json.loads(ranked_tools)
+            except Exception as repair_error:
+                logger.warning(f"JSON repair failed: {repair_error}, using fallback")
+                # Use recalled tools as fallback when JSON parsing completely fails
+                logger.info("Using recalled tools as fallback due to JSON parsing failure")
+                return recalled_tools[:topk]
+        except Exception as e:
+            logger.warning(f"Unexpected error in rank_tools: {e}")
             tb = traceback.format_exc()
             print(tb)
+            # Use recalled tools as fallback when any unexpected error occurs
+            logger.info("Using recalled tools as fallback due to unexpected error")
+            return recalled_tools[:topk]
 
         # 为了对LLM不按格式生成进行容错
         if isinstance(ranked_tools, dict):
@@ -177,7 +225,7 @@ class TypeMatchToolRecommender(ToolRecommender):
     2. Rank: LLM rank, the same as the default ToolRecommender.
     """
 
-    async def recall_tools(self, context: str = "", plan: Plan = None, topk: int = 20) -> list[Tool]:
+    async def recall_tools(self, context: str = "", plan: Plan | None = None, topk: int = 20) -> list[Tool]:
         if not plan:
             return list(self.tools.values())[:topk]
 
@@ -213,7 +261,7 @@ class BM25ToolRecommender(ToolRecommender):
     def _tokenize(self, text):
         return text.split()  # FIXME: needs more sophisticated tokenization
 
-    async def recall_tools(self, context: str = "", plan: Plan = None, topk: int = 20) -> list[Tool]:
+    async def recall_tools(self, context: str = "", plan: Plan | None = None, topk: int = 20) -> list[Tool]:
         query = plan.current_task.instruction if plan else context
 
         query_tokens = self._tokenize(query)
@@ -239,5 +287,5 @@ class EmbeddingToolRecommender(ToolRecommender):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
 
-    async def recall_tools(self, context: str = "", plan: Plan = None, topk: int = 20) -> list[Tool]:
-        pass
+    async def recall_tools(self, context: str = "", plan: Plan | None = None, topk: int = 20) -> list[Tool]:
+        return []
