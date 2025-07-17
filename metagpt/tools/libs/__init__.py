@@ -7,6 +7,7 @@
 from metagpt.tools.libs import (
     data_preprocess,
     feature_engineering,
+    slc,
     sd_engine,
     gpt_v_generator,
     web_scraping,
@@ -23,6 +24,7 @@ _ = (
     data_preprocess,
     feature_engineering,
     sd_engine,
+    slc,
     gpt_v_generator,
     web_scraping,
     # email_login,
