@@ -3,7 +3,7 @@
 llm:
   api_type: "ollama"  # 使用 Ollama 本地模型
   model: "qwen2.5:32b"  # 使用 Qwen2.5 7B 模型
-  base_url: "http://127.0.0.1:11434/"  # Ollama 本地服务地址
+  base_url: "http://127.0.0.1:11434"  # Ollama 本地服务地址
   api_key: ""  # Ollama 不需要 API Key
   timeout: 600  # 超时时间设置为 600 秒
   temperature: 0.1  # 温度参数，控制输出的随机性

@@ -140,7 +140,7 @@ class OllamaMessageChat(OllamaMessageBase, metaclass=OllamaMessageMeta):
 
     @property
     def api_suffix(self) -> str:
-        return "/chat"
+        return "/api/chat"
 
     def apply(self, messages: list[dict]) -> dict:
         content = messages[0]["content"]
@@ -178,7 +178,7 @@ class OllamaMessageGenerate(OllamaMessageChat, metaclass=OllamaMessageMeta):
 
     @property
     def api_suffix(self) -> str:
-        return "/generate"
+        return "/api/generate"
 
     def apply(self, messages: list[dict]) -> dict:
         content = messages[0]["content"]
@@ -209,7 +209,7 @@ class OllamaMessageEmbeddings(OllamaMessageBase, metaclass=OllamaMessageMeta):
 
     @property
     def api_suffix(self) -> str:
-        return "/embeddings"
+        return "/api/embeddings"
 
     def apply(self, messages: list[dict]) -> dict:
         content = messages[0]["content"]
@@ -231,7 +231,7 @@ class OllamaMessageEmbed(OllamaMessageEmbeddings, metaclass=OllamaMessageMeta):
 
     @property
     def api_suffix(self) -> str:
-        return "/embed"
+        return "/api/embed"
 
     def apply(self, messages: list[dict]) -> dict:
         content = messages[0]["content"]
