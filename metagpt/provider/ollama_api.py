@@ -38,16 +38,16 @@ class OllamaMessageBase:
         raise NotImplementedError
 
     def decode(self, response: OpenAIResponse) -> dict:
-        """修复 Ollama API 响应解析，支持多行 JSON 流式响应"""
+        """Fix Ollama API response parsing, support multi-line JSON streaming responses"""
         try:
-            # 获取原始数据
+            # Get raw data
             data = response.data.decode("utf-8")
             
-            # 移除可能的 BOM 标记
+            # Remove possible BOM markers
             if data.startswith('\ufeff'):
                 data = data[1:]
             
-            # 处理多行 JSON（流式响应）
+            # Process multi-line JSON (streaming responses)
             lines = data.strip().split('\n')
             json_objects = []
             
@@ -56,53 +56,53 @@ class OllamaMessageBase:
                 if not line:
                     continue
                     
-                # 跳过 SSE 格式的 "data: " 前缀
+                # Skip SSE format "data: " prefix
                 if line.startswith('data: '):
                     line = line[6:]
                 
-                # 跳过结束标记
+                # Skip end markers
                 if line == '[DONE]':
                     continue
                     
                 try:
-                    # 尝试解析每一行 JSON
+                    # Try to parse each line of JSON
                     json_obj = json.loads(line)
                     json_objects.append(json_obj)
                 except json.JSONDecodeError:
-                    # 如果单行解析失败，可能是部分数据，跳过
+                    # If single line parsing fails, it might be partial data, skip
                     continue
             
-            # 如果有多个 JSON 对象，返回最后一个（通常是完整的响应）
+            # If there are multiple JSON objects, return the last one (usually the complete response)
             if json_objects:
                 return json_objects[-1]
             else:
-                # 如果没有成功解析的 JSON，尝试解析整个数据
+                # If no JSON was successfully parsed, try to parse the entire data
                 return json.loads(data)
                 
         except json.JSONDecodeError as e:
-            # 如果所有解析都失败，返回错误信息
+            # If all parsing fails, return error message
             try:
                 data = response.data.decode("utf-8")
-                logger.warning(f"Ollama API 响应解析失败: {e}, 原始数据: {data[:200]}...")
-                return {"error": f"JSON 解析失败: {e}", "raw_data": data[:200]}
+                logger.warning(f"Ollama API response parsing failed: {e}, Raw data: {data[:200]}...")
+                return {"error": f"JSON parsing failed: {e}", "raw_data": data[:200]}
             except Exception as e2:
-                logger.error(f"Ollama API 响应解析完全失败: {e2}")
-                return {"error": f"响应解析失败: {e2}"}
+                logger.error(f"Ollama API response parsing completely failed: {e2}")
+                return {"error": f"Response parsing failed: {e2}"}
 
     def get_choice(self, to_choice_dict: dict) -> str:
-        # 优先处理异常响应
+        # Prioritize handling exception responses
         if "error" in to_choice_dict:
-            # 返回错误信息和部分原始数据
+            # Return error message and partial raw data
             raw = to_choice_dict.get("raw_data", "")
             return f"[Ollama Error] {to_choice_dict['error']} | Raw: {raw[:200]}"
-        # 正常响应
+        # Normal response
         if "message" in to_choice_dict:
             message = to_choice_dict["message"]
             if message.get("role") == "assistant":
                 return message.get("content", "")
             else:
                 return str(message)
-        # 兜底返回全部内容
+        # Fallback to return all content
         return str(to_choice_dict)
 
     def _parse_input_msg(self, msg: dict) -> Tuple[Optional[str], Optional[str]]:
@@ -313,7 +313,7 @@ class OllamaLLM(BaseLLM):
         if isinstance(resp, AsyncGenerator):
             return await self._processing_openai_response_async_generator(resp)
         elif isinstance(resp, OpenAIResponse):
-            # 对于非流式响应，提取文本内容
+            # For non-streaming responses, extract text content
             resp_dict = self._processing_openai_response(resp)
             return self.ollama_message.get_choice(resp_dict)
         else:

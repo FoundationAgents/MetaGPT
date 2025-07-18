@@ -53,7 +53,7 @@ class GlobalLanguageContext:
         
         Args:
             user_input: 用户输入文本
-            use_llm: 是否使用LLM检测
+            use_llm: Whether to use LLM detection
             
         Returns:
             str: 检测到的语言
@@ -108,10 +108,10 @@ class GlobalLanguageContext:
     
     def get_detection_result(self) -> Optional[LanguageDetectionResult]:
         """
-        获取语言检测结果
+        获取Language detection result
         
         Returns:
-            LanguageDetectionResult: 检测结果
+            LanguageDetectionResult: Detection result
         """
         return self.context.detection_result
     
@@ -154,8 +154,8 @@ async def language_context(language: Optional[str] = None, forced: bool = False)
         forced: 是否强制设置
         
     Usage:
-        async with language_context("中文"):
-            # 在这个上下文中，所有提示词都会使用中文
+        async with language_context("Chinese"):
+            # 在这个上下文中，所有提示词都会使用Chinese
             pass
     """
     context = get_global_language_context()

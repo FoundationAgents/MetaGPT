@@ -44,7 +44,7 @@ async def test_language_detection():
     for text in test_cases:
         print(f"\n输入文本: {text}")
         result = await detector.detect_language(text, use_llm=False)  # 先测试本地检测
-        print(f"检测结果: {result.language} (置信度: {result.confidence:.2f}, 方法: {result.method})")
+        print(f"Detection result: {result.language} (置信度: {result.confidence:.2f}, 方法: {result.method})")
         
         # 测试LLM检测
         try:
@@ -93,9 +93,9 @@ async def test_prompt_rendering():
     print("测试提示词渲染")
     print("=" * 50)
     
-    # 设置语言为中文
+    # 设置语言为Chinese
     context = get_global_language_context()
-    await context.set_language_from_input("请用中文回答")
+    await context.set_language_from_input("请用Chinese回答")
     
     # 测试提示词渲染
     prompt_templates = [
@@ -117,7 +117,7 @@ async def test_slc_tools_with_language():
     print("=" * 50)
     
     # 测试不同语言环境下的代码生成
-    languages = ["中文", "English", "한국어"]
+    languages = ["Chinese", "English", "한국어"]
     
     for lang in languages:
         print(f"\n--- 使用语言: {lang} ---")

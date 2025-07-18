@@ -40,7 +40,7 @@ async def test_basic_language_detection():
         print(f"\n输入文本: {text}")
         # 只使用本地检测，不使用LLM
         result = await detector.detect_language(text, use_llm=False)
-        print(f"检测结果: {result.language} (置信度: {result.confidence:.2f}, 方法: {result.method})")
+        print(f"Detection result: {result.language} (置信度: {result.confidence:.2f}, 方法: {result.method})")
 
 
 async def test_prompt_rendering():
@@ -52,7 +52,7 @@ async def test_prompt_rendering():
     context = get_global_language_context()
     
     # 测试不同语言
-    languages = ["中文", "English", "한국어"]
+    languages = ["Chinese", "English", "한국어"]
     
     for lang in languages:
         print(f"\n--- 设置语言: {lang} ---")

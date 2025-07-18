@@ -94,7 +94,7 @@ async def call_ollama(prompt: str, temperature: Optional[float] = None,
         
         llm = LLM(config)
         response = await llm.acompletion([{"role": "user", "content": prompt}])
-        # 处理不同类型的响应
+        # Handle different types of responses
         if isinstance(response, dict):
             return response.get('content', '') or response.get('choices', [{}])[0].get('message', {}).get('content', '')
         elif isinstance(response, str):
@@ -252,7 +252,7 @@ class CodeUnderstandingTool:
 4. 依赖关系
 5. 设计模式使用情况
 
-请用中文详细描述项目结构。
+请用Chinese详细描述项目结构。
 """
         return await call_ollama(prompt)
     
