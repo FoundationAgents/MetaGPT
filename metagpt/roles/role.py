@@ -367,7 +367,7 @@ class Role(BaseRole, SerializationMixin, ContextMixin, BaseModel):
         )
 
         # 渲染提示词，添加语言指令
-        rendered_prompt = render_prompt_with_language(prompt)
+        rendered_prompt = render_prompt_with_language(prompt_template=prompt)
         next_state = await self.llm.aask(rendered_prompt)
         next_state = extract_state_value_from_output(next_state)
         logger.debug(f"{prompt=}")

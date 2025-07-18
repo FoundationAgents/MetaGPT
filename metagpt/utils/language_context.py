@@ -188,12 +188,22 @@ def render_prompt_with_language(prompt_template: str, **kwargs) -> str:
     context = get_global_language_context()
     current_language = context.get_current_language()
     
-    # 确保模板包含语言变量
-    if "{language}" not in prompt_template:
-        prompt_template += " Please respond in {language}."
-    
-    # 渲染模板
-    return prompt_template.format(language=current_language, **kwargs)
+    try:
+        # 检查模板是否包含位置参数占位符
+        if "{}" in prompt_template:
+            # 如果有位置参数，直接返回原模板，不进行语言注入
+            return prompt_template
+        
+        # 确保模板包含语言变量
+        if "{language}" not in prompt_template:
+            prompt_template += " Please respond in {language}."
+        
+        # 渲染模板
+        return prompt_template.format(language=current_language, **kwargs)
+    except Exception as e:
+        # 如果格式化失败，返回原模板
+        logger.warning(f"语言模板渲染失败: {e}, 返回原模板")
+        return prompt_template
 
 
 async def process_user_input_for_language(user_input: str, forced_language: Optional[str] = None) -> str:

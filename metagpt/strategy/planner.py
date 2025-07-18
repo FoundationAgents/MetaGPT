@@ -26,6 +26,8 @@ STRUCTURAL_CONTEXT = """
 {tasks}
 ## Current Task
 {current_task}
+
+Please respond in {language}.
 """
 
 PLAN_STATUS = """
@@ -159,8 +161,15 @@ class Planner(BaseModel):
         tasks = [task.dict(exclude=task_exclude_field) for task in self.plan.tasks]
         tasks = json.dumps(tasks, indent=4, ensure_ascii=False)
         current_task = self.plan.current_task.json() if self.plan.current_task else {}
-        context = STRUCTURAL_CONTEXT.format(
-            user_requirement=user_requirement, context=context, tasks=tasks, current_task=current_task
+        # 使用语言渲染机制
+        from metagpt.utils.language_context import render_prompt_with_language
+        
+        context = render_prompt_with_language(
+            prompt_template=STRUCTURAL_CONTEXT,
+            user_requirement=user_requirement, 
+            context=context, 
+            tasks=tasks, 
+            current_task=current_task
         )
         context_msg = [Message(content=context, role="user")]
 

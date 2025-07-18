@@ -52,6 +52,8 @@ TOOL_RECOMMENDATION_PROMPT = """
 ```
 
 请直接输出JSON格式的工具名称列表，不要包含其他解释文字。
+
+Please respond in {language}.
 """
 
 
@@ -139,7 +141,12 @@ class ToolRecommender(BaseModel):
         current_task = plan.current_task.instruction if plan else context
 
         available_tools = {tool.name: tool.schemas["description"] for tool in recalled_tools}
-        prompt = TOOL_RECOMMENDATION_PROMPT.format(
+        
+        # 使用语言渲染机制
+        from metagpt.utils.language_context import render_prompt_with_language
+        
+        prompt = render_prompt_with_language(
+            prompt_template=TOOL_RECOMMENDATION_PROMPT,
             current_task=current_task,
             available_tools=available_tools,
             topk=topk,
@@ -206,7 +213,12 @@ class ToolRecommender(BaseModel):
 
         # 为了对LLM不按格式生成进行容错
         if isinstance(ranked_tools, dict):
-            ranked_tools = list(ranked_tools.values())[0]
+            if ranked_tools:  # 检查字典是否为空
+                ranked_tools = list(ranked_tools.values())[0]
+            else:
+                # 如果字典为空，使用召回的工具
+                logger.warning("Empty ranked_tools dict, using recalled tools")
+                ranked_tools = list(available_tools.keys())
         # -------------结束---------------
 
         if not isinstance(ranked_tools, list):

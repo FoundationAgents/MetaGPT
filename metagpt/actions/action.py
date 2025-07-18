@@ -101,7 +101,7 @@ class Action(SerializationMixin, ContextMixin, BaseModel):
         from metagpt.utils.language_context import render_prompt_with_language
         
         # 渲染提示词，添加语言指令
-        rendered_prompt = render_prompt_with_language(prompt)
+        rendered_prompt = render_prompt_with_language(prompt_template=prompt)
         return await self.llm.aask(rendered_prompt, system_msgs)
 
     async def _run_action_node(self, *args, **kwargs):

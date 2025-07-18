@@ -4,7 +4,7 @@
 @Time    : 2025/07/18 08:31
 @Author  : 18300676767
 @File    : language_detector.py
-@Desc    : 语言检测模块，使用MetaGPT内置LLM机制
+@Desc    : 语言检测模块，使用字符级别的检测方法
 """
 
 import re
@@ -26,7 +26,7 @@ class LanguageDetectionResult:
 
 
 class LanguageDetector:
-    """语言检测器，使用MetaGPT内置LLM机制"""
+    """语言检测器，使用字符级别的检测方法"""
     
     def __init__(self, llm_config: Optional[LLMConfig] = None):
         self.llm = LLM(llm_config) if llm_config else LLM()
@@ -47,13 +47,38 @@ class LanguageDetector:
             "ar": "العربية", "arabic": "العربية", "العربية": "العربية",
             "hi": "हिन्दी", "hindi": "हिन्दी", "हिन्दी": "हिन्दी"
         }
+        
+        # 字符级别的语言检测规则
+        self.char_patterns = {
+            "中文": {
+                "chars": r'[\u4e00-\u9fff]',  # 汉字
+                "weight": 1.0
+            },
+            "日本語": {
+                "chars": r'[\u3040-\u309f\u30a0-\u30ff]',  # 平假名和片假名
+                "weight": 1.0
+            },
+            "한국어": {
+                "chars": r'[\uac00-\ud7af]',  # 韩文
+                "weight": 1.0
+            },
+            "English": {
+                "chars": r'[a-zA-Z]',  # 英文字母
+                "weight": 0.8
+            },
+            "Русский": {
+                "chars": r'[\u0400-\u04ff]',  # 俄文
+                "weight": 1.0
+            },
+            "العربية": {
+                "chars": r'[\u0600-\u06ff]',  # 阿拉伯文
+                "weight": 1.0
+            }
+        }
     
     async def detect_language(self, text: str, use_llm: bool = True) -> LanguageDetectionResult:
         """
         检测文本语言
-        
-        [18300676767] 优化：实现多层检测策略，结合正则、模式匹配和LLM语义检测
-        提供高准确度的语言识别，支持降级机制确保稳定性
         
         Args:
             text: 要检测的文本
@@ -70,18 +95,15 @@ class LanguageDetector:
                 detected_text=text
             )
         
-        # 第一层：正则表达式快速检测
-        regex_result = self._regex_detect(text)
-        if regex_result.confidence > 0.8:
-            return regex_result
+        # 第一层：字符级别的检测
+        char_result = self._char_level_detect(text)
         
-        # 第二层：模式匹配检测
-        pattern_result = self._pattern_detect(text)
-        if pattern_result.confidence > 0.7:
-            return pattern_result
+        # 如果字符检测置信度很高，直接返回
+        if char_result.confidence > 0.7:
+            return char_result
         
-        # 第三层：LLM语义检测（如果启用）
-        if use_llm:
+        # 第二层：LLM语义检测（如果启用且字符检测置信度较低）
+        if use_llm and char_result.confidence < 0.5:
             try:
                 llm_result = await self._llm_semantic_detect(text)
                 if llm_result.confidence > 0.6:
@@ -89,108 +111,60 @@ class LanguageDetector:
             except Exception as e:
                 logger.warning(f"LLM语言检测失败: {e}")
         
-        # 降级到正则检测结果
-        return regex_result if regex_result.confidence > 0.5 else LanguageDetectionResult(
+        # 返回字符检测结果
+        return char_result if char_result.confidence > 0.3 else LanguageDetectionResult(
             language=self.default_language,
             confidence=0.1,
             method="fallback",
             detected_text=text
         )
     
-    def _regex_detect(self, text: str) -> LanguageDetectionResult:
-        """正则表达式检测"""
-        # 中文检测
-        if re.search(r'[\u4e00-\u9fff]', text):
+    def _char_level_detect(self, text: str) -> LanguageDetectionResult:
+        """字符级别的语言检测"""
+        language_scores = {}
+        total_chars = len(text)
+        
+        if total_chars == 0:
             return LanguageDetectionResult(
-                language="中文",
-                confidence=0.9,
-                method="regex",
+                language=self.default_language,
+                confidence=0.0,
+                method="char_level",
                 detected_text=text
             )
         
-        # 韩文检测
-        if re.search(r'[\uac00-\ud7af]', text):
-            return LanguageDetectionResult(
-                language="한국어",
-                confidence=0.9,
-                method="regex",
-                detected_text=text
-            )
+        # 计算每种语言的字符匹配度
+        for lang, pattern_info in self.char_patterns.items():
+            pattern = pattern_info["chars"]
+            weight = pattern_info["weight"]
+            
+            # 计算匹配的字符数量
+            matches = len(re.findall(pattern, text))
+            score = (matches / total_chars) * weight if total_chars > 0 else 0
+            language_scores[lang] = score
         
-        # 日文检测
-        if re.search(r'[\u3040-\u309f\u30a0-\u30ff]', text):
+        # 找到得分最高的语言
+        if language_scores:
+            best_language = max(language_scores.items(), key=lambda x: x[1])[0]
+            best_score = language_scores[best_language]
+            
+            # 计算置信度
+            confidence = min(0.95, best_score * 2)  # 将得分转换为置信度
+            
+            # 如果最高得分很低，可能是混合语言或未知语言
+            if best_score < 0.3:
+                confidence = best_score
+            
             return LanguageDetectionResult(
-                language="日本語",
-                confidence=0.9,
-                method="regex",
-                detected_text=text
-            )
-        
-        # 阿拉伯文检测
-        if re.search(r'[\u0600-\u06ff]', text):
-            return LanguageDetectionResult(
-                language="العربية",
-                confidence=0.9,
-                method="regex",
-                detected_text=text
-            )
-        
-        # 俄文检测
-        if re.search(r'[\u0400-\u04ff]', text):
-            return LanguageDetectionResult(
-                language="Русский",
-                confidence=0.9,
-                method="regex",
-                detected_text=text
-            )
-        
-        # 英文检测（包含英文字符）
-        if re.search(r'[a-zA-Z]', text):
-            return LanguageDetectionResult(
-                language="English",
-                confidence=0.8,
-                method="regex",
+                language=best_language,
+                confidence=confidence,
+                method="char_level",
                 detected_text=text
             )
         
         return LanguageDetectionResult(
             language=self.default_language,
             confidence=0.0,
-            method="regex",
-            detected_text=text
-        )
-    
-    def _pattern_detect(self, text: str) -> LanguageDetectionResult:
-        """模式匹配检测"""
-        patterns = {
-            "中文": ["请", "帮", "设计", "系统", "架构", "分析", "需求", "实现", "功能"],
-            "한국어": ["도와주세요", "설계", "시스템", "분석", "요구사항", "구현", "기능"],
-            "日本語": ["お願い", "設計", "システム", "分析", "要件", "実装", "機能"],
-            "Español": ["por favor", "diseñar", "sistema", "análisis", "requisitos"],
-            "Français": ["s'il vous plaît", "concevoir", "système", "analyse", "exigences"],
-            "Deutsch": ["bitte", "entwerfen", "system", "analyse", "anforderungen"],
-            "Italiano": ["per favore", "progettare", "sistema", "analisi", "requisiti"],
-            "Português": ["por favor", "projetar", "sistema", "análise", "requisitos"],
-            "Русский": ["пожалуйста", "проектировать", "система", "анализ", "требования"],
-            "العربية": ["من فضلك", "تصميم", "نظام", "تحليل", "متطلبات"],
-            "हिन्दी": ["कृपया", "डिज़ाइन", "सिस्टम", "विश्लेषण", "आवश्यकताएं"]
-        }
-        
-        max_matches = 0
-        best_language = self.default_language
-        
-        for lang, keywords in patterns.items():
-            matches = sum(1 for keyword in keywords if keyword in text)
-            if matches > max_matches:
-                max_matches = matches
-                best_language = lang
-        
-        confidence = min(0.7, max_matches * 0.2) if max_matches > 0 else 0.0
-        
-        return LanguageDetectionResult(
-            language=best_language,
-            confidence=confidence,
-            method="pattern",
+            method="char_level",
             detected_text=text
         )
     
