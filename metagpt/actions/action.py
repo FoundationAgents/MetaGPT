@@ -97,8 +97,12 @@ class Action(SerializationMixin, ContextMixin, BaseModel):
         return self.__str__()
 
     async def _aask(self, prompt: str, system_msgs: Optional[list[str]] = None) -> str:
-        """Append default prefix"""
-        return await self.llm.aask(prompt, system_msgs)
+        """Append default prefix with language support"""
+        from metagpt.utils.language_context import render_prompt_with_language
+        
+        # 渲染提示词，添加语言指令
+        rendered_prompt = render_prompt_with_language(prompt)
+        return await self.llm.aask(rendered_prompt, system_msgs)
 
     async def _run_action_node(self, *args, **kwargs):
         """Run action node"""

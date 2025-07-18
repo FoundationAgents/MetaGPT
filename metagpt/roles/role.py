@@ -356,6 +356,8 @@ class Role(BaseRole, SerializationMixin, ContextMixin, BaseModel):
             self._set_state(self.rc.state + 1)
             return self.rc.state >= 0 and self.rc.state < len(self.actions)
 
+        from metagpt.utils.language_context import render_prompt_with_language
+        
         prompt = self._get_prefix()
         prompt += STATE_TEMPLATE.format(
             history=self.rc.history,
@@ -364,7 +366,9 @@ class Role(BaseRole, SerializationMixin, ContextMixin, BaseModel):
             previous_state=self.rc.state,
         )
 
-        next_state = await self.llm.aask(prompt)
+        # 渲染提示词，添加语言指令
+        rendered_prompt = render_prompt_with_language(prompt)
+        next_state = await self.llm.aask(rendered_prompt)
         next_state = extract_state_value_from_output(next_state)
         logger.debug(f"{prompt=}")
 

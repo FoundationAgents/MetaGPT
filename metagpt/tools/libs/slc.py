@@ -65,10 +65,10 @@ class OllamaConfig:
 # 全局配置实例
 ollama_config = OllamaConfig.from_config_file()
 
-def call_ollama(prompt: str, temperature: Optional[float] = None, 
+async def call_ollama(prompt: str, temperature: Optional[float] = None, 
                 model: Optional[str] = None, timeout: Optional[int] = None) -> str:
     """
-    调用 Ollama API
+    调用 Ollama API（使用MetaGPT内置机制）
     
     Args:
         prompt: 提示词
@@ -80,34 +80,28 @@ def call_ollama(prompt: str, temperature: Optional[float] = None,
         API 响应内容
     """
     try:
-        # 使用配置参数
-        temp = temperature if temperature is not None else ollama_config.temperature
-        model_name = model if model is not None else ollama_config.model
-        timeout_val = timeout if timeout is not None else ollama_config.timeout
+        from metagpt.llm import LLM
+        from metagpt.configs.llm_config import LLMConfig, LLMType
         
-        payload = {
-            "model": model_name,
-            "prompt": prompt,
-            "temperature": temp,
-            "stream": False
-        }
-        
-        api_url = f"{ollama_config.base_url.rstrip('/')}/api/generate"
-        
-        response = requests.post(
-            api_url,
-            json=payload,
-            timeout=timeout_val,
-            headers={'Content-Type': 'application/json'}
+        # 使用MetaGPT内置的LLM机制
+        config = LLMConfig(
+            api_type=LLMType.OLLAMA,
+            base_url=ollama_config.base_url,
+            model=model if model is not None else ollama_config.model,
+            temperature=temperature if temperature is not None else ollama_config.temperature,
+            timeout=timeout if timeout is not None else ollama_config.timeout
         )
         
-        if response.status_code == 200:
-            result = response.json()
-            return result.get('response', '')
+        llm = LLM(config)
+        response = await llm.acompletion([{"role": "user", "content": prompt}])
+        # 处理不同类型的响应
+        if isinstance(response, dict):
+            return response.get('content', '') or response.get('choices', [{}])[0].get('message', {}).get('content', '')
+        elif isinstance(response, str):
+            return response
         else:
-            logger.error(f"Ollama API 调用失败: {response.status_code}")
-            return f"API 调用失败: {response.status_code}"
-            
+            return str(response) if response else ""
+        
     except Exception as e:
         logger.error(f"Ollama API 调用异常: {e}")
         return f"API 调用异常: {e}"
@@ -181,7 +175,7 @@ class CodeGenerationTool:
         return '\n'.join(cleaned_lines)
     
     @staticmethod
-    def generate_code(requirement: str, language: str = "python") -> str:
+    async def generate_code(requirement: str, language: str = "python") -> str:
         print("=" * 30)
         print("=" * 30)
         print("=" * 30)
@@ -199,11 +193,11 @@ class CodeGenerationTool:
 
 请直接返回代码，不要任何其他内容。
 """
-        raw_response = call_ollama(prompt, temperature=0.1)
+        raw_response = await call_ollama(prompt, temperature=0.1)
         return CodeGenerationTool._clean_generated_code(raw_response)
     
     @staticmethod
-    def refactor_code(code: str, instruction: str) -> str:
+    async def refactor_code(code: str, instruction: str) -> str:
         print("=" * 30)
         print("=" * 30)
         print("=" * 30)
@@ -226,14 +220,14 @@ class CodeGenerationTool:
 
 请直接返回重构后的代码，不要任何其他内容。
 """
-        raw_response = call_ollama(prompt, temperature=0.1)
+        raw_response = await call_ollama(prompt, temperature=0.1)
         return CodeGenerationTool._clean_generated_code(raw_response)
 
 class CodeUnderstandingTool:
     """代码理解工具类"""
     
     @staticmethod
-    def analyze_structure(project_path: str) -> str:
+    async def analyze_structure(project_path: str) -> str:
         print("=" * 30)
         print("=" * 30)
         print("=" * 30)
@@ -247,10 +241,10 @@ class CodeUnderstandingTool:
 
 请用中文详细描述项目结构。
 """
-        return call_ollama(prompt)
+        return await call_ollama(prompt)
     
     @staticmethod
-    def explain_code(code: str) -> str:
+    async def explain_code(code: str) -> str:
         print("=" * 30)
         print("=" * 30)
         print("=" * 30)
@@ -267,7 +261,7 @@ class CodeUnderstandingTool:
 3. 重要变量和函数的作用
 4. 可能的改进建议
 """
-        return call_ollama(prompt)
+        return await call_ollama(prompt)
 
 class BatchFileTool:
     """批量文件操作工具类"""
@@ -370,7 +364,7 @@ class SmartQATool:
     """智能问答工具类"""
     
     @staticmethod
-    def smart_qa(question: str, language: str = "python") -> str:
+    async def smart_qa(question: str, language: str = "python") -> str:
         print("=" * 30)
         print("=" * 30)
         print("=" * 30)
@@ -385,10 +379,10 @@ class SmartQATool:
 3. 解释关键概念
 4. 给出最佳实践建议
 """
-        return call_ollama(prompt)
+        return await call_ollama(prompt)
     
     @staticmethod
-    def code_review(code: str) -> str:
+    async def code_review(code: str) -> str:
         print("=" * 30)
         print("=" * 30)
         print("=" * 30)
@@ -408,13 +402,13 @@ class SmartQATool:
 6. 潜在问题
 7. 改进建议
 """
-        return call_ollama(prompt)
+        return await call_ollama(prompt)
 
 class MultiLanguageTool:
     """多语言支持工具类"""
     
     @staticmethod
-    def translate_code(code: str, from_lang: str, to_lang: str) -> str:
+    async def translate_code(code: str, from_lang: str, to_lang: str) -> str:
         print("=" * 30)
         print("=" * 30)
         print("=" * 30)
@@ -433,11 +427,11 @@ class MultiLanguageTool:
 
 请直接返回转换后的代码，不要任何其他内容。
 """
-        raw_response = call_ollama(prompt, temperature=0.1)
+        raw_response = await call_ollama(prompt, temperature=0.1)
         return CodeGenerationTool._clean_generated_code(raw_response)
     
     @staticmethod
-    def generate_multi_language_example(requirement: str, 
+    async def generate_multi_language_example(requirement: str, 
                                       languages: List[str]) -> Dict[str, str]:
         print("=" * 30)
         print("=" * 30)
@@ -457,7 +451,7 @@ class MultiLanguageTool:
 
 请直接返回代码，不要任何其他内容。
 """
-            raw_response = call_ollama(prompt, temperature=0.1)
+            raw_response = await call_ollama(prompt, temperature=0.1)
             examples[lang] = CodeGenerationTool._clean_generated_code(raw_response)
         
         return examples
