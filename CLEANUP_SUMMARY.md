@@ -32,6 +32,9 @@
 - `sun/workspace/`
 - `sun/logs/`
 
+### 目录重命名
+- `sun/` → `.sun/` - 重命名为隐藏目录并添加到.gitignore
+
 ## 保留的核心文件
 
 ### 核心功能文件
@@ -41,8 +44,10 @@
 - `metagpt/tools/libs/slc.py` - SLC工具集
 - `config/config2.yaml` - 配置文件
 
-### 演示文件
-- `sun/df.py` - 主要演示脚本
+### 个人开发文件（已移至.sun/目录，不提交到Git）
+- `.sun/df.py` - 主要演示脚本
+- `.sun/MetaGPT_工具系统综合分析报告.md` - 工具系统分析
+- `.sun/slc_vs_metagpt_analysis.md` - SLC与MetaGPT对比分析
 
 ### 正式测试文件
 - `tests/metagpt/provider/ollama_integration/` - Ollama集成测试
@@ -51,8 +56,6 @@
 
 ### 文档文件
 - `docs/features/multilingual_support.md` - 多语言支持文档
-- `sun/MetaGPT_工具系统综合分析报告.md` - 工具系统分析
-- `sun/slc_vs_metagpt_analysis.md` - SLC与MetaGPT对比分析
 
 ## 清理效果
 
@@ -60,12 +63,14 @@
 - 总共删除了 **25+** 个临时文件
 - 删除了 **5** 个临时目录
 - 减少了约 **4000+** 行临时代码
+- 重命名了 **1** 个目录（sun → .sun）并添加到.gitignore
 
 ### 代码库状态
 - 工作区干净，无未提交的更改
 - 所有核心功能文件保留完整
 - 测试文件结构清晰，只保留正式测试
 - 文档文件精简，只保留必要文档
+- 个人开发文件移至隐藏目录，不会被意外提交
 
 ## 下一步操作
 
