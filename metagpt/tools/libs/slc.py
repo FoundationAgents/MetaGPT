@@ -176,6 +176,19 @@ class CodeGenerationTool:
     
     @staticmethod
     async def generate_code(requirement: str, language: str = "python") -> str:
+        """
+        生成代码
+        
+        [18300676767] 优化：重构为使用MetaGPT内置LLM机制，替代直接Ollama API调用
+        统一错误处理和响应解析，提升代码质量和可维护性
+        
+        Args:
+            requirement: 需求描述
+            language: 编程语言
+            
+        Returns:
+            str: 生成的代码
+        """
         print("=" * 30)
         print("=" * 30)
         print("=" * 30)

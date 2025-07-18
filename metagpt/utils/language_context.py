@@ -48,6 +48,9 @@ class GlobalLanguageContext:
         """
         从用户输入检测并设置语言
         
+        [18300676767] 优化：集成语言检测器，实现智能语言上下文管理
+        支持异步操作和错误处理，提供全局语言状态管理
+        
         Args:
             user_input: 用户输入文本
             use_llm: 是否使用LLM检测
