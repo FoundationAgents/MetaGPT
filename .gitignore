@@ -198,3 +198,6 @@ metagpt/ext/sela/results/*
 
 metagpt/ext/aflow/data
 metagpt/ext/aflow/scripts/optimized
+
+# Personal development files
+.sun/
