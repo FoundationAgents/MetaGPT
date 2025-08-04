@@ -199,32 +199,19 @@ class Engineer(Role):
         self.summarize_todos = []
         logger.info(f"--max-auto-summarize-code={self.config.max_auto_summarize_code}")
         if not tasks or self.config.max_auto_summarize_code == 0:
-            self.n_summarize = 0
-            kvs = self.input_args.model_dump()
-            kvs["changed_src_filenames"] = [
-                str(self.repo.srcs.workdir / i) for i in list(self.repo.srcs.changed_files.keys())
-            ]
-            if self.repo.docs.code_plan_and_change.changed_files:
-                kvs["changed_code_plan_and_change_filenames"] = [
-                    str(self.repo.docs.code_plan_and_change.workdir / i)
-                    for i in list(self.repo.docs.code_plan_and_change.changed_files.keys())
-                ]
-            if self.repo.docs.code_summary.changed_files:
-                kvs["changed_code_summary_filenames"] = [
-                    str(self.repo.docs.code_summary.workdir / i)
-                    for i in list(self.repo.docs.code_summary.changed_files.keys())
-                ]
-            return AIMessage(
-                content=f"Coding is complete. The source code is at {self.repo.workdir.name}/{self.repo.srcs.root_path}, containing: "
-                + "\n".join(
-                    list(self.repo.resources.code_summary.changed_files.keys())
-                    + list(self.repo.srcs.changed_files.keys())
-                    + list(self.repo.resources.code_plan_and_change.changed_files.keys())
-                ),
-                instruct_content=AIMessage.create_instruct_value(kvs=kvs, class_name="SummarizeCodeOutput"),
-                cause_by=SummarizeCode,
-                send_to="Edward",  # The name of QaEngineer
-            )
+            logger.info("Coding complete, preparing message to QA Engineer.")
+        kvs = self.input_args.model_dump()
+        kvs["changed_src_filenames"] = [
+            str(self.repo.srcs.workdir / i) for i in list(self.repo.srcs.changed_files.keys())
+        ]
+
+        # Always send a message to QaEngineer to start testing.
+        return AIMessage(
+            content=f"Coding is complete. The source code is at {self.repo.workdir.name}/{self.repo.srcs.root_path}. Please proceed with testing.",
+            instruct_content=AIMessage.create_instruct_value(kvs=kvs, class_name="SummarizeCodeOutput"),
+            cause_by=SummarizeCode,
+            send_to="Edward",  # The name of QaEngineer
+        )
         # The maximum number of times the 'SummarizeCode' action is automatically invoked, with -1 indicating unlimited.
         # This parameter is used for debugging the workflow.
         self.n_summarize += 1 if self.config.max_auto_summarize_code > self.n_summarize else 0

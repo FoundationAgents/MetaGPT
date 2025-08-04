@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-import asyncio
 from pathlib import Path
 
 import typer
