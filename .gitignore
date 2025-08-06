@@ -199,3 +199,6 @@ metagpt/ext/sela/results/*
 metagpt/ext/aflow/data
 metagpt/ext/aflow/scripts/optimized
 miniconda.sh
+
+# Ignore config file with secrets
+config/config2.yaml

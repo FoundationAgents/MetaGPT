@@ -1,16 +1,22 @@
-def add(a, b):
-    return a + b
+# calculator.py
 
+def add(x, y):
+    """Add two numbers."""
+    return x + y
 
-def subtract(a, b):
-    return a - b
+def subtract(x, y):
+    """Subtract second number from first."""
+    return x - y
 
+def multiply(x, y):
+    """Multiply two numbers."""
+    return x * y
 
-def multiply(a, b):
-    return a * b
-
-
-def divide(a, b):
-    if b == 0:
-        raise ValueError("Cannot divide by zero")
-    return a / b
+def divide(x, y):
+    """Divide first number by second.
+    Raises:
+        ValueError: If the divisor is zero.
+    """
+    if y == 0:
+        raise ValueError("Cannot divide by zero.")
+    return x / y

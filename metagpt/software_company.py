@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
+import asyncio
 from pathlib import Path
 
 import typer
@@ -10,7 +11,7 @@ from metagpt.const import CONFIG_ROOT
 app = typer.Typer(add_completion=False, pretty_exceptions_show_locals=False)
 
 
-def generate_repo(
+async def generate_repo(
     idea,
     investment=3.0,
     n_round=5,
@@ -68,7 +69,7 @@ def generate_repo(
         idea = company.idea
 
     company.invest(investment)
-    asyncio.run(company.run(n_round=n_round, idea=idea))
+    await company.run(n_round=n_round, idea=idea)
 
     return ctx.kwargs.get("project_path")
 
