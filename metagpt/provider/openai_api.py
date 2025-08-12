@@ -89,7 +89,7 @@ class OpenAILLM(BaseLLM):
 
         return params
 
-    async def _achat_completion_stream(self, messages: list[dict], timeout=USE_CONFIG_TIMEOUT) -> str:
+    async def _achat_completion_stream(self, messages: list[dict], timeout=USE_CONFIG_TIMEOUT, stream_callback = None) -> str:
         response: AsyncStream[ChatCompletionChunk] = await self.aclient.chat.completions.create(
             **self._cons_kwargs(messages, timeout=self.get_timeout(timeout)), stream=True
         )
@@ -109,6 +109,8 @@ class OpenAILLM(BaseLLM):
             chunk_message = choice_delta.content or ""  # extract the message
             finish_reason = choice0.finish_reason if hasattr(choice0, "finish_reason") else None
             log_llm_stream(chunk_message)
+            if stream_callback:
+                stream_callback(chunk_message)
             collected_messages.append(chunk_message)
             chunk_has_usage = hasattr(chunk, "usage") and chunk.usage
             if has_finished:
@@ -169,10 +171,10 @@ class OpenAILLM(BaseLLM):
         retry=retry_if_exception_type(APIConnectionError),
         retry_error_callback=log_and_reraise,
     )
-    async def acompletion_text(self, messages: list[dict], stream=False, timeout=USE_CONFIG_TIMEOUT) -> str:
+    async def acompletion_text(self, messages: list[dict], stream=False, timeout=USE_CONFIG_TIMEOUT, stream_callback = None) -> str:
         """when streaming, print each token in place."""
         if stream:
-            return await self._achat_completion_stream(messages, timeout=timeout)
+            return await self._achat_completion_stream(messages, timeout=timeout, stream_callback=stream_callback)
 
         rsp = await self._achat_completion(messages, timeout=self.get_timeout(timeout))
         return self.get_choice_text(rsp)

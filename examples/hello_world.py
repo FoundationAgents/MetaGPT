@@ -13,7 +13,13 @@ from metagpt.logs import logger
 
 async def ask_and_print(question: str, llm: LLM, system_prompt) -> str:
     logger.info(f"Q: {question}")
-    rsp = await llm.aask(question, system_msgs=[system_prompt], stream=True)
+
+    context = 'agent name or else'
+    def stream_callback(content) -> None:
+        print(context, content)
+        # use websocket send content or do something else
+
+    rsp = await llm.aask(question, system_msgs=[system_prompt], stream=True, stream_callback=stream_callback)
     if hasattr(llm, "reasoning_content") and llm.reasoning_content:
         logger.info(f"A reasoning: {llm.reasoning_content}")
     logger.info(f"A: {rsp}")
@@ -29,7 +35,13 @@ async def lowlevel_api_example(llm: LLM):
     logger.info(await llm.acompletion_text(hello_msg))
 
     # streaming mode, much slower
-    await llm.acompletion_text(hello_msg, stream=True)
+
+    context = 'agent name or else'
+    def stream_callback(content) -> None:
+        print(context, content)
+        # use websocket send content or do something else
+
+    await llm.acompletion_text(hello_msg, stream=True, stream_callback=stream_callback)
 
     # check completion if exist to test llm complete functions
     if hasattr(llm, "completion"):

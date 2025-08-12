@@ -136,7 +136,7 @@ class GeminiLLM(BaseLLM):
     async def acompletion(self, messages: list[dict], timeout=USE_CONFIG_TIMEOUT) -> dict:
         return await self._achat_completion(messages, timeout=self.get_timeout(timeout))
 
-    async def _achat_completion_stream(self, messages: list[dict], timeout: int = USE_CONFIG_TIMEOUT) -> str:
+    async def _achat_completion_stream(self, messages: list[dict], timeout: int = USE_CONFIG_TIMEOUT, stream_callback = None) -> str:
         resp: AsyncGenerateContentResponse = await self.llm.generate_content_async(
             **self._const_kwargs(messages, stream=True)
         )
@@ -148,6 +148,8 @@ class GeminiLLM(BaseLLM):
                 logger.warning(f"messages: {messages}\nerrors: {e}\n{BlockedPromptException(str(chunk))}")
                 raise BlockedPromptException(str(chunk))
             log_llm_stream(content)
+            if stream_callback:
+                stream_callback(content)
             collected_content.append(content)
         log_llm_stream("\n")
 

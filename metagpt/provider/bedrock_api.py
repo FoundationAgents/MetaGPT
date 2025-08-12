@@ -119,11 +119,13 @@ class BedrockLLM(BaseLLM):
     async def _achat_completion(self, messages: list[dict], timeout=USE_CONFIG_TIMEOUT) -> dict:
         return await self.acompletion(messages)
 
-    async def _achat_completion_stream(self, messages: list[dict], timeout=USE_CONFIG_TIMEOUT) -> str:
+    async def _achat_completion_stream(self, messages: list[dict], timeout=USE_CONFIG_TIMEOUT, stream_callback = None) -> str:
         if self.model in NOT_SUPPORT_STREAM_MODELS:
             rsp = await self.acompletion(messages)
             full_text = self.get_choice_text(rsp)
             log_llm_stream(full_text)
+            if stream_callback:
+                stream_callback(full_text)
             return full_text
 
         request_body = self.__provider.get_request_body(messages, self._const_kwargs, stream=True)

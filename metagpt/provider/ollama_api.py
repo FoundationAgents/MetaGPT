@@ -239,7 +239,7 @@ class OllamaLLM(BaseLLM):
     async def acompletion(self, messages: list[dict], timeout=USE_CONFIG_TIMEOUT) -> dict:
         return await self._achat_completion(messages, timeout=self.get_timeout(timeout))
 
-    async def _achat_completion_stream(self, messages: list[dict], timeout: int = USE_CONFIG_TIMEOUT) -> str:
+    async def _achat_completion_stream(self, messages: list[dict], timeout: int = USE_CONFIG_TIMEOUT, stream_callback = None) -> str:
         resp, _, _ = await self.client.arequest(
             method=self.http_method,
             url=self.ollama_message.api_suffix,
@@ -248,7 +248,7 @@ class OllamaLLM(BaseLLM):
             stream=True,
         )
         if isinstance(resp, AsyncGenerator):
-            return await self._processing_openai_response_async_generator(resp)
+            return await self._processing_openai_response_async_generator(resp, stream_callback=stream_callback)
         elif isinstance(resp, OpenAIResponse):
             return self._processing_openai_response(resp)
         else:
@@ -260,7 +260,7 @@ class OllamaLLM(BaseLLM):
         self._update_costs(usage)
         return resp
 
-    async def _processing_openai_response_async_generator(self, ag_openai_resp: AsyncGenerator[OpenAIResponse, None]):
+    async def _processing_openai_response_async_generator(self, ag_openai_resp: AsyncGenerator[OpenAIResponse, None], stream_callback = None):
         collected_content = []
         usage = {}
         async for raw_chunk in ag_openai_resp:
@@ -270,6 +270,8 @@ class OllamaLLM(BaseLLM):
                 content = self.ollama_message.get_choice(chunk)
                 collected_content.append(content)
                 log_llm_stream(content)
+                if stream_callback:
+                    stream_callback(content)
             else:
                 # stream finished
                 usage = self.get_usage(chunk)

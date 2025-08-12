@@ -216,7 +216,7 @@ class DashScopeLLM(BaseLLM):
     async def acompletion(self, messages: list[dict], timeout=USE_CONFIG_TIMEOUT) -> GenerationOutput:
         return await self._achat_completion(messages, timeout=self.get_timeout(timeout))
 
-    async def _achat_completion_stream(self, messages: list[dict], timeout: int = USE_CONFIG_TIMEOUT) -> str:
+    async def _achat_completion_stream(self, messages: list[dict], timeout: int = USE_CONFIG_TIMEOUT, stream_callback = None) -> str:
         resp = await self.aclient.acall(**self._const_kwargs(messages, stream=True))
         collected_content = []
         usage = {}
@@ -225,6 +225,8 @@ class DashScopeLLM(BaseLLM):
             content = chunk.output.choices[0]["message"]["content"]
             usage = dict(chunk.usage)  # each chunk has usage
             log_llm_stream(content)
+            if stream_callback:
+                stream_callback(content)
             collected_content.append(content)
         log_llm_stream("\n")
         self._update_costs(usage)

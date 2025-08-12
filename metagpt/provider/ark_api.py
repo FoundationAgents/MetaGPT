@@ -71,7 +71,7 @@ class ArkLLM(OpenAILLM):
         if self.pricing_plan in self.cost_manager.token_costs:
             super()._update_costs(usage, self.pricing_plan, local_calc_usage)
 
-    async def _achat_completion_stream(self, messages: list[dict], timeout=USE_CONFIG_TIMEOUT) -> str:
+    async def _achat_completion_stream(self, messages: list[dict], timeout=USE_CONFIG_TIMEOUT, stream_callback = None) -> str:
         response: AsyncStream[ChatCompletionChunk] = await self.aclient.chat.completions.create(
             **self._cons_kwargs(messages, timeout=self.get_timeout(timeout)),
             stream=True,
@@ -82,6 +82,8 @@ class ArkLLM(OpenAILLM):
         async for chunk in response:
             chunk_message = chunk.choices[0].delta.content or "" if chunk.choices else ""  # extract the message
             log_llm_stream(chunk_message)
+            if stream_callback:
+                stream_callback(chunk_message)
             collected_messages.append(chunk_message)
             if chunk.usage:
                 # 火山方舟的流式调用会在最后一个chunk中返回usage,最后一个chunk的choices为[]
