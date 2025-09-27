@@ -27,10 +27,17 @@ class MGXEnv(Environment, SerializationMixin):
 
         tl = self.get_role(TEAMLEADER_NAME)  # TeamLeader's name is Mike
 
+        # If there is no TeamLeader in the environment, fall back to the regular publishing flow
+        if tl is None:
+            self._publish_message(message)
+            self.history.add(message)
+            return True
+
         if user_defined_recipient:
             # human user's direct chat message to a certain role
             for role_name in message.send_to:
-                if self.get_role(role_name).is_idle:
+                role_obj = self.get_role(role_name)
+                if role_obj and role_obj.is_idle:
                     # User starts a new direct chat with a certain role, expecting a direct chat response from the role; Other roles including TL should not be involved.
                     # If the role is not idle, it means the user helps the role with its current work, in this case, we handle the role's response message as usual.
                     self.direct_chat_roles.add(role_name)
