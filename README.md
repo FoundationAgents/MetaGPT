@@ -130,6 +130,7 @@ https://github.com/user-attachments/assets/888cb169-78c3-4a42-9d62-9d90ed3928c9
 - 🛠 How to build your own agents? 
   - [MetaGPT Usage & Development Guide | Agent 101](https://docs.deepwisdom.ai/main/en/guide/tutorials/agent_101.html)
   - [MetaGPT Usage & Development Guide | MultiAgent 101](https://docs.deepwisdom.ai/main/en/guide/tutorials/multi_agent_101.html)
+  - [Mike's Team Leader workflow](docs/team_leader_di.md)
 - 🧑‍💻 Contribution
   - [Develop Roadmap](docs/ROADMAP.md)
 - 🔖 Use Cases
