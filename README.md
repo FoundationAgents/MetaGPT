@@ -1,188 +1,330 @@
+import java.io.*;
+import java.nio.file.*;
+import java.security.*;
+import java.util.*;
 
-# MetaGPT: The Multi-Agent Framework
+/**
+ * JAR包SHA1比较工具
+ * 用于比较两个文件夹中的JAR文件SHA1值差异
+ */
+public class JarSha1Comparator {
 
-<p align="center">
-<a href=""><img src="docs/resources/MetaGPT-new-log.png" alt="MetaGPT logo: Enable GPT to work in software company, collaborating to tackle more complex tasks." width="150px"></a>
-</p>
+    /**
+     * 主方法 - 程序入口
+     * @param args 命令行参数：文件夹1路径 文件夹2路径
+     */
+    public static void main(String[] args) {
+        // 步骤1: 验证输入参数
+//        if (args.length != 2) {
+//            System.err.println("使用方法: java JarSha1Comparator <文件夹1路径> <文件夹2路径>");
+//            System.exit(1);
+//        }
+//
+//        String folder1Path = args[0];
+//        String folder2Path = args[1];
+        String folder1Path = "D:\\dev\\Java\\JavaRepository\\ai\\djl\\api\\0.31.1";
+        String folder2Path = "D:\\dev\\Java\\JavaRepository\\ai\\djl\\api\\0.31.1";
 
-<p align="center">
-<b>Assign different roles to GPTs to form a collaborative entity for complex tasks.</b>
-</p>
+        try {
+            // 步骤2: 执行比较并获取结果
+            List<JarComparisonResult> differences = compareJarFolders(folder1Path, folder2Path);
 
-<p align="center">
-<a href="docs/README_CN.md"><img src="https://img.shields.io/badge/文档-中文版-blue.svg" alt="CN doc"></a>
-<a href="README.md"><img src="https://img.shields.io/badge/document-English-blue.svg" alt="EN doc"></a>
-<a href="docs/README_JA.md"><img src="https://img.shields.io/badge/ドキュメント-日本語-blue.svg" alt="JA doc"></a>
-<a href="https://opensource.org/licenses/MIT"><img src="https://img.shields.io/badge/License-MIT-blue.svg" alt="License: MIT"></a>
-<a href="docs/ROADMAP.md"><img src="https://img.shields.io/badge/ROADMAP-路线图-blue" alt="roadmap"></a>
-<a href="https://discord.gg/DYn29wFk9z"><img src="https://dcbadge.vercel.app/api/server/DYn29wFk9z?style=flat" alt="Discord Follow"></a>
-<a href="https://twitter.com/MetaGPT_"><img src="https://img.shields.io/twitter/follow/MetaGPT?style=social" alt="Twitter Follow"></a>
-</p>
+            // 步骤3: 输出比较结果
+            printComparisonResults(differences);
 
-<p align="center">
-   <a href="https://vscode.dev/redirect?url=vscode://ms-vscode-remote.remote-containers/cloneInVolume?url=https://github.com/geekan/MetaGPT"><img src="https://img.shields.io/static/v1?label=Dev%20Containers&message=Open&color=blue&logo=visualstudiocode" alt="Open in Dev Containers"></a>
-   <a href="https://codespaces.new/geekan/MetaGPT"><img src="https://img.shields.io/badge/Github_Codespace-Open-blue?logo=github" alt="Open in GitHub Codespaces"></a>
-   <a href="https://huggingface.co/spaces/deepwisdom/MetaGPT" target="_blank"><img alt="Hugging Face" src="https://img.shields.io/badge/%F0%9F%A4%97%20-Hugging%20Face-blue?color=blue&logoColor=white" /></a>
-</p>
+        } catch (Exception e) {
+            System.err.println("比较过程中发生错误: " + e.getMessage());
+            e.printStackTrace();
+        }
+    }
 
-## News
-🚀 Mar. 29, 2024: [v0.8.0](https://github.com/geekan/MetaGPT/releases/tag/v0.8.0) released. Now you can use Data Interpreter ([arxiv](https://arxiv.org/abs/2402.18679), [example](https://docs.deepwisdom.ai/main/en/DataInterpreter/), [code](https://github.com/geekan/MetaGPT/tree/main/examples/di)) via pypi package import. Meanwhile, we integrated RAG module and supported multiple new LLMs.
+    /**
+     * 比较两个文件夹中的JAR文件
+     */
+    public static List<JarComparisonResult> compareJarFolders(String folder1Path, String folder2Path)
+            throws IOException, NoSuchAlgorithmException {
 
-🚀 Feb. 08, 2024: [v0.7.0](https://github.com/geekan/MetaGPT/releases/tag/v0.7.0) released, supporting assigning different LLMs to different Roles. We also introduced [Data Interpreter](https://github.com/geekan/MetaGPT/blob/main/examples/di/README.md), a powerful agent capable of solving a wide range of real-world problems.
+        // 步骤4: 验证文件夹存在性和可访问性
+        validateFolder(folder1Path);
+        validateFolder(folder2Path);
 
-🚀 Jan. 16, 2024: Our paper [MetaGPT: Meta Programming for A Multi-Agent Collaborative Framework
-](https://openreview.net/forum?id=VtmBAGCN7o) accepted for **oral presentation (top 1.2%)** at ICLR 2024, **ranking #1** in the LLM-based Agent category.
+        // 步骤5: 扫描两个文件夹中的JAR文件
+        System.out.println("开始扫描文件夹: " + folder1Path);
+        Map<String, File> jarFiles1 = scanJarFiles(folder1Path);
 
-🚀 Jan. 03, 2024: [v0.6.0](https://github.com/geekan/MetaGPT/releases/tag/v0.6.0) released, new features include serialization, upgraded OpenAI package and supported multiple LLM, provided [minimal example for debate](https://github.com/geekan/MetaGPT/blob/main/examples/debate_simple.py) etc.
+        System.out.println("开始扫描文件夹: " + folder2Path);
+        Map<String, File> jarFiles2 = scanJarFiles(folder2Path);
 
-🚀 Dec. 15, 2023: [v0.5.0](https://github.com/geekan/MetaGPT/releases/tag/v0.5.0) released, introducing some experimental features such as incremental development, multilingual, multiple programming languages, etc.
+        // 步骤6: 计算所有JAR文件的SHA1值
+        System.out.println("计算文件夹1中JAR文件的SHA1值...");
+        Map<String, String> sha1Map1 = calculateAllSha1(jarFiles1);
 
-🔥 Nov. 08, 2023: MetaGPT is selected into [Open100: Top 100 Open Source achievements](https://www.benchcouncil.org/evaluation/opencs/annual.html).
+        System.out.println("计算文件夹2中JAR文件的SHA1值...");
+        Map<String, String> sha1Map2 = calculateAllSha1(jarFiles2);
 
-🔥 Sep. 01, 2023: MetaGPT tops GitHub Trending Monthly for the **17th time** in August 2023.
+        // 步骤7: 比较SHA1值并找出差异
+        return findDifferences(sha1Map1, sha1Map2, jarFiles1, jarFiles2);
+    }
 
-🌟 Jun. 30, 2023: MetaGPT is now open source.
+    /**
+     * 步骤4: 验证文件夹有效性
+     */
+    private static void validateFolder(String folderPath) {
+        Path path = Paths.get(folderPath);
 
-🌟 Apr. 24, 2023: First line of MetaGPT code committed.
+        // 检查路径是否存在
+        if (!Files.exists(path)) {
+            throw new IllegalArgumentException("文件夹不存在: " + folderPath);
+        }
 
-## Software Company as Multi-Agent System
+        // 检查是否为目录
+        if (!Files.isDirectory(path)) {
+            throw new IllegalArgumentException("路径不是文件夹: " + folderPath);
+        }
 
-1. MetaGPT takes a **one line requirement** as input and outputs **user stories / competitive analysis / requirements / data structures / APIs / documents, etc.**
-2. Internally, MetaGPT includes **product managers / architects / project managers / engineers.** It provides the entire process of a **software company along with carefully orchestrated SOPs.**
-   1. `Code = SOP(Team)` is the core philosophy. We materialize SOP and apply it to teams composed of LLMs.
+        // 检查是否可读
+        if (!Files.isReadable(path)) {
+            throw new IllegalArgumentException("文件夹不可读: " + folderPath);
+        }
 
-![A software company consists of LLM-based roles](docs/resources/software_company_cd.jpeg)
+        System.out.println("文件夹验证通过: " + folderPath);
+    }
 
-<p align="center">Software Company Multi-Agent Schematic (Gradually Implementing)</p>
+    /**
+     * 步骤5: 扫描文件夹中的JAR文件
+     */
+    private static Map<String, File> scanJarFiles(String folderPath) throws IOException {
+        Map<String, File> jarFiles = new HashMap<>();
+        Path folder = Paths.get(folderPath);
 
-## Get Started
+        // 使用Files.walk遍历所有文件（包括子目录）
+        Files.walk(folder)
+                .filter(path -> {
+                    // 步骤5.1: 过滤出JAR文件
+                    String fileName = path.getFileName().toString().toLowerCase();
+                    return fileName.endsWith(".jar") && Files.isRegularFile(path);
+                })
+                .forEach(jarPath -> {
+                    // 步骤5.2: 获取相对路径作为键（避免绝对路径差异影响比较）
+                    String relativePath = folder.relativize(jarPath).toString();
+                    jarFiles.put(relativePath, jarPath.toFile());
+                    System.out.println("发现JAR文件: " + relativePath);
+                });
 
-### Installation
+        System.out.println("在文件夹 " + folderPath + " 中共找到 " + jarFiles.size() + " 个JAR文件");
+        return jarFiles;
+    }
 
-> Ensure that Python 3.9+ is installed on your system. You can check this by using: `python --version`.  
-> You can use conda like this: `conda create -n metagpt python=3.9 && conda activate metagpt`
+    /**
+     * 步骤6: 批量计算JAR文件的SHA1值
+     */
+    private static Map<String, String> calculateAllSha1(Map<String, File> jarFiles)
+            throws IOException, NoSuchAlgorithmException {
 
-```bash
-pip install --upgrade metagpt
-# or `pip install --upgrade git+https://github.com/geekan/MetaGPT.git`
-# or `git clone https://github.com/geekan/MetaGPT && cd MetaGPT && pip install --upgrade -e .`
-```
+        Map<String, String> sha1Map = new HashMap<>();
 
-For detailed installation guidance, please refer to [cli_install](https://docs.deepwisdom.ai/main/en/guide/get_started/installation.html#install-stable-version)
- or [docker_install](https://docs.deepwisdom.ai/main/en/guide/get_started/installation.html#install-with-docker)
+        for (Map.Entry<String, File> entry : jarFiles.entrySet()) {
+            String relativePath = entry.getKey();
+            File jarFile = entry.getValue();
 
-### Configuration
+            try {
+                // 步骤6.1: 计算单个JAR文件的SHA1
+                String sha1 = calculateJarSha1(jarFile);
+                sha1Map.put(relativePath, sha1);
+                System.out.println("计算SHA1完成: " + relativePath + " -> " + sha1);
 
-You can init the config of MetaGPT by running the following command, or manually create `~/.metagpt/config2.yaml` file:
-```bash
-# Check https://docs.deepwisdom.ai/main/en/guide/get_started/configuration.html for more details
-metagpt --init-config  # it will create ~/.metagpt/config2.yaml, just modify it to your needs
-```
+            } catch (IOException e) {
+                System.err.println("计算SHA1失败: " + relativePath + " - " + e.getMessage());
+                // 标记为错误状态
+                sha1Map.put(relativePath, "ERROR: " + e.getMessage());
+            }
+        }
 
-You can configure `~/.metagpt/config2.yaml` according to the [example](https://github.com/geekan/MetaGPT/blob/main/config/config2.example.yaml) and [doc](https://docs.deepwisdom.ai/main/en/guide/get_started/configuration.html):
+        return sha1Map;
+    }
 
-```yaml
-llm:
-  api_type: "openai"  # or azure / ollama / groq etc. Check LLMType for more options
-  model: "gpt-4-turbo"  # or gpt-3.5-turbo
-  base_url: "https://api.openai.com/v1"  # or forward url / other llm url
-  api_key: "YOUR_API_KEY"
-```
+    /**
+     * 步骤6.1: 计算单个JAR文件的SHA1值
+     */
+    private static String calculateJarSha1(File jarFile) throws IOException, NoSuchAlgorithmException {
+        // 步骤6.1.1: 初始化SHA1消息摘要
+        MessageDigest digest = MessageDigest.getInstance("SHA-1");
 
-### Usage
+        // 步骤6.1.2: 使用缓冲流读取文件内容
+        try (FileInputStream fis = new FileInputStream(jarFile);
+             BufferedInputStream bis = new BufferedInputStream(fis)) {
 
-After installation, you can use MetaGPT at CLI
+            byte[] buffer = new byte[8192]; // 8KB缓冲区
+            int bytesRead;
 
-```bash
-metagpt "Create a 2048 game"  # this will create a repo in ./workspace
-```
+            // 步骤6.1.3: 逐块读取文件并更新摘要
+            while ((bytesRead = bis.read(buffer)) != -1) {
+                digest.update(buffer, 0, bytesRead);
+            }
+        }
 
-or use it as library
+        // 步骤6.1.4: 完成哈希计算并转换为十六进制字符串
+        byte[] hashBytes = digest.digest();
+        return bytesToHex(hashBytes);
+    }
 
-```python
-from metagpt.software_company import generate_repo, ProjectRepo
-repo: ProjectRepo = generate_repo("Create a 2048 game")  # or ProjectRepo("<path>")
-print(repo)  # it will print the repo structure with files
-```
+    /**
+     * 将字节数组转换为十六进制字符串
+     */
+    private static String bytesToHex(byte[] bytes) {
+        StringBuilder hexString = new StringBuilder();
+        for (byte b : bytes) {
+            String hex = Integer.toHexString(0xff & b);
+            if (hex.length() == 1) {
+                hexString.append('0');
+            }
+            hexString.append(hex);
+        }
+        return hexString.toString();
+    }
 
-You can also use [Data Interpreter](https://github.com/geekan/MetaGPT/tree/main/examples/di) to write code:
+    /**
+     * 步骤7: 找出SHA1值不同的JAR文件
+     */
+    private static List<JarComparisonResult> findDifferences(
+            Map<String, String> sha1Map1,
+            Map<String, String> sha1Map2,
+            Map<String, File> jarFiles1,
+            Map<String, File> jarFiles2) {
 
-```python
-import asyncio
-from metagpt.roles.di.data_interpreter import DataInterpreter
+        List<JarComparisonResult> differences = new ArrayList<>();
+        Set<String> allJarNames = new HashSet<>();
 
-async def main():
-    di = DataInterpreter()
-    await di.run("Run data analysis on sklearn Iris dataset, include a plot")
+        // 步骤7.1: 收集所有JAR文件名
+        allJarNames.addAll(sha1Map1.keySet());
+        allJarNames.addAll(sha1Map2.keySet());
 
-asyncio.run(main())  # or await main() in a jupyter notebook setting
-```
+        System.out.println("开始比较 " + allJarNames.size() + " 个JAR文件...");
 
+        // 步骤7.2: 逐个比较JAR文件
+        for (String jarName : allJarNames) {
+            String sha11 = sha1Map1.get(jarName);
+            String sha12 = sha1Map2.get(jarName);
 
-### QuickStart & Demo Video
-- Try it on [MetaGPT Huggingface Space](https://huggingface.co/spaces/deepwisdom/MetaGPT)
-- [Matthew Berman: How To Install MetaGPT - Build A Startup With One Prompt!!](https://youtu.be/uT75J_KG_aY)
-- [Official Demo Video](https://github.com/geekan/MetaGPT/assets/2707039/5e8c1062-8c35-440f-bb20-2b0320f8d27d)
+            // 步骤7.3: 检查各种差异情况
+            if (sha11 == null && sha12 != null) {
+                // 情况1: 只在文件夹2中存在
+                differences.add(new JarComparisonResult(
+                        jarName, null, sha12,
+                        DifferenceType.ONLY_IN_FOLDER2,
+                        null, jarFiles2.get(jarName).getAbsolutePath()
+                ));
 
-https://github.com/geekan/MetaGPT/assets/34952977/34345016-5d13-489d-b9f9-b82ace413419
+            } else if (sha11 != null && sha12 == null) {
+                // 情况2: 只在文件夹1中存在
+                differences.add(new JarComparisonResult(
+                        jarName, sha11, null,
+                        DifferenceType.ONLY_IN_FOLDER1,
+                        jarFiles1.get(jarName).getAbsolutePath(), null
+                ));
 
-## Tutorial
+            } else if (sha11 != null && sha12 != null) {
+                // 情况3: 在两个文件夹中都存在，但SHA1值不同
+                if (!sha11.equals(sha12)) {
+                    differences.add(new JarComparisonResult(
+                            jarName, sha11, sha12,
+                            DifferenceType.SHA1_MISMATCH,
+                            jarFiles1.get(jarName).getAbsolutePath(),
+                            jarFiles2.get(jarName).getAbsolutePath()
+                    ));
+                }
+            }
+        }
 
-- 🗒 [Online Document](https://docs.deepwisdom.ai/main/en/)
-- 💻 [Usage](https://docs.deepwisdom.ai/main/en/guide/get_started/quickstart.html)  
-- 🔎 [What can MetaGPT do?](https://docs.deepwisdom.ai/main/en/guide/get_started/introduction.html)
-- 🛠 How to build your own agents? 
-  - [MetaGPT Usage & Development Guide | Agent 101](https://docs.deepwisdom.ai/main/en/guide/tutorials/agent_101.html)
-  - [MetaGPT Usage & Development Guide | MultiAgent 101](https://docs.deepwisdom.ai/main/en/guide/tutorials/multi_agent_101.html)
-- 🧑‍💻 Contribution
-  - [Develop Roadmap](docs/ROADMAP.md)
-- 🔖 Use Cases
-  - [Data Interpreter](https://docs.deepwisdom.ai/main/en/guide/use_cases/agent/interpreter/intro.html)
-  - [Debate](https://docs.deepwisdom.ai/main/en/guide/use_cases/multi_agent/debate.html)
-  - [Researcher](https://docs.deepwisdom.ai/main/en/guide/use_cases/agent/researcher.html)
-  - [Recepit Assistant](https://docs.deepwisdom.ai/main/en/guide/use_cases/agent/receipt_assistant.html)
-- ❓ [FAQs](https://docs.deepwisdom.ai/main/en/guide/faq.html)
+        return differences;
+    }
 
-## Support
+    /**
+     * 步骤8: 打印比较结果
+     */
+    private static void printComparisonResults(List<JarComparisonResult> differences) {
+        System.out.println("\n" + "=".repeat(80));
+        System.out.println("JAR文件SHA1比较结果");
+        System.out.println("=".repeat(80));
 
-### Discord Join US
+        if (differences.isEmpty()) {
+            System.out.println("✓ 所有JAR文件的SHA1值都相同！");
+            return;
+        }
 
-📢 Join Our [Discord Channel](https://discord.gg/ZRHeExS6xv)! Looking forward to seeing you there! 🎉
+        // 按差异类型分组
+        Map<DifferenceType, List<JarComparisonResult>> groupedDifferences = new HashMap<>();
+        for (JarComparisonResult result : differences) {
+            groupedDifferences
+                    .computeIfAbsent(result.differenceType, k -> new ArrayList<>())
+                    .add(result);
+        }
 
-### Contributor form
+        // 步骤8.1: 输出SHA1不匹配的JAR
+        List<JarComparisonResult> sha1Mismatches = groupedDifferences.get(DifferenceType.SHA1_MISMATCH);
+        if (sha1Mismatches != null && !sha1Mismatches.isEmpty()) {
+            System.out.println("\n❌ SHA1值不同的JAR文件:");
+            for (JarComparisonResult diff : sha1Mismatches) {
+                System.out.println("   文件: " + diff.jarName);
+                System.out.println("   文件夹1 SHA1: " + diff.sha1Folder1);
+                System.out.println("   文件夹2 SHA1: " + diff.sha1Folder2);
+                System.out.println("   文件夹1路径: " + diff.absolutePath1);
+                System.out.println("   文件夹2路径: " + diff.absolutePath2);
+                System.out.println("   " + "-".repeat(60));
+            }
+        }
 
-📝 [Fill out the form](https://airtable.com/appInfdG0eJ9J4NNL/pagK3Fh1sGclBvVkV/form) to become a contributor. We are looking forward to your participation!
+        // 步骤8.2: 输出只在文件夹1中存在的JAR
+        List<JarComparisonResult> onlyInFolder1 = groupedDifferences.get(DifferenceType.ONLY_IN_FOLDER1);
+        if (onlyInFolder1 != null && !onlyInFolder1.isEmpty()) {
+            System.out.println("\n📁 只在文件夹1中存在的JAR文件:");
+            for (JarComparisonResult diff : onlyInFolder1) {
+                System.out.println("   文件: " + diff.jarName);
+                System.out.println("   路径: " + diff.absolutePath1);
+            }
+        }
 
-### Contact Information
+        // 步骤8.3: 输出只在文件夹2中存在的JAR
+        List<JarComparisonResult> onlyInFolder2 = groupedDifferences.get(DifferenceType.ONLY_IN_FOLDER2);
+        if (onlyInFolder2 != null && !onlyInFolder2.isEmpty()) {
+            System.out.println("\n📁 只在文件夹2中存在的JAR文件:");
+            for (JarComparisonResult diff : onlyInFolder2) {
+                System.out.println("   文件: " + diff.jarName);
+                System.out.println("   路径: " + diff.absolutePath2);
+            }
+        }
 
-If you have any questions or feedback about this project, please feel free to contact us. We highly appreciate your suggestions!
+        System.out.println("\n总计发现 " + differences.size() + " 个差异");
+    }
 
-- **Email:** alexanderwu@deepwisdom.ai
-- **GitHub Issues:** For more technical inquiries, you can also create a new issue in our [GitHub repository](https://github.com/geekan/metagpt/issues).
+    /**
+     * JAR比较结果类
+     */
+    static class JarComparisonResult {
+        String jarName;          // JAR文件相对路径名
+        String sha1Folder1;      // 文件夹1中的SHA1值
+        String sha1Folder2;      // 文件夹2中的SHA1值
+        DifferenceType differenceType; // 差异类型
+        String absolutePath1;    // 文件夹1中的绝对路径
+        String absolutePath2;    // 文件夹2中的绝对路径
 
-We will respond to all questions within 2-3 business days.
+        public JarComparisonResult(String jarName, String sha1Folder1, String sha1Folder2,
+                                   DifferenceType differenceType, String absolutePath1, String absolutePath2) {
+            this.jarName = jarName;
+            this.sha1Folder1 = sha1Folder1;
+            this.sha1Folder2 = sha1Folder2;
+            this.differenceType = differenceType;
+            this.absolutePath1 = absolutePath1;
+            this.absolutePath2 = absolutePath2;
+        }
+    }
 
-## Citation
-
-To stay updated with the latest research and development, follow [@MetaGPT_](https://twitter.com/MetaGPT_) on Twitter. 
-
-To cite [MetaGPT](https://openreview.net/forum?id=VtmBAGCN7o) or [Data Interpreter](https://arxiv.org/abs/2402.18679) in publications, please use the following BibTeX entries.
-
-```bibtex
-@inproceedings{hong2024metagpt,
-      title={Meta{GPT}: Meta Programming for A Multi-Agent Collaborative Framework},
-      author={Sirui Hong and Mingchen Zhuge and Jonathan Chen and Xiawu Zheng and Yuheng Cheng and Jinlin Wang and Ceyao Zhang and Zili Wang and Steven Ka Shing Yau and Zijuan Lin and Liyang Zhou and Chenyu Ran and Lingfeng Xiao and Chenglin Wu and J{\"u}rgen Schmidhuber},
-      booktitle={The Twelfth International Conference on Learning Representations},
-      year={2024},
-      url={https://openreview.net/forum?id=VtmBAGCN7o}
+    /**
+     * 差异类型枚举
+     */
+    enum DifferenceType {
+        SHA1_MISMATCH,   // SHA1值不同
+        ONLY_IN_FOLDER1, // 只在文件夹1中存在
+        ONLY_IN_FOLDER2  // 只在文件夹2中存在
+    }
 }
-@misc{hong2024data,
-      title={Data Interpreter: An LLM Agent For Data Science}, 
-      author={Sirui Hong and Yizhang Lin and Bang Liu and Bangbang Liu and Binhao Wu and Danyang Li and Jiaqi Chen and Jiayi Zhang and Jinlin Wang and Li Zhang and Lingyao Zhang and Min Yang and Mingchen Zhuge and Taicheng Guo and Tuo Zhou and Wei Tao and Wenyi Wang and Xiangru Tang and Xiangtao Lu and Xiawu Zheng and Xinbing Liang and Yaying Fei and Yuheng Cheng and Zongze Xu and Chenglin Wu},
-      year={2024},
-      eprint={2402.18679},
-      archivePrefix={arXiv},
-      primaryClass={cs.AI}
-}
-```
-
