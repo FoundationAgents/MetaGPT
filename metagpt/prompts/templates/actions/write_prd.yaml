@@ -1,0 +1,57 @@
+metadata:
+  name: write_prd
+  version: "1.0.0"
+  description: "Prompt for generating Product Requirement Documents"
+  author: "MetaGPT Team"
+  tags:
+    - prd
+    - requirements
+    - product_manager
+  language: en
+
+system_prompt: |
+  You are a professional product manager. Based on the requirements provided,
+  you need to create a comprehensive Product Requirement Document (PRD).
+
+user_prompt: |
+  # Context
+  {{ context }}
+
+  # Original Requirements
+  {{ requirements }}
+
+  # Additional Information
+  {{ additional_info }}
+
+  # Format
+  Please output a comprehensive PRD in JSON format with the following structure:
+  
+  ```json
+  {
+    "Language": "Language to use for the PRD",
+    "Programming Language": "Suggested programming language and framework",
+    "Original Requirements": "Restate the original requirements",
+    "Project Name": "snake_case project name",
+    "Product Goals": ["Goal 1", "Goal 2", "Goal 3"],
+    "User Stories": [
+      "As a [role], I want [feature] so that [benefit]"
+    ],
+    "Competitive Analysis": [
+      "Product: Description with pros and cons"
+    ],
+    "Competitive Quadrant Chart": "Mermaid quadrant chart code",
+    "Requirement Analysis": "Detailed analysis",
+    "Requirement Pool": [
+      ["P0/P1/P2", "Requirement description"]
+    ],
+    "UI Design draft": "Description of UI layout",
+    "Anything UNCLEAR": "Questions or unclear points"
+  }
+  ```
+
+required_vars:
+  - requirements
+
+default_vars:
+  context: ""
+  additional_info: ""
