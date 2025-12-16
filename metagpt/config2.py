@@ -25,6 +25,7 @@ from metagpt.configs.search_config import SearchConfig
 from metagpt.configs.workspace_config import WorkspaceConfig
 from metagpt.const import CONFIG_ROOT, METAGPT_ROOT
 from metagpt.hitl.checkpoint import CheckpointConfig
+from metagpt.trace.models import TraceConfig
 from metagpt.utils.yaml_model import YamlModel
 
 
@@ -101,6 +102,9 @@ class Config(CLIParams, YamlModel):
 
     # Human-in-the-Loop configuration
     hitl: CheckpointConfig = Field(default_factory=CheckpointConfig)
+
+    # Observability and Traceability configuration
+    trace: "TraceConfig" = Field(default_factory=lambda: TraceConfig())
 
     @classmethod
     def from_home(cls, path):
