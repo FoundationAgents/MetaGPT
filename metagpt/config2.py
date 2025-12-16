@@ -24,6 +24,7 @@ from metagpt.configs.s3_config import S3Config
 from metagpt.configs.search_config import SearchConfig
 from metagpt.configs.workspace_config import WorkspaceConfig
 from metagpt.const import CONFIG_ROOT, METAGPT_ROOT
+from metagpt.hitl.checkpoint import CheckpointConfig
 from metagpt.utils.yaml_model import YamlModel
 
 
@@ -97,6 +98,9 @@ class Config(CLIParams, YamlModel):
 
     # RoleZero's configuration
     role_zero: RoleZeroConfig = Field(default_factory=RoleZeroConfig)
+
+    # Human-in-the-Loop configuration
+    hitl: CheckpointConfig = Field(default_factory=CheckpointConfig)
 
     @classmethod
     def from_home(cls, path):

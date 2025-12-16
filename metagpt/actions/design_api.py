@@ -192,6 +192,26 @@ class WriteDesign(Action):
             await reporter.async_report({"type": "design"}, "meta")
             if not old_system_design_doc:
                 system_design = await self._new_system_design(context=prd.content)
+                
+                # === HITL CHECKPOINT ===
+                if self.config.hitl.enabled and CheckpointStage.SYSTEM_DESIGN in self.config.hitl.stages:
+                    from metagpt.hitl import CheckpointStage, HumanReviewGate, ReviewDecision
+                    
+                    review_gate = HumanReviewGate(stage=CheckpointStage.SYSTEM_DESIGN, context=self.context)
+                    result = await review_gate.run(
+                        content_to_review=system_design.instruct_content.model_dump_json(indent=2),
+                        context=f"PRD: {prd.content[:500]}..."
+                    )
+                    
+                    if result.decision == ReviewDecision.REJECT:
+                        raise ValueError(f"System Design rejected by human: {result.feedback}")
+                    elif result.decision == ReviewDecision.MODIFY:
+                        # Re-generate with human feedback
+                        logger.info(f"[HITL] Re-generating System Design with human feedback")
+                        modified_context = f"{prd.content}\n\n## Human Feedback:\n{result.feedback}"
+                        system_design = await self._new_system_design(context=modified_context)
+                # === END HITL ===
+                
                 doc = await self.repo.docs.system_design.save(
                     filename=prd.filename,
                     content=system_design.instruct_content.model_dump_json(),

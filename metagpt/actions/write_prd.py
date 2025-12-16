@@ -221,6 +221,27 @@ class WritePRD(Action):
             await reporter.async_report({"type": "prd"}, "meta")
             node = await self._new_prd(req.content)
             await self._rename_workspace(node)
+            
+            # === HITL CHECKPOINT ===
+            if self.config.hitl.enabled and CheckpointStage.PRD in self.config.hitl.stages:
+                from metagpt.hitl import CheckpointStage, HumanReviewGate, ReviewDecision
+                
+                review_gate = HumanReviewGate(stage=CheckpointStage.PRD, context=self.context)
+                result = await review_gate.run(
+                    content_to_review=node.instruct_content.model_dump_json(indent=2),
+                    context=f"Original Requirement: {req.content}"
+                )
+                
+                if result.decision == ReviewDecision.REJECT:
+                    raise ValueError(f"PRD rejected by human: {result.feedback}")
+                elif result.decision == ReviewDecision.MODIFY:
+                    # Re-generate with human feedback
+                    logger.info(f"[HITL] Re-generating PRD with human feedback")
+                    modified_req = f"{req.content}\n\n## Human Feedback:\n{result.feedback}"
+                    node = await self._new_prd(modified_req)
+                    await self._rename_workspace(node)
+            # === END HITL ===
+            
             new_prd_doc = await self.repo.docs.prd.save(
                 filename=FileRepository.new_filename() + ".json", content=node.instruct_content.model_dump_json()
             )

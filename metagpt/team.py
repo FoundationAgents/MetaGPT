@@ -131,7 +131,15 @@ class Team(BaseModel):
                 break
             n_round -= 1
             self._check_balance()
-            await self.env.run()
+            
+            try:
+                await self.env.run()
+            except ValueError as e:
+                # Handle HITL rejection
+                if "rejected by human" in str(e):
+                    logger.warning(f"[HITL] Workflow stopped by human: {e}")
+                    break
+                raise
 
             logger.debug(f"max {n_round=} left.")
         self.env.archive(auto_archive)
