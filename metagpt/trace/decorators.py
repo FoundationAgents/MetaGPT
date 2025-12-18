@@ -84,6 +84,24 @@ def trace_action(name: str = None, decision_type: DecisionType = DecisionType.AC
                     error_traceback=error_tb,
                     reasoning=f"Error in {action_name}: {str(e)}",
                 )
+                
+                # Report failure to SignalCollector for Meta-Org analysis
+                try:
+                    from metagpt.meta_org.collector import SignalCollector
+                    from metagpt.meta_org.signals import SignalSeverity
+                    
+                    signal_collector = SignalCollector.get_instance()
+                    signal_collector.record_failure(
+                        role=role_name or "Unknown",
+                        action=action_name,
+                        error=str(e),
+                        severity=SignalSeverity.HIGH
+                    )
+                except ImportError:
+                    pass  # Meta-Org might not be initialized/installed
+                except Exception as ex:
+                    logger.warning(f"Failed to record signal: {ex}")
+                
                 raise
 
         return wrapper

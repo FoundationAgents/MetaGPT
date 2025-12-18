@@ -131,11 +131,23 @@ class Team(BaseModel):
             trace_collector = TraceCollector.get_instance(self.env.context.config.trace.level)
             project_name = self.env.context.config.project_name or "unnamed_project"
             trace_collector.start_project(project_name=project_name, idea=idea)
+
+        # Initialize Meta-Org Agent if enabled
+        meta_org_agent = None
+        if self.env.context.config.meta_org.enabled:
+            from metagpt.meta_org.agent import MetaOrgAgent
+            from metagpt.meta_org.collector import SignalCollector
+            
+            # Use singleton collector
+            signal_collector = SignalCollector.get_instance(project_id=self.env.context.config.project_name or "default")
+            meta_org_agent = MetaOrgAgent(self, signal_collector)
+            logger.info("Meta-Org Agent initialized and active.")
         
         try:
             if idea:
                 self.run_project(idea=idea, send_to=send_to)
 
+            original_round = n_round
             while n_round > 0:
                 if self.env.is_idle:
                     logger.debug("All roles are idle.")
@@ -152,12 +164,23 @@ class Team(BaseModel):
                         break
                     raise
 
+                # Meta-Org analysis cycle
+                if meta_org_agent and (original_round - n_round) % self.env.context.config.meta_org.interval_round == 0:
+                    logger.info("[MetaOrg] Starting periodic organization analysis...")
+                    try:
+                        await meta_org_agent.analyze_and_adapt()
+                    except Exception as e:
+                        logger.error(f"[MetaOrg] Analysis failed: {e}")
+
                 logger.debug(f"max {n_round=} left.")
             
             self.env.archive(auto_archive)
             return self.env.history
             
         finally:
+            if meta_org_agent:
+                await meta_org_agent.postmortem()
+
             # End tracing and save if enabled
             if trace_collector and self.env.context.config.trace.enabled:
                 trace_collector.end_project()

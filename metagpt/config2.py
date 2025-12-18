@@ -106,6 +106,17 @@ class Config(CLIParams, YamlModel):
     # Observability and Traceability configuration
     trace: "TraceConfig" = Field(default_factory=lambda: TraceConfig())
 
+    # Meta-Org configuration
+    meta_org: "MetaOrgConfig" = Field(default_factory=lambda: MetaOrgConfig())
+
+
+class MetaOrgConfig(BaseModel):
+    """Configuration for Meta-Org Agent"""
+    enabled: bool = False
+    interval_round: int = 5
+    model_config = CLIParams.model_config  # Reuse config
+
+
     @classmethod
     def from_home(cls, path):
         """Load config from ~/.metagpt/config2.yaml"""
