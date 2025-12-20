@@ -13,6 +13,7 @@ class MGXEnv(Environment, SerializationMixin):
 
     direct_chat_roles: set[str] = set()  # record direct chat: @role_name
 
+    team_leader_name: str = TEAMLEADER_NAME # "Mike" by default but it can be changed at any time.
     is_public_chat: bool = True
 
     def _publish_message(self, message: Message, peekable: bool = True) -> bool:
@@ -25,7 +26,7 @@ class MGXEnv(Environment, SerializationMixin):
         """let the team leader take over message publishing"""
         message = self.attach_images(message)  # for multi-modal message
 
-        tl = self.get_role(TEAMLEADER_NAME)  # TeamLeader's name is Mike
+        tl = self.get_role(self.team_leader_name)  # TeamLeader's name is Mike
 
         if user_defined_recipient:
             # human user's direct chat message to a certain role
@@ -82,7 +83,7 @@ class MGXEnv(Environment, SerializationMixin):
         # When displaying send_to, change it to those who need to react and exclude those who only need to be aware, e.g.:
         # send_to={<all>} -> Mike; send_to={Alice} -> Alice; send_to={Alice, <all>} -> Alice.
         if converted_msg.send_to == {MESSAGE_ROUTE_TO_ALL}:
-            send_to = TEAMLEADER_NAME
+            send_to = self.team_leader_name
         else:
             send_to = ", ".join({role for role in converted_msg.send_to if role != MESSAGE_ROUTE_TO_ALL})
         converted_msg.content = f"[Message] from {sent_from or 'User'} to {send_to}: {converted_msg.content}"
