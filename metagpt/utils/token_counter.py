@@ -198,15 +198,9 @@ QIANFAN_ENDPOINT_TOKEN_COSTS = {
     "sqlcoder_7b": QIANFAN_MODEL_TOKEN_COSTS["SQLCoder-7B"],
     "codellama_7b_instruct": QIANFAN_MODEL_TOKEN_COSTS["CodeLlama-7B-Instruct"],
     "xuanyuan_70b_chat": QIANFAN_MODEL_TOKEN_COSTS["XuanYuan-70B-Chat-4bit"],
-    "qianfan_bloomz_7b_compressed": QIANFAN_MODEL_TOKEN_COSTS[
-        "Qianfan-BLOOMZ-7B-compressed"
-    ],
-    "qianfan_chinese_llama_2_7b": QIANFAN_MODEL_TOKEN_COSTS[
-        "Qianfan-Chinese-Llama-2-7B"
-    ],
-    "qianfan_chinese_llama_2_13b": QIANFAN_MODEL_TOKEN_COSTS[
-        "Qianfan-Chinese-Llama-2-13B"
-    ],
+    "qianfan_bloomz_7b_compressed": QIANFAN_MODEL_TOKEN_COSTS["Qianfan-BLOOMZ-7B-compressed"],
+    "qianfan_chinese_llama_2_7b": QIANFAN_MODEL_TOKEN_COSTS["Qianfan-Chinese-Llama-2-7B"],
+    "qianfan_chinese_llama_2_13b": QIANFAN_MODEL_TOKEN_COSTS["Qianfan-Chinese-Llama-2-13B"],
     "chatlaw": QIANFAN_MODEL_TOKEN_COSTS["ChatLaw"],
     "yi_34b_chat": QIANFAN_MODEL_TOKEN_COSTS["Yi-34B-Chat"],
 }
@@ -489,9 +483,7 @@ def count_claude_message_tokens(messages: list[dict], model: str) -> int:
             system_prompt = msg.get("content")
         else:
             new_messages.append(msg)
-    num_tokens = ac.beta.messages.count_tokens(
-        messages=new_messages, model=model, system=system_prompt
-    )
+    num_tokens = ac.beta.messages.count_tokens(messages=new_messages, model=model, system=system_prompt)
     return num_tokens.input_tokens
 
 
@@ -503,9 +495,7 @@ def count_message_tokens(messages, model="gpt-3.5-turbo-0125"):
     try:
         encoding = tiktoken.encoding_for_model(model)
     except KeyError:
-        logger.info(
-            f"Warning: model {model} not found in tiktoken. Using cl100k_base encoding."
-        )
+        logger.info(f"Warning: model {model} not found in tiktoken. Using cl100k_base encoding.")
         encoding = tiktoken.get_encoding("cl100k_base")
     if model in {
         "gpt-3.5-turbo-0613",
@@ -536,24 +526,16 @@ def count_message_tokens(messages, model="gpt-3.5-turbo-0125"):
         "o1-mini",
         "o1-mini-2024-09-12",
     }:
-        tokens_per_message = (
-            3  # # every reply is primed with <|start|>assistant<|message|>
-        )
+        tokens_per_message = 3  # # every reply is primed with <|start|>assistant<|message|>
         tokens_per_name = 1
     elif model == "gpt-3.5-turbo-0301":
-        tokens_per_message = (
-            4  # every message follows <|start|>{role/name}\n{content}<|end|>\n
-        )
+        tokens_per_message = 4  # every message follows <|start|>{role/name}\n{content}<|end|>\n
         tokens_per_name = -1  # if there's a name, the role is omitted
     elif "gpt-3.5-turbo" == model:
-        logger.info(
-            "Warning: gpt-3.5-turbo may update over time. Returning num tokens assuming gpt-3.5-turbo-0125."
-        )
+        logger.info("Warning: gpt-3.5-turbo may update over time. Returning num tokens assuming gpt-3.5-turbo-0125.")
         return count_message_tokens(messages, model="gpt-3.5-turbo-0125")
     elif "gpt-4" == model:
-        logger.info(
-            "Warning: gpt-4 may update over time. Returning num tokens assuming gpt-4-0613."
-        )
+        logger.info("Warning: gpt-4 may update over time. Returning num tokens assuming gpt-4-0613.")
         return count_message_tokens(messages, model="gpt-4-0613")
     elif "open-llm-model" == model:
         """
@@ -616,7 +598,6 @@ def count_image_tokens(image_url: str, detail: str = "auto") -> int:
     # with a standard 1024x1024 size which results in 765 tokens (4 tiles).
 
     # Base cost
-    base_tokens = 85
 
     # If we assume standard high detail (1024x1024 -> 768 short side -> 4 512px tiles):
     # 4 tiles * 170 + 85 = 765
@@ -641,9 +622,7 @@ def count_output_tokens(string: str, model: str) -> int:
     try:
         encoding = tiktoken.encoding_for_model(model)
     except KeyError:
-        logger.info(
-            f"Warning: model {model} not found in tiktoken. Using cl100k_base encoding."
-        )
+        logger.info(f"Warning: model {model} not found in tiktoken. Using cl100k_base encoding.")
         encoding = tiktoken.get_encoding("cl100k_base")
     return len(encoding.encode(string))
 

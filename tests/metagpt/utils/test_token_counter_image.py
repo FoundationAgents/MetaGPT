@@ -2,8 +2,7 @@
 # -*- coding: utf-8 -*-
 
 
-from metagpt.utils.token_counter import (count_image_tokens,
-                                         count_message_tokens)
+from metagpt.utils.token_counter import count_image_tokens, count_message_tokens
 
 
 def test_count_image_tokens_low():
