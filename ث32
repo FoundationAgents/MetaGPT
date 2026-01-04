@@ -1,0 +1,2871 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="theme-color" content="#0f172a">
+    <meta name="description" content="لعبة استراتيجية اقتصادية متعددة اللاعبين - RIOS WORLD">
+    <link rel="manifest" href="manifest.json">
+    <title>RIOS WORLD</title>
+    
+    <script src="https://www.gstatic.com/firebasejs/9.1.3/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.1.3/firebase-database-compat.js"></script>
+    
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;900&family=Exo+2:wght@700;900&display=swap" rel="stylesheet">
+    
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css"/>
+
+    <style>
+        :root {
+            /* Palette - Cyber/Future Economy Theme */
+            --bg-dark: #020617; /* Slate-950 */
+            --primary: #fbbf24; /* Amber-400 */
+            --primary-dark: #b45309; /* Amber-700 */
+            --secondary: #06b6d4; /* Cyan-500 */
+            --secondary-dark: #0e7490; /* Cyan-700 */
+            --accent: #f43f5e; /* Rose-500 */
+            --accent-dark: #be123c; /* Rose-700 */
+            
+            --surface: rgba(15, 23, 42, 0.75); /* Slate-900 with opacity */
+            --surface-light: rgba(30, 41, 59, 0.8);
+            
+            --glass-border: rgba(255, 255, 255, 0.1);
+            --glass-shine: rgba(255, 255, 255, 0.05);
+            
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            
+            /* Shadows for depth */
+            --shadow-3d: 0 10px 15px -3px rgba(0, 0, 0, 0.5), 0 4px 6px -2px rgba(0, 0, 0, 0.3);
+            --glow-primary: 0 0 20px rgba(251, 191, 36, 0.3);
+            --glow-secondary: 0 0 20px rgba(6, 182, 212, 0.3);
+            
+            --font-heading: 'Exo 2', sans-serif;
+            --font-body: 'Tajawal', sans-serif;
+        }
+
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; outline: none; user-select: none; }
+        
+        body { 
+            font-family: var(--font-body); 
+            background: radial-gradient(circle at 50% 0%, #1e293b 0%, #020617 100%);
+            color: var(--text-main); 
+            margin: 0; overflow: hidden; height: 100vh; 
+            position: relative;
+        }
+
+        /* Scanline effect overlay */
+        body::after {
+            content: "";
+            position: absolute;
+            top: 0; left: 0; width: 100vw; height: 100vh;
+            background: repeating-linear-gradient(
+                0deg,
+                rgba(0, 0, 0, 0.15),
+                rgba(0, 0, 0, 0.15) 1px,
+                transparent 1px,
+                transparent 2px
+            );
+            pointer-events: none;
+            z-index: 1;
+        }
+
+        #bg-canvas { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 0; opacity: 0.6; }
+
+        .screen { display: none; height: 100vh; flex-direction: column; align-items: center; width: 100%; padding: 20px; position: relative; overflow-y: auto; z-index: 10; }
+        .active { display: flex !important; }
+
+        /* AAA Button Styles - Tactile 3D Buttons */
+        .btn {
+            width: 100%; 
+            padding: 18px; 
+            border: none; 
+            border-radius: 16px;
+            font-family: var(--font-heading); 
+            font-weight: 900; 
+            font-size: 1.1rem;
+            cursor: pointer; 
+            color: white; 
+            margin-top: 12px;
+            position: relative; 
+            transition: all 0.15s cubic-bezier(0.34, 1.56, 0.64, 1);
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            /* 3D Base Structure */
+            background: linear-gradient(180deg, #475569 0%, #334155 100%);
+            box-shadow: 
+                0 6px 0 #1e293b, 
+                0 12px 12px rgba(0,0,0,0.3),
+                inset 0 1px 0 rgba(255,255,255,0.2);
+            border-top: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .btn:active { 
+            transform: translateY(6px); 
+            box-shadow: 
+                0 0 0 #1e293b, 
+                inset 0 4px 8px rgba(0,0,0,0.4);
+        }
+
+        /* Primary Action Button (Gold/Amber) */
+        .btn-main { 
+            background: linear-gradient(180deg, #fbbf24 0%, #d97706 100%);
+            color: #451a03;
+            text-shadow: 0 1px 0 rgba(255,255,255,0.3);
+            box-shadow: 
+                0 6px 0 #92400e, 
+                0 15px 20px rgba(251, 191, 36, 0.25),
+                inset 0 1px 0 rgba(255,255,255,0.4);
+        }
+        .btn-main:hover {
+            filter: brightness(1.1);
+        }
+        .btn-main:active {
+            box-shadow: 0 0 0 #92400e, inset 0 3px 6px rgba(0,0,0,0.3);
+        }
+
+        /* Secondary Action Button (Cyan/Blue) */
+        .btn-join, .btn-dark { 
+            background: linear-gradient(180deg, #22d3ee 0%, #0891b2 100%);
+            color: #0c4a6e;
+            box-shadow: 
+                0 6px 0 #155e75, 
+                0 12px 15px rgba(6, 182, 212, 0.2),
+                inset 0 1px 0 rgba(255,255,255,0.3);
+            text-shadow: 0 1px 0 rgba(255,255,255,0.2);
+            border: none;
+        }
+        .btn-join:active, .btn-dark:active {
+            box-shadow: 0 0 0 #155e75, inset 0 3px 6px rgba(0,0,0,0.3);
+        }
+
+        /* Special Red Button (Danger/Cancel) */
+        .btn-guide {
+            background: linear-gradient(180deg, #fb7185 0%, #e11d48 100%);
+            color: #881337;
+            box-shadow: 
+                0 6px 0 #9f1239, 
+                0 12px 15px rgba(244, 63, 94, 0.2),
+                inset 0 1px 0 rgba(255,255,255,0.3);
+            }
+        .btn-guide:active {
+            box-shadow: 0 0 0 #9f1239, inset 0 3px 6px rgba(0,0,0,0.3);
+        }
+
+        /* Glassmorphism Cards & Panels */
+        .holo-card {
+            background: var(--surface);
+            backdrop-filter: blur(24px);
+            -webkit-backdrop-filter: blur(24px);
+            border: 1px solid var(--glass-border);
+            border-radius: 24px;
+            padding: 30px;
+            width: 100%;
+            max-width: 450px;
+            box-shadow: var(--shadow-3d), inset 0 0 40px rgba(255,255,255,0.02);
+            margin-bottom: 20px;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        /* Shimmer effect on card */
+        .holo-card::after {
+            content: '';
+            position: absolute;
+            top: 0; left: -100%; width: 50%; height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.05), transparent);
+            transform: skewX(-25deg);
+            animation: cardShimmer 6s infinite;
+            pointer-events: none;
+        }
+        @keyframes cardShimmer {
+            0% { left: -100%; }
+            20% { left: 200%; }
+            100% { left: 200%; }
+        }
+
+        /* Inputs - Tech Style */
+        .holo-input {
+            width: 100%; 
+            padding: 16px; 
+            background: rgba(2, 6, 23, 0.6);
+            border: 2px solid #334155; 
+            border-radius: 12px;
+            color: var(--primary); 
+            text-align: center; 
+            font-size: 1.1rem; 
+            margin-bottom: 12px;
+            font-family: var(--font-body); 
+            font-weight: 700;
+            transition: all 0.3s ease;
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.5);
+        }
+        .holo-input:focus { 
+            border-color: var(--secondary); 
+            box-shadow: 0 0 0 4px rgba(6, 182, 212, 0.1), inset 0 2px 4px rgba(0,0,0,0.5);
+            outline: none;
+            color: white;
+        }
+        select.holo-input {
+            appearance: none;
+            background-image: url("data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%2306b6d4%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E");
+            background-repeat: no-repeat;
+            background-position: left 15px top 50%;
+            background-size: 12px auto;
+        }
+
+        /* Game HUD */
+        .hud-top {
+            position: fixed; 
+            top: 0; 
+            left: 0; 
+            width: 100%; 
+            height: 80px;
+            background: rgba(2, 6, 23, 0.9);
+            backdrop-filter: blur(10px);
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center;
+            padding: 0 20px; 
+            z-index: 50; 
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+            box-shadow: 0 4px 30px rgba(0,0,0,0.5);
+        }
+        
+        .chip {
+            background: #1e293b;
+            padding: 8px 16px; 
+            border-radius: 99px;
+            font-size: 0.85rem; 
+            display: flex; 
+            align-items: center; 
+            gap: 10px;
+            border: 1px solid #334155;
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.2), 0 2px 5px rgba(0,0,0,0.3);
+            font-weight: 700;
+            color: var(--text-muted);
+            transition: all 0.3s ease;
+        }
+        .chip:hover {
+            border-color: var(--primary);
+            color: white;
+            box-shadow: 0 0 15px rgba(251, 191, 36, 0.2);
+        }
+        .chip i { font-size: 1rem; }
+
+        #settings-btn {
+            width: 45px; height: 45px;
+            border-radius: 12px;
+            padding: 0;
+            justify-content: center;
+            border-color: var(--primary);
+            background: rgba(251, 191, 36, 0.1);
+        }
+        #settings-btn:hover i {
+            animation: spin 2s linear infinite;
+        }
+        @keyframes spin { 100% { transform: rotate(360deg); } }
+
+        /* Game Board */
+        .board-container {
+            width: 100%; flex: 1; display: flex; align-items: center; justify-content: center;
+            margin-top: 80px; margin-bottom: 90px;
+            perspective: 1000px; /* 3D perspective */
+        }
+        .board-grid {
+            display: grid; 
+            grid-template-columns: repeat(6, 1fr); 
+            grid-template-rows: repeat(5, 1fr);
+            gap: 6px;
+            width: 100%; 
+            max-width: 450px; 
+            aspect-ratio: 6/5;
+            padding: 10px; 
+            background: rgba(15, 23, 42, 0.8);
+            border-radius: 20px; 
+            border: 2px solid rgba(255,255,255,0.05);
+            box-shadow: 0 20px 50px rgba(0,0,0,0.6), inset 0 0 60px rgba(0,0,0,0.8);
+            /* Mild 3D tilt */
+            transform: rotateX(10deg); 
+            transition: transform 0.5s;
+        }
+
+        .cell {
+            background: #1e293b;
+            border-radius: 10px; 
+            position: relative;
+            display: flex; 
+            flex-direction: column; 
+            align-items: center; 
+            justify-content: center;
+            font-size: 0.65rem; 
+            text-align: center; 
+            border: 1px solid rgba(255,255,255,0.05);
+            transition: all 0.2s ease;
+            box-shadow: inset 0 2px 5px rgba(0,0,0,0.3);
+            color: #94a3b8;
+        }
+        
+        .cell.current-pos {
+            background: rgba(251, 191, 36, 0.15);
+            border: 2px solid var(--primary);
+            box-shadow: 0 0 15px var(--glow-primary);
+            z-index: 2;
+            transform: translateZ(10px) scale(1.05);
+            color: white;
+        }
+
+        .cell:hover {
+            background: #334155;
+            z-index: 5;
+            transform: translateY(-5px);
+        }
+        
+        .cell i { 
+            font-size: 1.4rem; 
+            margin-bottom: 2px; 
+            filter: drop-shadow(0 2px 4px rgba(0,0,0,0.5));
+        }
+
+        .cell.my-prop { 
+            border: 2px solid var(--secondary); 
+            box-shadow: inset 0 0 15px rgba(6, 182, 212, 0.2);
+        }
+        .cell.my-prop i { color: var(--secondary) !important; }
+
+        .cell.enemy-prop { 
+            border: 2px solid var(--accent); 
+            opacity: 0.8;
+        }
+        .cell.enemy-prop i { color: var(--accent) !important; }
+        
+        /* Pawn - Modern Token */
+        .pawn {
+            width: 32px; 
+            height: 32px; 
+            border-radius: 50%; 
+            border: 2px solid white;
+            position: absolute; 
+            z-index: 20; 
+            box-shadow: 0 5px 15px rgba(0,0,0,0.5);
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            animation: floatPawn 2s ease-in-out infinite;
+        }
+        @keyframes floatPawn {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-8px); }
+        }
+
+        /* Bottom Controls Dock */
+        .control-dock {
+            position: fixed; 
+            bottom: 20px; 
+            left: 50%; 
+            transform: translateX(-50%);
+            width: 90%; 
+            max-width: 450px; 
+            background: rgba(15, 23, 42, 0.9);
+            backdrop-filter: blur(15px); 
+            border-radius: 24px; 
+            padding: 10px;
+            display: flex; 
+            justify-content: space-between;
+            gap: 10px; 
+            z-index: 100; 
+            border: 1px solid rgba(255,255,255,0.1);
+            box-shadow: 0 10px 40px rgba(0,0,0,0.5);
+        }
+        .dock-btn {
+            flex: 1; 
+            border: none; 
+            background: transparent; 
+            color: var(--text-muted);
+            display: flex; 
+            flex-direction: column; 
+            align-items: center; 
+            gap: 6px;
+            font-size: 0.7rem; 
+            cursor: pointer; 
+            transition: all 0.2s ease;
+            font-weight: 700;
+            font-family: var(--font-body);
+        }
+        .dock-btn i { 
+            font-size: 1.4rem; 
+            background: #1e293b;
+            width: 48px; height: 48px;
+            display: flex; align-items: center; justify-content: center;
+            border-radius: 16px; 
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            border: 1px solid rgba(255,255,255,0.05);
+            box-shadow: 0 4px 6px rgba(0,0,0,0.2);
+        }
+        .dock-btn:hover { color: white; }
+        .dock-btn:hover i { 
+            background: var(--primary);
+            color: #451a03; 
+            transform: translateY(-8px) scale(1.1);
+            box-shadow: 0 10px 20px rgba(251, 191, 36, 0.3);
+        }
+        .dock-btn:active i { transform: translateY(-2px) scale(0.95); }
+
+        /* Modals - Clean High Tech */
+        .modal-overlay {
+            position: fixed; 
+            inset: 0; 
+            background: rgba(2, 6, 23, 0.85); 
+            z-index: 2000;
+            display: none; 
+            justify-content: center; 
+            align-items: center; 
+            backdrop-filter: blur(8px);
+            animation: fadeIn 0.3s ease;
+        }
+        .modal-box {
+            background: #0f172a;
+            border: 1px solid #334155;
+            padding: 25px; 
+            border-radius: 24px; 
+            width: 90%; 
+            max-width: 400px;
+            text-align: center; 
+            max-height: 85vh; 
+            overflow-y: auto;
+            animation: slideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.8);
+            position: relative;
+        }
+        
+        @keyframes slideUp {
+            from { opacity: 0; transform: translateY(40px) scale(0.95); }
+            to { opacity: 1; transform: translateY(0) scale(1); }
+        }
+
+        .news-entry {
+            background: #1e293b;
+            border-right: 4px solid #64748b;
+            padding: 14px; margin-bottom: 10px; font-size: 0.85rem;
+            color: #e2e8f0; text-align: right; border-radius: 8px;
+            font-family: var(--font-heading);
+            display: flex; justify-content: space-between; align-items: flex-start;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+        
+        .stock-row {
+            display: flex; justify-content: space-between; align-items: center;
+            background: #1e293b; padding: 14px; margin-bottom: 10px;
+            border-radius: 12px; border: 1px solid #334155;
+            transition: transform 0.2s;
+        }
+        .stock-row:active { transform: scale(0.98); }
+
+        #game-toast {
+            position: fixed; 
+            top: 100px; 
+            left: 50%; 
+            transform: translateX(-50%);
+            background: rgba(15, 23, 42, 0.95);
+            color: var(--primary); 
+            padding: 12px 30px;
+            border-radius: 99px; 
+            border: 1px solid var(--primary);
+            z-index: 3000; 
+            display: none; 
+            font-size: 0.9rem;
+            font-weight: 700;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5), 0 0 20px rgba(251, 191, 36, 0.2);
+            animation: toastSlide 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+            white-space: nowrap;
+        }
+
+        @keyframes toastSlide {
+            from { opacity: 0; transform: translateX(-50%) translateY(-30px); }
+            to { opacity: 1; transform: translateX(-50%) translateY(0); }
+        }
+
+        /* Login Screen Specifics */
+        #scr-login {
+            background: radial-gradient(circle at center, #1e293b 0%, #020617 100%);
+        }
+        #scr-login h1 {
+            color: transparent;
+            background: linear-gradient(180deg, #fbbf24, #d97706);
+            -webkit-background-clip: text;
+            font-size: 4rem; margin: 0;
+            filter: drop-shadow(0 4px 0px rgba(0,0,0,0.5));
+            letter-spacing: -2px;
+        }
+        #scr-login h2 {
+            color: #94a3b8 !important;
+            letter-spacing: 8px;
+            font-size: 1.2rem;
+            text-transform: uppercase;
+            margin-top: -10px;
+        }
+        
+        #login-avatar-container {
+            position: relative; width: 90px; height: 90px; margin: 0 auto 20px;
+            cursor: pointer;
+        }
+        #login-avatar {
+            width: 100%; height: 100%; border-radius: 50%; 
+            border: 4px solid #334155;
+            box-shadow: 0 0 20px rgba(0,0,0,0.5);
+            transition: border-color 0.3s;
+            object-fit: cover;
+        }
+        #login-avatar-container:hover #login-avatar {
+            border-color: var(--primary);
+        }
+        #edit-avatar-badge {
+            position: absolute; bottom: 0; right: -5px; 
+            width: 30px; height: 30px; 
+            background: var(--primary); 
+            border-radius: 50%; 
+            display: flex; align-items: center; justify-content: center;
+            border: 3px solid #0f172a;
+            color: #451a03;
+            font-size: 0.8rem;
+        }
+        
+        /* Move Controls - Dice Buttons */
+        #move-controls button {
+            width: 65px; height: 65px; 
+            border-radius: 20px; 
+            font-size: 1.5rem; 
+            margin: 0; 
+            padding: 0;
+            background: linear-gradient(145deg, #fbbf24, #d97706);
+            box-shadow: 0 8px 0 #92400e, 0 15px 20px rgba(0,0,0,0.3);
+            border: none;
+            color: #451a03;
+            transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+        #move-controls button:active {
+            transform: translateY(8px) scale(0.9);
+            box-shadow: 0 0 0 #92400e;
+        }
+
+        /* Toggle Switch */
+        #sound-switch {
+            background: #334155 !important;
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.5);
+        }
+        #sound-toggle:checked + #sound-switch {
+            background: var(--primary) !important;
+        }
+        #sound-switch span {
+            background: white;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+        }
+
+        /* Avatar Selection Grid */
+        .avatar-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        .avatar-option {
+            width: 100%;
+            aspect-ratio: 1/1;
+            border-radius: 50%;
+            border: 2px solid #334155;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            background: #1e293b;
+        }
+        .avatar-option:hover {
+            border-color: var(--primary);
+            transform: scale(1.1);
+        }
+        .chat-avatar {
+            width: 24px; height: 24px; border-radius: 50%;
+            margin-left: 5px; vertical-align: middle;
+            border: 1px solid rgba(255,255,255,0.2);
+        }
+        .leaderboard-avatar {
+            width: 32px; height: 32px; border-radius: 50%;
+            margin-left: 8px; vertical-align: middle;
+            border: 2px solid var(--primary);
+        }
+
+        /* Action Card Styles (Round 4 Feature) */
+        #action-card-btn {
+            position: fixed;
+            right: 20px;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #a855f7 0%, #6b21a8 100%);
+            box-shadow: 0 0 20px rgba(168, 85, 247, 0.5);
+            border: 2px solid #d8b4fe;
+            display: none; /* Hidden by default */
+            z-index: 140;
+            color: white;
+            font-size: 1.5rem;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            align-items: center;
+            justify-content: center;
+            animation: pulse-purple 2s infinite;
+        }
+        #action-card-btn:active { transform: translateY(-50%) scale(0.9); }
+        @keyframes pulse-purple {
+            0% { box-shadow: 0 0 0 0 rgba(168, 85, 247, 0.7); }
+            70% { box-shadow: 0 0 0 15px rgba(168, 85, 247, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(168, 85, 247, 0); }
+        }
+
+        /* 3D Card Animation */
+        .card-scene {
+            width: 240px;
+            height: 340px;
+            perspective: 1000px;
+            margin: 0 auto 20px;
+        }
+        .card-obj {
+            width: 100%;
+            height: 100%;
+            position: relative;
+            transform-style: preserve-3d;
+            transition: transform 1s cubic-bezier(0.4, 0.2, 0.2, 1);
+        }
+        .card-obj.is-flipped {
+            transform: rotateY(180deg);
+        }
+        .card-face {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            backface-visibility: hidden;
+            border-radius: 20px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            box-shadow: 0 0 30px rgba(0,0,0,0.5);
+            border: 2px solid rgba(255,255,255,0.1);
+        }
+        .card-front {
+            background: linear-gradient(45deg, #1e1b4b, #312e81);
+            background-image: repeating-linear-gradient(45deg, rgba(255,255,255,0.03) 0px, rgba(255,255,255,0.03) 10px, transparent 10px, transparent 20px);
+            color: #c7d2fe;
+            font-size: 3rem;
+        }
+        .card-back {
+            background: #0f172a;
+            transform: rotateY(180deg);
+            padding: 20px;
+            border: 2px solid var(--primary);
+            box-shadow: 0 0 30px var(--glow-primary);
+        }
+
+        /* Legendary Intro Overlay */
+        #intro-overlay {
+            position: fixed;
+            inset: 0;
+            background: radial-gradient(circle at center, #0f172a 0%, #020617 100%);
+            z-index: 5000;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            perspective: 1500px;
+            overflow: hidden;
+            animation: fadeOutIntro 0.5s ease 5.5s forwards;
+        }
+        
+        #intro-overlay::before {
+            content: '';
+            position: absolute;
+            width: 200%; height: 200%;
+            background: radial-gradient(circle, transparent 20%, #000 130%);
+            z-index: 2;
+            pointer-events: none;
+        }
+
+        .intro-content {
+            transform-style: preserve-3d;
+            text-align: center;
+            z-index: 5;
+        }
+
+        .intro-text-3d {
+            font-family: 'Exo 2', sans-serif;
+            font-weight: 900;
+            font-size: 3.5rem;
+            color: #fff;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            position: relative;
+            text-shadow: 
+                0 0 10px rgba(251, 191, 36, 0.8),
+                0 0 20px rgba(251, 191, 36, 0.4),
+                0 0 40px rgba(251, 191, 36, 0.2);
+            animation: legendaryEnter 6s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
+            background: linear-gradient(to bottom, #fff 0%, #fbbf24 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .vfx-ring {
+            position: absolute;
+            width: 600px; height: 600px;
+            border: 2px solid rgba(6, 182, 212, 0.1);
+            border-radius: 50%;
+            transform: rotateX(70deg);
+            animation: ringSpin 4s linear infinite;
+            box-shadow: 0 0 30px rgba(6, 182, 212, 0.1);
+        }
+        .vfx-ring:nth-child(1) { width: 500px; height: 500px; animation-duration: 3s; border-color: rgba(251, 191, 36, 0.15); }
+        .vfx-ring:nth-child(2) { width: 700px; height: 700px; animation-direction: reverse; }
+
+        @keyframes legendaryEnter {
+            0% { opacity: 0; transform: translateZ(-800px) scale(0); letter-spacing: 50px; filter: blur(20px); }
+            20% { opacity: 1; transform: translateZ(-200px) scale(1); letter-spacing: 5px; filter: blur(0); }
+            80% { transform: translateZ(50px); text-shadow: 0 0 50px rgba(251,191,36, 1); }
+            100% { opacity: 0; transform: translateZ(500px) scale(2); filter: blur(10px); }
+        }
+
+        @keyframes fadeOutIntro {
+            to { opacity: 0; visibility: hidden; }
+        }
+        
+        @keyframes ringSpin {
+            to { transform: rotateX(70deg) rotateZ(360deg); }
+        }
+
+        /* Scrollbar styling */
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: #0f172a; }
+        ::-webkit-scrollbar-thumb { background: #334155; border-radius: 3px; }
+    </style>
+</head>
+<body>
+
+    <canvas id="bg-canvas"></canvas>
+    
+    <!-- Intro Overlay -->
+    <div id="intro-overlay">
+        <div class="vfx-ring"></div>
+        <div class="vfx-ring"></div>
+        <div class="intro-content">
+            <div class="intro-text-3d">أهلاً بك في عالم ريوس المذهل</div>
+        </div>
+    </div>
+
+    <div id="game-toast"></div>
+
+    <div id="scr-login" class="screen active" style="justify-content:center;">
+        <div class="animate__animated animate__fadeInDown" style="text-align:center; margin-bottom:40px;">
+            <h1 style="font-family:'Exo 2'; font-weight:900;">RIOS</h1>
+            <h2 style="font-family:'Exo 2';">WORLD</h2>
+        </div>
+        
+        <div class="holo-card animate__animated animate__zoomIn">
+            <div id="login-avatar-container" onclick="UI.openAvatarSelection()">
+                <img id="login-avatar" src="https://ui-avatars.com/api/?name=P&background=fbbf24&color=451a03&font-size=0.5&bold=true">
+                <div id="edit-avatar-badge"><i class="fa-solid fa-camera"></i></div>
+            </div>
+
+            <input type="text" id="inp-name" class="holo-input" placeholder="اسم العميل (Agent Name)" oninput="UI.updateAvatarPreview(this.value)">
+            <input type="number" id="inp-room" class="holo-input" placeholder="رقم السيرفر (Server ID)">
+            
+            <select id="inp-career" class="holo-input" style="text-align-last:center;">
+                <option value="مبرمج">👾 Cyber Hacker (خطر - راتب عالي)</option>
+                <option value="مسوق">📢 Neuro Marketer (صعب - راتب جيد)</option>
+                <option value="محلل">📈 Data Broker (متوسط)</option>
+                <option value="سائق">🚕 Transporter (سهل - راتب بسيط)</option>
+                <option value="حارس">🛡️ Sentinel (سهل جداً)</option>
+            </select>
+
+            <div style="display:flex; gap:12px; margin-top:20px;">
+                <button class="btn btn-main" onclick="App.joinLobby(true)">إنشاء عالم</button>
+                <button class="btn btn-join" onclick="App.joinLobby(false)">اتصال</button>
+            </div>
+            
+            <button class="btn btn-guide" style="margin-top:15px; padding:12px; font-size:0.9rem;" onclick="UI.openGuideModal()">
+                <i class="fa-solid fa-book"></i> دليل اللعبة
+            </button>
+            
+            <div style="text-align:center; margin-top:25px; font-size:0.75rem; color:#64748b; font-weight:bold; letter-spacing:1px;">
+                SYSTEM ARCHITECT: KAREEM ASHRAF
+            </div>
+        </div>
+
+        <div id="lobby-area" class="holo-card animate__animated animate__fadeInUp" style="display:none;">
+            <div style="text-align:center;">
+                <h3 style="margin:0; color:var(--text-muted); text-transform:uppercase; letter-spacing:2px; font-size:0.9rem;">Waiting for players</h3>
+                <div id="lobby-timer" style="font-size:3.5rem; font-family:'Exo 2'; font-weight:900; color:var(--accent); margin:10px 0; text-shadow:0 0 20px rgba(244, 63, 94, 0.4);">90</div>
+            </div>
+            
+            <div id="chat-wrapper" style="height:150px; overflow-y:auto; background:rgba(2, 6, 23, 0.5); border: 1px solid #334155; padding:12px; border-radius:12px; margin-bottom:12px; font-size:0.85rem;"></div>
+            
+            <div style="display:flex; gap:8px;">
+                <input type="text" id="chat-input" class="holo-input" placeholder="رسالة مشفرة..." style="margin:0; font-size:0.9rem; text-align:right;">
+                <button onclick="Game.sendChat()" class="btn btn-main" style="width:60px; margin:0; padding:0;"><i class="fa fa-paper-plane"></i></button>
+            </div>
+            </div>
+    </div>
+
+    <div id="scr-game" class="screen">
+        <div class="hud-top">
+            <button id="settings-btn" class="chip" onclick="UI.openSettings()" title="الإعدادات">
+                <i class="fa-solid fa-gear"></i>
+            </button>
+            
+            <div style="display:flex; gap:12px; align-items:center;">
+                <div class="chip" style="border-color:var(--accent); color:var(--accent);">
+                    <i class="fa-solid fa-layer-group"></i>
+                    <span id="round-display">1/7</span>
+                </div>
+                
+                <div class="chip" style="background:#0f172a;">
+                    <span id="hud-name" style="color:#64748b; font-size:0.7rem; text-transform:uppercase;">Unknown</span>
+                    <span style="width:1px; height:12px; background:#334155; margin:0 8px;"></span>
+                    <span id="hud-cash" style="font-family:'Exo 2'; color:var(--primary); font-size:1.1rem;">0</span>
+                    <small style="color:#64748b; margin-right:2px;">$</small>
+                </div>
+            </div>
+        </div>
+
+        <div class="board-container">
+            <div id="main-board" class="board-grid"></div>
+        </div>
+
+        <!-- Action Card Button (Round 4) -->
+        <button id="action-card-btn" onclick="Game.buyActionCard()">
+            <i class="fa-solid fa-bolt"></i>
+        </button>
+
+        <div id="move-controls" style="position:fixed; bottom:120px; width:100%; display:none; justify-content:center; gap:15px; z-index:150;">
+            <button class="btn" onclick="Game.move(1)">1</button>
+            <button class="btn" onclick="Game.move(2)">2</button>
+            <button class="btn" onclick="Game.move(3)">3</button>
+        </div>
+
+        <div id="wait-msg" style="position:fixed; bottom:140px; width:100%; text-align:center; color:#64748b; display:none; font-size:0.85rem; font-weight:bold; letter-spacing:1px;">
+            WAITING FOR SIGNAL: <span id="turn-name" style="color:var(--secondary);">...</span>
+        </div>
+
+        <div class="control-dock">
+            <button class="dock-btn" onclick="UI.openNewsModal()">
+                <i class="fa-solid fa-satellite-dish"></i>
+                <span>RADAR</span>
+            </button>
+            <button class="dock-btn" onclick="UI.openStockModal()">
+                <i class="fa-solid fa-arrow-trend-up"></i>
+                <span>STOCKS</span>
+            </button>
+            <button id="project-btn" class="dock-btn" onclick="UI.openProjectModal()" style="display:none;">
+                <i class="fa-solid fa-city"></i>
+                <span>CORP</span>
+            </button>
+            </div>
+    </div>
+
+    <!-- Modal: Action Card Reveal -->
+    <div id="modal-action-card" class="modal-overlay">
+        <div class="modal-box" style="background:transparent; border:none; box-shadow:none;">
+            <div class="card-scene">
+                <div id="card-obj" class="card-obj">
+                    <div class="card-face card-front">
+                        <i class="fa-solid fa-question"></i>
+                    </div>
+                    <div id="card-result" class="card-face card-back">
+                        <!-- Result injected here -->
+                    </div>
+                </div>
+            </div>
+            <button id="action-card-continue" class="btn btn-main" onclick="document.getElementById('modal-action-card').style.display='none'" style="margin-top:20px;">CONTINUE</button>
+        </div>
+    </div>
+
+    <div id="modal-news" class="modal-overlay">
+        <div class="modal-box">
+            <h3 style="color:white; margin-top:0; font-family:'Exo 2'; text-transform:uppercase; letter-spacing:2px;"><i class="fa-solid fa-globe" style="color:var(--secondary)"></i> Global News</h3>
+            <p style="font-size:0.75rem; color:#64748b; margin-bottom:20px;">Live market feed. Analyze carefully.</p>
+            <div id="news-feed-container" style="max-height:300px; overflow-y:auto;"></div>
+            <button class="btn btn-dark" onclick="document.getElementById('modal-news').style.display='none'" style="margin-top:20px;">CLOSE</button>
+        </div>
+    </div>
+
+    <div id="modal-stock" class="modal-overlay">
+        <div class="modal-box">
+            <h3 style="color:var(--secondary); margin-top:0; font-family:'Exo 2';">STOCK PORTFOLIO</h3>
+            <p style="font-size:0.75rem; color:#64748b;">High risk, high reward assets.</p>
+            <div id="stock-list" style="margin-top:15px;"></div>
+            <button class="btn btn-dark" onclick="document.getElementById('modal-stock').style.display='none'" style="margin-top:20px;">CLOSE</button>
+        </div>
+    </div>
+
+    <div id="modal-store" class="modal-overlay">
+        <div class="modal-box">
+            <h3 style="color:var(--accent); font-family:'Exo 2';">BLACK MARKET</h3>
+            <div id="store-items" style="max-height:350px; overflow-y:auto; text-align:right;"></div>
+            <button class="btn btn-dark" onclick="document.getElementById('modal-store').style.display='none'; Game.endTurn();" style="margin-top:20px;">LEAVE</button>
+        </div>
+    </div>
+
+    <div id="modal-job" class="modal-overlay">
+        <div class="modal-box">
+            <h3 style="color:white; font-family:'Exo 2'; letter-spacing:2px;">SECURITY PROTOCOL</h3>
+            <p id="job-desc" style="color:#64748b; font-size:0.8rem; text-transform:uppercase;">...</p>
+            
+            <div style="background:#020617; padding:20px; border-radius:16px; margin:15px 0; border:1px solid #334155;">
+                <div style="background:#1e293b; height:6px; width:100%; border-radius:3px; overflow:hidden; margin-bottom:15px;">
+                    <div id="task-timer-bar" style="height:100%; background:var(--accent); width:100%;"></div>
+                </div>
+                <div id="memory-display" style="font-size:2.5rem; font-family:'Exo 2'; letter-spacing:5px; color:var(--secondary); display:none; text-shadow:0 0 20px var(--secondary);"></div>
+                <div id="task-question" style="font-size:2rem; font-weight:900; color:white;"></div>
+                <input type="number" id="task-answer" class="holo-input" style="margin-top:15px; font-size:1.8rem; letter-spacing:2px;" autocomplete="off">
+            </div>
+            <button class="btn btn-main" onclick="Game.submitTask()">EXECUTE</button>
+        </div>
+    </div>
+
+    <div id="modal-gameover" class="modal-overlay">
+        <div class="modal-box" style="border-color:var(--primary);">
+            <i class="fa-solid fa-trophy" style="font-size:4rem; color:var(--primary); margin-bottom:15px; filter:drop-shadow(0 0 20px rgba(251,191,36,0.5));"></i>
+            <h2 style="color:#fff; font-family:'Exo 2'; font-size:2rem;">SIMULATION END</h2>
+            <div style="font-size:0.85rem; color:#64748b; margin-bottom:20px;">Final Wealth Calculation</div>
+            <div id="winner-display" style="margin:20px 0; text-align:right;"></div>
+            <button class="btn btn-main" onclick="location.reload()">NEW CYCLE</button>
+        </div>
+    </div>
+
+    <div id="modal-project" class="modal-overlay">
+        <div class="modal-box" style="max-width:500px;">
+            <h3 style="color:var(--primary); margin-top:0; font-family:'Exo 2';">
+                <i class="fa-solid fa-city"></i> CORP MANAGEMENT
+            </h3>
+            <div id="project-content" style="text-align:right; margin-top:25px;"></div>
+            <button class="btn btn-dark" onclick="document.getElementById('modal-project').style.display='none'" style="margin-top:20px;">CLOSE</button>
+        </div>
+    </div>
+
+    <div id="modal-guide" class="modal-overlay">
+        <div class="modal-box" style="max-width:500px; max-height:90vh;">
+            <h3 style="color:var(--text-main); margin-top:0;">
+                <i class="fa-solid fa-book"></i> FIELD GUIDE
+            </h3>
+            <div style="text-align:right; margin-top:20px; font-size:0.9rem; line-height:1.8; color:#cbd5e1;">
+                <h4 style="color:var(--primary);">RIOS WORLD - Economic Strategy</h4>
+                <p><strong>Objective:</strong> Amass wealth through investments, trade, and corporate management.</p>
+                
+                <h4 style="color:var(--secondary); margin-top:20px;">Mechanics:</h4>
+                <ul style="text-align:right; padding-right:20px;">
+                    <li>Move using 1, 2, or 3 steps. Strategic positioning is key.</li>
+                    <li>Buy servers (properties) to earn rent.</li>
+                    <li>Acquire a location to build a Corp/Farm/Restaurant.</li>
+                    <li>Invest in the Stock Market and trade on the Black Market.</li>
+                </ul>
+                
+                <h4 style="color:var(--accent); margin-top:20px;">Projects:</h4>
+                <ul style="text-align:right; padding-right:20px;">
+                    <li>Hire employees and managers to increase passive income.</li>
+                    <li>Profit = (Employees × Efficiency) + Manager Bonus + Luck Factor.</li>
+                </ul>
+
+                <h4 style="color:#a855f7; margin-top:20px;">Action Cards (Round 4):</h4>
+                <ul style="text-align:right; padding-right:20px;">
+                    <li>Exclusive to Round 4. Max 3 attempts. Cost: 1000$.</li>
+                    <li>Chance to win cash, swap positions, spy, or unlock <strong>Mr. Johnson</strong>.</li>
+                </ul>
+                
+                <div style="margin-top:30px; padding-top:20px; border-top:1px solid #334155; text-align:center;">
+                    <p style="color:#64748b; font-weight:bold; font-size:0.8rem; letter-spacing:2px;">DEVELOPED BY</p>
+                    <p style="color:var(--primary); font-size:1.2rem; font-weight:900; margin-top:5px;">KAREEM ASHRAF</p>
+                </div>
+            </div>
+            <button class="btn btn-dark" onclick="document.getElementById('modal-guide').style.display='none'" style="margin-top:15px;">CLOSE</button>
+        </div>
+    </div>
+
+    <div id="modal-settings" class="modal-overlay">
+        <div class="modal-box">
+            <h3 style="color:white; margin-top:0;">
+                <i class="fa-solid fa-gear"></i> SETTINGS
+            </h3>
+            
+            <div style="margin:25px 0;">
+                <div style="display:flex; justify-content:space-between; align-items:center; padding:20px; background:rgba(255,255,255,0.03); border-radius:16px; margin-bottom:15px; border:1px solid #334155;">
+                    <div style="text-align:right;">
+                        <div style="color:white; font-weight:bold; margin-bottom:5px;">
+                            <i class="fa-solid fa-volume-high"></i> Sound FX
+                        </div>
+                        <div style="font-size:0.75rem; color:#64748b;">Immersive audio feedback</div>
+                    </div>
+                    <label style="position:relative; display:inline-block; width:60px; height:32px;">
+                        <input type="checkbox" id="sound-toggle" checked style="opacity:0; width:0; height:0;" onchange="UI.toggleSound()">
+                        <span id="sound-switch" style="position:absolute; cursor:pointer; top:0; left:0; right:0; bottom:0; background:#334155; border-radius:30px; transition:0.3s; box-shadow:inset 0 2px 5px rgba(0,0,0,0.5);">
+                            <span style="position:absolute; content:''; height:26px; width:26px; left:3px; bottom:3px; background:white; border-radius:50%; transition:0.3s; box-shadow:0 2px 5px rgba(0,0,0,0.3); transform:translateX(28px);"></span>
+                        </span>
+                    </label>
+                </div>
+
+                <div style="display:flex; justify-content:space-between; align-items:center; padding:20px; background:rgba(6, 182, 212, 0.1); border-radius:16px; margin-bottom:15px; border:1px solid rgba(6, 182, 212, 0.3);">
+                    <div style="text-align:right; width:100%;">
+                        <div style="color:var(--secondary); font-weight:bold; margin-bottom:5px;">
+                            <i class="fa-solid fa-info-circle"></i> Version Info
+                        </div>
+                        <div style="font-size:0.75rem; color:#94a3b8;">RIOS WORLD v2.1 - Action Update</div>
+                    </div>
+                </div>
+            </div>
+
+            <div style="display:flex; gap:12px; margin-top:25px;">
+                <button class="btn btn-dark" onclick="document.getElementById('modal-settings').style.display='none'" style="flex:1;">
+                    <i class="fa-solid fa-times"></i> CLOSE
+                </button>
+                <button class="btn btn-main" onclick="UI.exitGame()" style="flex:1; background:linear-gradient(180deg, #ef4444 0%, #b91c1c 100%); border-color:#f87171; box-shadow:0 6px 0 #7f1d1d;">
+                    <i class="fa-solid fa-power-off"></i> EXIT
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Avatar Selection Modal -->
+    <div id="modal-avatar-selection" class="modal-overlay">
+        <div class="modal-box">
+            <h3 style="color:var(--primary); margin-top:0;">
+                <i class="fa-solid fa-user-astronaut"></i> SELECT IDENTITY
+            </h3>
+            <p style="font-size:0.75rem; color:#64748b; margin-bottom:15px;">Choose your digital appearance.</p>
+            
+            <div id="avatar-grid" class="avatar-grid">
+                <!-- Avatars will be injected here -->
+            </div>
+            
+            <button class="btn btn-dark" onclick="document.getElementById('modal-avatar-selection').style.display='none'">CANCEL</button>
+        </div>
+    </div>
+
+    <script>
+        // Use a reliable cartoon man avatar
+        const MR_JOHNSON_IMG = "https://api.dicebear.com/9.x/avataaars/svg?seed=Felix"; 
+
+        const CONFIG = {
+            MAP: [
+                {t:'Start', n:'Base'}, 
+                {t:'E', p:500}, {t:'E', p:600}, {t:'S', n:'Amazon'}, {t:'E', p:800}, {t:'E', p:1000},
+                {t:'J', n:'Hack'}, {t:'E', p:1200}, {t:'E', p:1500}, {t:'S', n:'AliExpress'}, {t:'E', p:2000}, {t:'E', p:2500},
+                {t:'J', n:'Hack'}, {t:'E', p:3000}, {t:'E', p:3500}, {t:'S', n:'DeepWeb'}, {t:'E', p:4000}, {t:'E', p:5000},
+                {t:'J', n:'Hack'}, {t:'E', p:6000}, {t:'E', p:7000}, {t:'S', n:'BlackMarket'}, {t:'E', p:8000}, {t:'E', p:9000}
+            ],
+            PROJECT_TYPES: {
+                COMPANY: {
+                    name: "شركة",
+                    types: ["3D", "اتصالات", "موبايلات", "ملابس"],
+                    employeePrice: 100,
+                    employeeNameSingle: "موظف",
+                    employeeNamePlural: "موظفين",
+                    managers: [
+                        { name: "مدير محترف", price: 2000, multiplier: 1.5 },
+                        { name: "مدير متوسط", price: 1000, multiplier: 1.0 },
+                        { name: "مدير مبتدئ", price: 400, multiplier: 0.5 }
+                    ]
+                },
+                FARM: {
+                    name: "مزرعة",
+                    types: ["قمح", "ذرة", "أرز", "خضروات"],
+                    employeePrice: 80,
+                    employeeNameSingle: "مزارع",
+                    employeeNamePlural: "مزارعين",
+                    managers: [
+                        { name: "مشرف محترف", price: 1600, multiplier: 1.5 },
+                        { name: "مشرف متوسط", price: 800, multiplier: 1.0 },
+                        { name: "مشرف مبتدئ", price: 300, multiplier: 0.5 }
+                    ]
+                },
+                RESTAURANT: {
+                    name: "مطعم",
+                    types: ["بيتزا", "برجر", "سوشي", "حلويات"],
+                    employeePrice: 90,
+                    employeeNameSingle: "مساعد شيف",
+                    employeeNamePlural: "مساعدين",
+                    managers: [
+                        { name: "شيف محترف", price: 1800, multiplier: 1.5 },
+                        { name: "شيف متوسط", price: 900, multiplier: 1.0 },
+                        { name: "شيف مبتدئ", price: 350, multiplier: 0.5 }
+                    ]
+                }
+            },
+            PRODUCTS: {
+                "p1": { n: "شريحة AI", c: 2000, p: 3500, qty: 15 },
+                "p2": { n: "كوانتم سيرفر", c: 5000, p: 8000, qty: 8 },
+                "p3": { n: "بيانات بيولوجية", c: 1000, p: 1800, qty: 25 },
+                "p4": { n: "يورانيوم", c: 500, p: 900, qty: 40 },
+                "p5": { n: "درع نانوي", c: 3000, p: 5500, qty: 12 },
+                "p6": { n: "هوية رقمية", c: 800, p: 1500, qty: 30 },
+                "p7": { n: "أطراف آلية", c: 4500, p: 7500, qty: 10 }
+            },
+STOCKS: {
+                "TECH": { p: 200, div: 25, name: "سيليكون فالي" },
+                "ENERGY": { p: 150, div: 15, name: "فيوجن للطاقة" },
+                "CRYPTO": { p: 100, div: 35, name: "بلوك تشين" }, 
+                "PHARMA": { p: 300, div: 30, name: "جينوميكس" },
+                "WAR": { p: 500, div: 50, name: "ديفنس كورب" },
+                "AI_CORP": { p: 400, div: 45, name: "نيورال لينك" },
+                "WATER": { p: 120, div: 10, name: "هيدرو سيستمز" },
+                "SPACE": { p: 600, div: 60, name: "سبيس إكس" }
+            }
+        };
+const AVATARS = [
+            "https://api.dicebear.com/9.x/avataaars/svg?seed=Felix",
+            "https://api.dicebear.com/9.x/avataaars/svg?seed=Aneka&top=hijab",
+            "https://api.dicebear.com/9.x/avataaars/svg?seed=Aiden",
+            "https://api.dicebear.com/9.x/avataaars/svg?seed=Fatima&top=hijab",
+            "https://api.dicebear.com/9.x/avataaars/svg?seed=Alexander",
+            "https://api.dicebear.com/9.x/avataaars/svg?seed=Sarah&clothing=blazerAndShirt",
+            "https://api.dicebear.com/9.x/avataaars/svg?seed=Mason",
+            "https://api.dicebear.com/9.x/avataaars/svg?seed=Amira&top=hijab&accessories=glasses",
+            "https://api.dicebear.com/9.x/avataaars/svg?seed=Ryan",
+            "https://api.dicebear.com/9.x/avataaars/svg?seed=Zoe",
+            "https://api.dicebear.com/9.x/avataaars/svg?seed=Leo",
+            "https://api.dicebear.com/9.x/avataaars/svg?seed=Nora",
+            "https://api.dicebear.com/9.x/avataaars/svg?seed=Omar",
+            "https://api.dicebear.com/9.x/avataaars/svg?seed=Ali",
+            "https://api.dicebear.com/9.x/avataaars/svg?seed=Youssef",
+            "https://api.dicebear.com/9.x/avataaars/svg?seed=Hassan",
+            "https://api.dicebear.com/9.x/avataaars/svg?seed=Hiba&top=hijab",
+            "https://api.dicebear.com/9.x/avataaars/svg?seed=Layla&top=hijab",
+            "https://api.dicebear.com/9.x/avataaars/svg?seed=Ibrahim",
+            "https://api.dicebear.com/9.x/avataaars/svg?seed=Khaled",
+            "https://api.dicebear.com/9.x/avataaars/svg?seed=Ahmed",
+            "https://api.dicebear.com/9.x/avataaars/svg?seed=Zainab&top=hijab",
+            "https://api.dicebear.com/9.x/avataaars/svg?seed=Salma&top=hijab",
+            "https://api.dicebear.com/9.x/avataaars/svg?seed=Nour&top=hijab",
+            "https://api.dicebear.com/9.x/avataaars/svg?seed=Mariam&top=hijab"
+        ];
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyAVX0QYoY7myMLjQSYv9Lftu4QbCbs6eqI",
+            databaseURL: "https://rios-6792e-default-rtdb.firebaseio.com", 
+        };
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.database();
+
+        let STATE = {
+            me: { name: "", room: "", cash: 3000, pos: 0, career: "", rounds: 0, buildings: {}, portfolio: {}, inventory: {}, salesProgress: {}, project: null, avatar: "", actionAttempts: 0 },
+            players: {}, buildings: {}, marketState: {}, activeNews: [], turn: "", status: "LOBBY", mapConfig: null, projectNews: {},
+            customAvatarSelected: false
+        };
+        let activeTask = null, taskTimerInt = null, lobbyTimerInt = null, gameOverActive = false;
+
+        // تحميل إعدادات الصوت من localStorage
+        if(localStorage.getItem('soundEnabled') === 'false') {
+            SoundSystem.enabled = false;
+            if(document.getElementById('sound-toggle')) {
+                document.getElementById('sound-toggle').checked = false;
+            }
+        }
+        // تحميل إعدادات الصوت من localStorage
+        if(localStorage.getItem('soundEnabled') === 'false') {
+            SoundSystem.enabled = false;
+        }
+
+        // دالة مساعدة لتحويل البنية القديمة للمحفظة (عدد) للبنية الجديدة (array من timestamps)
+        const normalizePortfolio = (portfolio) => {
+            if(!portfolio) return {};
+            const normalized = {};
+            Object.keys(portfolio).forEach(key => {
+                if(typeof portfolio[key] === 'number') {
+                    // بنية قديمة: تحويل للبنية الجديدة
+                    const oldQty = portfolio[key];
+                    normalized[key] = [];
+                    for(let i = 0; i < oldQty; i++) {
+                        normalized[key].push(Date.now() - (oldQty - i) * 1000);
+                    }
+                } else if(Array.isArray(portfolio[key])) {
+                    // بنية جديدة: نسخ كما هي
+                    normalized[key] = [...portfolio[key]];
+                }
+            });
+            return normalized;
+        };
+
+        const ContentGen = {
+            prefixes: ["تحديث: ", "تقرير: ", "عاجل: ", "نظام: ", "سوق: "],
+            actions_pos: ["توسع ضخم", "أرباح قياسية", "ابتكار تقني", "عقد حكومي", "استحواذ ناجح"],
+            actions_neg: ["تحقيق فيدرالي", "اختراق أمني", "فشل تقني", "خسارة قضية", "تراجع المبيعات"],
+            results: ["يؤثر على السعر", "يغير التوقعات", "يحرك المستثمرين", "يقلب الموازين"],
+            
+            generateNewsBatch: (trendMap) => {
+                let newsBatch = [];
+                const stockKeys = Object.keys(CONFIG.STOCKS);
+                const prodKeys = Object.keys(CONFIG.PRODUCTS);
+
+                for (let i = 0; i < 5; i++) {
+                    const isStock = Math.random() > 0.45; 
+                    let targetKey = isStock ? stockKeys[Math.floor(Math.random() * stockKeys.length)] : prodKeys[Math.floor(Math.random() * prodKeys.length)];
+                    let targetName = isStock ? CONFIG.STOCKS[targetKey].name : CONFIG.PRODUCTS[targetKey].n;
+
+                    let trendVal = trendMap[targetKey] || 0;
+                    
+                    // STRICT LINKAGE: Sentiment MUST match trend. No randomness here.
+                    let sentiment = trendVal > 0 ? 'POS' : 'NEG';
+
+                    let pref = ContentGen.prefixes[Math.floor(Math.random() * ContentGen.prefixes.length)];
+                    let act = sentiment === 'POS' 
+                        ? ContentGen.actions_pos[Math.floor(Math.random() * ContentGen.actions_pos.length)]
+                        : ContentGen.actions_neg[Math.floor(Math.random() * ContentGen.actions_neg.length)];
+                    let res = ContentGen.results[Math.floor(Math.random() * ContentGen.results.length)];
+
+                    let msg = `${pref} ${targetName} ${act}... ${res}.`;
+                    
+                    // Force impact direction to match sentiment strictly
+                    let impactBase = 0.4 + (Math.random() * 0.8); 
+                    let finalImpact = sentiment === 'POS' ? Math.abs(impactBase) : -Math.abs(impactBase);
+
+                    newsBatch.push({
+                        id: Date.now() + i, msg: msg, type: isStock ? 'STOCK' : 'PROD',
+                        target: targetKey, val: finalImpact, time: Date.now(), expires: Date.now() + 60000
+                    });
+                }
+                return newsBatch;
+            }
+        };
+
+        const Host = {
+            initGame: (roomId) => {
+                // تهيئة خانات الأماكن (5 خانات عشوائية)
+                let eIndices = [];
+                CONFIG.MAP.forEach((tile, idx) => {
+                    if(tile.t === 'E' && idx !== 0) eIndices.push(idx);
+                });
+                
+                // خلط عشوائي
+                for(let i = eIndices.length - 1; i > 0; i--) {
+                    const j = Math.floor(Math.random() * (i + 1));
+                    [eIndices[i], eIndices[j]] = [eIndices[j], eIndices[i]];
+                }
+                
+                // تحويل أول 5 خانات مباني لخانات أماكن
+                let placePrices = [3000, 4000, 5000, 6000, 7000];
+                let modifiedMap = [...CONFIG.MAP];
+                for(let i = 0; i < 5 && i < eIndices.length; i++) {
+                    modifiedMap[eIndices[i]] = { t: 'P', p: placePrices[i] };
+                }
+                
+                db.ref(`rooms/${roomId}/mapConfig`).set(modifiedMap);
+                
+                let mState = { stocks: {}, products: {} };
+                Object.keys(CONFIG.STOCKS).forEach(k => mState.stocks[k] = 1.0);
+                Object.keys(CONFIG.PRODUCTS).forEach(k => mState.products[k] = 1.0);
+                
+                let inv = {};
+                Object.keys(CONFIG.PRODUCTS).forEach(k => inv[k] = CONFIG.PRODUCTS[k].qty);
+
+                db.ref(`rooms/${roomId}/marketState`).set(mState);
+                db.ref(`rooms/${roomId}/inventory`).set(inv);
+                db.ref(`rooms/${roomId}/activeNews`).set([]);
+                db.ref(`rooms/${roomId}/projectNews`).set({});
+                db.ref(`rooms/${roomId}/taskCycle`).set(false); // New cycle tracker
+                Host.startLoops(roomId);
+            },
+            startLoops: (roomId) => {
+                setInterval(() => {
+                    if(!gameOverActive) Host.processEconomyCycle(roomId);
+                }, 40000);
+                setInterval(() => {
+                    if(!gameOverActive) Host.processNewsCycle(roomId);
+                }, 25000);
+                setInterval(() => {
+                    if(!gameOverActive) Host.shiftMarketTrends(roomId);
+                }, 120000);
+                setInterval(() => {
+                    if(!gameOverActive) Host.updateWinningType(roomId);
+                }, 150000); // كل دقيقتين ونص
+                
+                Host.shiftMarketTrends(roomId);
+                Host.updateWinningType(roomId);
+                setTimeout(() => Host.processNewsCycle(roomId), 2000);
+            },
+            updateWinningType: (roomId) => {
+                 if(gameOverActive) return;
+                 const types = ['COMPANY', 'FARM', 'RESTAURANT'];
+                 const winning = types[Math.floor(Math.random() * types.length)];
+                 db.ref(`rooms/${roomId}/winningType`).set(winning);
+            },
+            shiftMarketTrends: (roomId) => {
+                if(gameOverActive) return;
+                let allKeys = [...Object.keys(CONFIG.STOCKS), ...Object.keys(CONFIG.PRODUCTS)];
+                for (let i = allKeys.length - 1; i > 0; i--) { 
+                    const j = Math.floor(Math.random() * (i + 1));
+                    [allKeys[i], allKeys[j]] = [allKeys[j], allKeys[i]];
+                }
+                let trendMap = {};
+                const half = Math.ceil(allKeys.length / 2);
+                for(let i = 0; i < half; i++) trendMap[allKeys[i]] = 1; 
+                for(let i = half; i < allKeys.length; i++) trendMap[allKeys[i]] = -1; 
+                db.ref(`rooms/${roomId}/trendMap`).set(trendMap);
+            },
+            processNewsCycle: (roomId) => {
+                if(gameOverActive) return;
+                db.ref(`rooms/${roomId}/trendMap`).once('value', tSnap => {
+                    if(gameOverActive) return;
+                    let trends = tSnap.val() || {};
+                    // Generate news that strictly follows trend
+                    let newNews = ContentGen.generateNewsBatch(trends);
+                    
+                    db.ref(`rooms/${roomId}/activeNews`).once('value', nSnap => {
+                        let currentNews = nSnap.val() || [];
+                        let now = Date.now();
+                        currentNews = currentNews.filter(n => n.expires > now);
+                        currentNews = [...newNews, ...currentNews];
+                        db.ref(`rooms/${roomId}/activeNews`).set(currentNews);
+                        
+                        db.ref(`rooms/${roomId}/marketState`).once('value', mSnap => {
+                            let mState = mSnap.val() || { stocks:{}, products:{} };
+                            if(!mState.stocks) mState = { stocks:{}, products:{} };
+
+                            newNews.forEach(news => {
+                                // Logic Fix: Price update follows news value strictly
+                                let impact = news.val; 
+                                
+                                if(news.type === 'STOCK') {
+                                    let currentVal = mState.stocks[news.target] || 1.0;
+                                    // Boost impact at extremes to ensure movement
+                                    if(currentVal < 0.5 && impact > 0) impact *= 1.5; 
+                                    if(currentVal > 3.0 && impact < 0) impact *= 1.5;
+                                    
+                                    let newVal = currentVal + (impact * 0.3);
+                                    if(newVal > 6.0) newVal = 6.0; if(newVal < 0.1) newVal = 0.1;
+                                    mState.stocks[news.target] = parseFloat(newVal.toFixed(2));
+                                } else {
+                                    let currentVal = mState.products[news.target] || 1.0;
+                                    let newVal = currentVal + (impact * 0.2);
+                                    if(newVal > 3.0) newVal = 3.0; if(newVal < 0.2) newVal = 0.2;
+                                    mState.products[news.target] = parseFloat(newVal.toFixed(2));
+                                }
+                            });
+                            db.ref(`rooms/${roomId}/marketState`).set(mState);
+                        });
+                    });
+                });
+            },
+            processEconomyCycle: (roomId) => {
+                if(gameOverActive) return;
+                db.ref(`rooms/${roomId}`).once('value', snap => {
+                    const data = snap.val();
+                    if(!data || data.status === 'GAMEOVER') return;
+                    if(gameOverActive) return;
+
+                    const mState = data.marketState || { stocks: {}, products: {} };
+                    const players = data.players || {};
+                    
+                    Object.keys(players).forEach(pid => {
+                        const p = players[pid];
+                        let stockProfit = 0, salesProfit = 0, projectProfit = 0;
+                        let newInventory = p.inventory || {};
+                        let newSalesProgress = p.salesProgress || {};
+                        let somethingChanged = false;      
+                        
+                        if(p.portfolio) {
+                            Object.keys(p.portfolio).forEach(stkKey => {
+                                let qty;
+                                if(Array.isArray(p.portfolio[stkKey])) {
+                                    qty = p.portfolio[stkKey].length;
+                                } else {
+                                    qty = p.portfolio[stkKey] || 0;
+                                }
+                                
+                                const baseDiv = CONFIG.STOCKS[stkKey].div;
+                                const multiplier = mState.stocks[stkKey] || 1;
+                                let revenue = (qty * baseDiv * multiplier); 
+                                let cost = (qty * 5); 
+                                stockProfit += (revenue - cost);
+                            });
+                        }
+
+                        if(p.inventory) {
+                            Object.keys(p.inventory).forEach(prodKey => {
+                                if(p.inventory[prodKey] > 0) {
+                                    const mktFactor = mState.products[prodKey] || 1;
+                                    let sellSpeed = mktFactor;
+                                    let progressToAdd = (0.5 * sellSpeed);
+                                    let currentProg = newSalesProgress[prodKey] || 0;
+                                    currentProg += progressToAdd;
+                                    let soldQty = Math.floor(currentProg);
+                                    let remainingProg = currentProg % 1;
+                                    if(soldQty > p.inventory[prodKey]) soldQty = p.inventory[prodKey];
+                                    if(soldQty > 0) {
+                                        const baseSellPrice = CONFIG.PRODUCTS[prodKey].p;
+                                        const dynamicSellPrice = Math.floor(baseSellPrice * mktFactor);
+                                        salesProfit += (soldQty * dynamicSellPrice);
+                                        newInventory[prodKey] -= soldQty;
+                                        somethingChanged = true;
+                                    }
+                                    newSalesProgress[prodKey] = remainingProg;
+                                    somethingChanged = true;
+                                }
+                            });
+                        }
+                        
+                        // معالجة عوائد المشروع مع التحقق من تنفيذ الأوامر
+                        let projectUpdates = {};
+                        if(p.project && !p.project.bankrupt) {
+                            const proj = p.project;
+                            const employees = proj.employees || 0;
+                            // الاعتماد على جودة المدير وعدد الموظفين
+                            const managerMult = proj.manager ? proj.manager.multiplier : 0.5; // مضاعف أساسي منخفض إذا لم يوجد مدير
+                            
+                            // عوائد الحظ العشوائية (صغيرة ومتغيرة)
+                            const luck = Math.floor(Math.random() * 101) - 50; // -50 إلى +50
+
+                            // الحسبة الجديدة: (الموظفين * 80 * مضاعف المدير) + الحظ
+                            let baseRevenue = employees * 80;
+                            let grossRevenue = (baseRevenue * managerMult) + luck;
+                            
+                            // تكلفة تشغيل بسيطة للموظفين
+                            let employeeCost = employees * 20;
+                            
+                            projectProfit = Math.floor(grossRevenue - employeeCost);
+                            
+                            if(projectProfit < -500) projectProfit = -500; 
+                            
+                            let currentValue = proj.projectValue || 0;
+                            if(projectProfit > 0) {
+                                currentValue += projectProfit * 0.4; 
+                            } else {
+                                currentValue += projectProfit * 0.8; 
+                            }
+                            if(currentValue < 0) currentValue = 0; 
+                            
+                            // تحديث قيمة المشروع
+                            projectUpdates.project = { ...proj, projectValue: Math.floor(currentValue), pendingTask: null };
+                        } else if(p.project && p.project.bankrupt) {
+                            projectProfit = -100;
+                            let currentValue = p.project.projectValue || 0;
+                            currentValue = Math.max(0, currentValue - 200);
+                            projectUpdates.project = { ...p.project, projectValue: Math.floor(currentValue) };
+                        }
+                        
+                        let netFlow = Math.floor(salesProfit + stockProfit + projectProfit);
+                        let finalCash = (p.cash || 0) + netFlow;
+                        if(finalCash < 0) finalCash = 0;
+
+                        let updates = { cash: finalCash, ...projectUpdates };
+                        if(somethingChanged) { updates.inventory = newInventory; updates.salesProgress = newSalesProgress; }
+                        updates.lastFinancial = { sales: salesProfit, stock: stockProfit, project: projectProfit, total: netFlow, t: Date.now() };
+                        db.ref(`rooms/${roomId}/players/${pid}`).update(updates);
+                    });
+                });
+            }
+        };
+
+        const Game = {
+            move: (steps) => {
+                if(gameOverActive) return;
+                SoundSystem.playMove();
+                document.getElementById('move-controls').style.display = 'none';
+                // إخفاء أزرار المباني
+                document.querySelectorAll('.building-action-btn').forEach(btn => btn.remove());
+                
+                let current = STATE.me.pos;
+                let actualSteps = 0, blocked = false, blockData = null;
+                const mapToUse = STATE.mapConfig || CONFIG.MAP;
+
+                for(let i=1; i<=steps; i++) {
+                    let nextCheck = (current + i) % mapToUse.length;
+                    if(STATE.buildings[nextCheck] && STATE.buildings[nextCheck] !== STATE.me.name) {
+                        blocked = true; actualSteps = i;
+                        blockData = { owner: STATE.buildings[nextCheck], cost: mapToUse[nextCheck].r || 200 };
+                        break;
+                    }
+                    if(nextCheck === 0 && current + i !== 0) {
+                        STATE.me.rounds++; 
+                        
+                        // Prevent +1000 bonus on the final round (7)
+                        if(STATE.me.rounds < 7) {
+                            STATE.me.cash += 1000;
+                            SoundSystem.playCoin();
+                            UI.toast("دورة جديدة: تم استلام تمويل +1000$");
+                        }
+
+                        // Check if Mr. Johnson needs to expire (Round 6)
+                        if(STATE.me.rounds >= 6 && STATE.me.project && STATE.me.project.hasJohnson) {
+                             // Revert Manager
+                             STATE.me.project.manager = STATE.me.project.savedManager || null;
+                             delete STATE.me.project.hasJohnson;
+                             delete STATE.me.project.savedManager;
+                             Game.saveProject();
+                             UI.toast("انتهى عقد مستر جونسون.");
+                        }
+                    }
+                }
+                if(!blocked) actualSteps = steps;
+                STATE.me.pos = (current + actualSteps) % mapToUse.length;
+                
+                // حفظ الحالة وإرسالها للسيرفر
+                Game.saveState();
+
+                // التحقق من شرط نهاية اللعبة فوراً بعد الحركة وحساب الجولات
+                // التعديل: زيادة الجولات إلى 7
+                if(STATE.me.rounds >= 7) {
+                    // إعلان نهاية اللعبة للجميع
+                    db.ref(`rooms/${STATE.me.room}/status`).set('GAMEOVER');
+                    return;
+                }
+
+                setTimeout(() => {
+                    if(blocked) {
+                        SoundSystem.playWarning();
+                        alert(`حظر: منطقة يسيطر عليها ${blockData.owner}. غرامة: ${blockData.cost}$`);
+                        Game.payRent(blockData.owner, blockData.cost);
+                    } else {
+                        const currentTile = mapToUse[STATE.me.pos];
+                        Game.handleTile(currentTile);
+                    }
+                }, 600);
+            },
+            
+            buyActionCard: () => {
+                if(gameOverActive) return;
+                if(STATE.me.cash < 1000) {
+                    SoundSystem.playError();
+                    return alert("تحتاج 1000$");
+                }
+                if((STATE.me.actionAttempts || 0) >= 3) {
+                    SoundSystem.playError();
+                    return alert("لقد استنفذت محاولاتك الثلاث لهذا الروند");
+                }
+
+                // Deduct Cost
+                STATE.me.cash -= 1000;
+                STATE.me.actionAttempts = (STATE.me.actionAttempts || 0) + 1;
+                SoundSystem.playBuy();
+
+                // Show Modal
+                const modal = document.getElementById('modal-action-card');
+                const cardObj = document.getElementById('card-obj');
+                const resultFace = document.getElementById('card-result');
+                const continueBtn = document.getElementById('action-card-continue');
+                
+                continueBtn.style.display = 'none'; // Hide button initially
+                modal.style.display = 'flex';
+                cardObj.classList.remove('is-flipped');
+                resultFace.innerHTML = ''; // Clear previous
+
+                // Logic for Random Card
+                setTimeout(() => {
+                    cardObj.classList.add('is-flipped');
+                    // Random Draw 1-4 (Improved Randomness)
+                    const types = [1, 2, 3, 4];
+                    const rand = types[Math.floor(Math.random() * types.length)];
+                    let html = '';
+                    
+                    if(rand === 1) { // Insight (See Total Wealth)
+                        const players = Object.values(STATE.players);
+                        
+                        if(players.length <= 1) {
+                            html = '<div style="color:#94a3b8; font-size:1.2rem; margin-top:20px; font-weight:bold;">SCANNING... NO TARGETS FOUND</div>';
+                            // Auto close after 6 seconds
+                            setTimeout(() => { document.getElementById('modal-action-card').style.display='none'; }, 6000);
+                        } else {
+                            html = '<h3 style="color:#60a5fa; margin:0 0 10px 0;">GLOBAL WEALTH SCAN</h3>';
+                            let listHtml = '<div style="text-align:right; font-size:0.85rem; max-height:220px; overflow-y:auto; width:100%;">';
+                            
+                            // Calculate Total Wealth for each player
+                            let wealthList = players.map(p => {
+                                let w = p.cash || 0;
+                                // Add building values
+                                if(p.buildings) Object.values(p.buildings).forEach(v => w += v);
+                                // Add project price
+                                if(p.project) w += p.project.price;
+                                return { n: p.name, w: w };
+                            }).sort((a,b) => b.w - a.w);
+
+                            wealthList.forEach(p => {
+                                const isMe = p.n === STATE.me.name;
+                                listHtml += `<div style="padding:8px; border-bottom:1px solid rgba(255,255,255,0.1); display:flex; justify-content:space-between; background:${isMe ? 'rgba(96, 165, 250, 0.1)' : 'transparent'}; border-radius:4px; margin-bottom:2px;">
+                                    <span style="color:${isMe ? '#60a5fa' : '#cbd5e1'}; font-weight:${isMe ? 'bold' : 'normal'}">${p.n}</span>
+                                    <span style="color:#4ade80; font-family:'Exo 2'; font-weight:bold;">${p.w}$</span>
+                                </div>`;
+                            });
+                            listHtml += '</div>';
+                            html += listHtml;
+                            
+                            // Auto close after 8 seconds
+                            setTimeout(() => { document.getElementById('modal-action-card').style.display='none'; }, 8000);
+                        }
+                    } 
+                    else if(rand === 2) { // Swap Position
+                        continueBtn.style.display = 'block';
+                        html = '<div style="color:#f472b6; font-size:4rem; margin-bottom:10px;"><i class="fa-solid fa-shuffle"></i></div>';
+                        html += '<h3 style="color:white; margin:0;">SWAP</h3>';
+                        html += '<p style="font-size:0.8rem; color:#94a3b8;">Taking lead position...</p>';
+                        
+                        // Execute Swap Logic
+                        let maxPos = -1;
+                        let targetPlayer = null;
+                        Object.values(STATE.players).forEach(p => {
+                            if(p.name !== STATE.me.name && p.pos > maxPos) {
+                                maxPos = p.pos;
+                                targetPlayer = p;
+                            }
+                        });
+                        
+                        if(targetPlayer && maxPos > STATE.me.pos) {
+                            // Perform swap
+                            const myOldPos = STATE.me.pos;
+                            STATE.me.pos = maxPos;
+                            // Update other player remotely
+                            db.ref(`rooms/${STATE.me.room}/players/${targetPlayer.name}/pos`).set(myOldPos);
+                            html += `<div style="color:#4ade80; font-size:0.8rem;">Swapped with ${targetPlayer.name}</div>`;
+                        } else {
+                            html += `<div style="color:#f87171; font-size:0.8rem;">Already in lead! (+500$)</div>`;
+                            STATE.me.cash += 500;
+                        }
+                    } 
+                    else if(rand === 3) { // Mr. Johnson
+                        continueBtn.style.display = 'block';
+                        html = `<img src="${MR_JOHNSON_IMG}" style="width:100px; height:100px; border-radius:50%; border:3px solid #fbbf24; margin-bottom:10px; object-fit:cover;">`;
+                        html += '<h3 style="color:#fbbf24; margin:0; text-shadow:0 0 10px rgba(251,191,36,0.5);">MR. JOHNSON</h3>';
+                        
+                        if(STATE.me.project) {
+                            html += '<p style="font-size:0.8rem; color:#94a3b8;">New Manager Acquired! (1.8x)</p>';
+                            // Apply Johnson Logic
+                            if(!STATE.me.project.hasJohnson) {
+                                STATE.me.project.savedManager = STATE.me.project.manager;
+                                STATE.me.project.manager = {
+                                    name: "Mr. Johnson",
+                                    price: 0,
+                                    multiplier: 1.8, // Updated Multiplier
+                                    isJohnson: true,
+                                    img: MR_JOHNSON_IMG
+                                };
+                                STATE.me.project.hasJohnson = true;
+                                Game.saveProject();
+                            }
+                        } else {
+                            html += '<p style="font-size:0.8rem; color:#f87171;">Useless... No Project.</p>';
+                        }
+                    } 
+                    else { // Wealth
+                        continueBtn.style.display = 'block';
+                        html = '<div style="color:#4ade80; font-size:4rem; margin-bottom:10px;"><i class="fa-solid fa-sack-dollar"></i></div>';
+                        html += '<h3 style="color:white; margin:0;">WEALTH</h3>';
+                        html += '<div style="font-size:1.5rem; color:#4ade80; font-weight:bold;">+2000$</div>';
+                        STATE.me.cash += 2000;
+                    }
+                    
+                    resultFace.innerHTML = html;
+                    Game.saveState();
+                    SoundSystem.playSuccess();
+
+                }, 400); // Wait for half flip
+            },
+
+            handleTile: (tile) => {
+                if(gameOverActive) return;
+                const owner = STATE.buildings[STATE.me.pos];
+                if(tile.t === 'J') UI.showJob();
+                else if (tile.t === 'S') UI.showStore();
+                else if (tile.t === 'P') {
+                    // خانة مكان - لا شيء تلقائي، فقط أزرار
+                    Game.endTurn();
+                } else if (tile.t === 'E') {
+                    if(!owner) {
+                        // سيظهر زر الشراء تلقائياً
+                        Game.endTurn();
+                    } else if (owner === STATE.me.name) {
+                        // سيظهر زر البيع تلقائياً
+                        Game.endTurn();
+                    } else Game.endTurn();
+                } else Game.endTurn();
+            },
+            
+            buyPlace: (pos, price) => {
+                if(gameOverActive) return;
+                SoundSystem.playBuy();
+                if(STATE.me.project) {
+                    SoundSystem.playError();
+                    return alert("لديك مشروع بالفعل. يجب بيع المشروع الحالي أولاً.");
+                }
+                if(STATE.me.cash >= price) {
+                    STATE.me.cash -= price;
+                    STATE.me.project = { pos: pos, price: price, category: null, type: null, employees: 0, manager: null, typeLuck: 0, bankrupt: false };
+                    let updates = {};
+                    updates[`rooms/${STATE.me.room}/buildings/${pos}`] = STATE.me.name;
+                    updates[`rooms/${STATE.me.room}/players/${STATE.me.name}/cash`] = STATE.me.cash;
+                    updates[`rooms/${STATE.me.room}/players/${STATE.me.name}/project`] = STATE.me.project;
+                    db.ref().update(updates);
+                    UI.toast("تم شراء المكان. اختر نوع المشروع من زر المشروع");
+                    UI.updateHUD();
+                } else {
+                    SoundSystem.playError();
+                    alert("رصيد غير كاف");
+                }
+            },
+            
+            sellPlace: (pos) => {
+                if(gameOverActive) return;
+                SoundSystem.playSell();
+                if(STATE.me.project) {
+                    // التحقق من القفل
+                    if(STATE.me.project.sellLockUntil && Date.now() < STATE.me.project.sellLockUntil) {
+                        const remaining = Math.ceil((STATE.me.project.sellLockUntil - Date.now()) / 1000);
+                        SoundSystem.playError();
+                        return alert(`لا يمكن بيع المشروع الآن. انتظر ${remaining} ثانية.`);
+                    }
+
+                    // حساب سعر البيع بناءً على العوائد والقيمة المتراكمة
+                    const sellPrice = Game.getProjectSellPrice();
+                    STATE.me.cash += sellPrice;
+                    let updates = {};
+                    updates[`rooms/${STATE.me.room}/buildings/${pos}`] = null;
+                    updates[`rooms/${STATE.me.room}/players/${STATE.me.name}/cash`] = STATE.me.cash;
+                    updates[`rooms/${STATE.me.room}/players/${STATE.me.name}/project`] = null;
+                    db.ref().update(updates);
+                    STATE.me.project = null;
+                    UI.toast(`تم بيع المكان: +${sellPrice}$`);
+                    UI.updateHUD();
+                }
+            },
+            
+            getProjectSellPrice: () => {
+                if(!STATE.me.project) return 0;
+                const basePrice = STATE.me.project.price;
+                const projectValue = STATE.me.project.projectValue || 0;
+                // السعر يعتمد بشكل كبير على القيمة الحالية (الأرباح/الخسائر)
+                return Math.floor((basePrice * 0.4) + projectValue);
+            },
+            
+            buyBuilding: (pos, price) => {
+                if(gameOverActive) return;
+                SoundSystem.playBuy();
+                const count = STATE.me.buildings ? Object.keys(STATE.me.buildings).length : 0;
+                if(count >= 3) {
+                    SoundSystem.playError();
+                    return alert("وصلت للحد الأقصى من المباني (3)");
+                }
+                if(STATE.me.cash >= price) {
+                    STATE.me.cash -= price;
+                    if(!STATE.me.buildings) STATE.me.buildings = {};
+                    STATE.me.buildings[pos] = price;
+                    
+                    let updates = {};
+                    updates[`rooms/${STATE.me.room}/buildings/${pos}`] = STATE.me.name;
+                    updates[`rooms/${STATE.me.room}/players/${STATE.me.name}/cash`] = STATE.me.cash;
+                    updates[`rooms/${STATE.me.room}/players/${STATE.me.name}/buildings`] = STATE.me.buildings;
+                    db.ref().update(updates);
+                    UI.toast(`تم السيطرة على السيرفر`);
+                    UI.updateHUD();
+                } else {
+                    SoundSystem.playError();
+                    alert("رصيد غير كاف");
+                }
+            },
+            sellBuilding: (pos, originalPrice) => {
+                if(gameOverActive) return;
+                SoundSystem.playSell();
+                STATE.me.cash += Math.floor(originalPrice / 2);
+                if(STATE.me.buildings) delete STATE.me.buildings[pos];
+                let updates = {};
+                updates[`rooms/${STATE.me.room}/buildings/${pos}`] = null;
+                updates[`rooms/${STATE.me.room}/players/${STATE.me.name}/cash`] = STATE.me.cash;
+                updates[`rooms/${STATE.me.room}/players/${STATE.me.name}/buildings`] = STATE.me.buildings;
+                db.ref().update(updates);
+                UI.updateHUD();
+            },
+            
+            setProjectType: (category, type) => {
+                if(gameOverActive) return;
+                SoundSystem.playClick();
+                if(!STATE.me.project) return;
+                
+                if(!type) {
+                    // اختيار الفئة فقط
+                    STATE.me.project.category = category;
+                    Game.saveProject();
+                    setTimeout(() => UI.openProjectModal(), 100); // إعادة فتح للاختيار من الأنواع
+                    return;
+                }
+                
+                STATE.me.project.type = type;
+                STATE.me.project.name = `${CONFIG.PROJECT_TYPES[category].name} ${type}`;
+                // تم إزالة typeLuck من التهيئة
+                STATE.me.project.bankrupt = false;
+                // تم إزالة sellLockUntil
+                
+                Game.saveProject();
+                SoundSystem.playProjectSuccess();
+                UI.toast(`تم إنشاء ${STATE.me.project.name}`);
+            },
+            
+            addEmployee: () => {
+                if(gameOverActive) return;
+                SoundSystem.playClick();
+                if(!STATE.me.project || STATE.me.project.bankrupt) {
+                    SoundSystem.playError();
+                    return alert("المشروع معطل. يجب تغيير النوع أو البيع");
+                }
+                const price = CONFIG.PROJECT_TYPES[STATE.me.project.category].employeePrice;
+                if(STATE.me.cash >= price) {
+                    SoundSystem.playBuy();
+                    STATE.me.cash -= price;
+                    STATE.me.project.employees = (STATE.me.project.employees || 0) + 1;
+                    Game.saveProject();
+                    UI.toast(`تم توظيف ${CONFIG.PROJECT_TYPES[STATE.me.project.category].employeeNameSingle}: -${price}$`);
+                } else {
+                    SoundSystem.playError();
+                    alert("رصيد غير كاف");
+                }
+            },
+            
+            removeEmployee: () => {
+                if(gameOverActive) return;
+                SoundSystem.playClick();
+                if(!STATE.me.project || STATE.me.project.employees <= 0) {
+                    SoundSystem.playError();
+                    return alert(`لا يوجد ${CONFIG.PROJECT_TYPES[STATE.me.project.category].employeeNamePlural}`);
+                }
+                const price = CONFIG.PROJECT_TYPES[STATE.me.project.category].employeePrice;
+                const refund = Math.floor(price * 0.7); // استرداد 70%
+                STATE.me.cash += refund;
+                STATE.me.project.employees--;
+                Game.saveProject();
+                UI.toast(`تم إقالة ${CONFIG.PROJECT_TYPES[STATE.me.project.category].employeeNameSingle}: +${refund}$`);
+            },
+            
+            setManager: (managerIndex) => {
+                if(gameOverActive) return;
+                SoundSystem.playClick();
+                if(!STATE.me.project || STATE.me.project.bankrupt) {
+                    SoundSystem.playError();
+                    return alert("المشروع معطل");
+                }
+                const managers = CONFIG.PROJECT_TYPES[STATE.me.project.category].managers;
+                const manager = managers[managerIndex];
+                
+                // استرداد المال من المدير القديم إن وجد
+                if(STATE.me.project.manager) {
+                    STATE.me.cash += Math.floor(STATE.me.project.manager.price * 0.5);
+                }
+                
+                if(STATE.me.cash >= manager.price) {
+                    SoundSystem.playBuy();
+                    STATE.me.cash -= manager.price;
+                    STATE.me.project.manager = { ...manager, index: managerIndex };
+                    Game.saveProject();
+                    UI.toast(`تم تعيين ${manager.name}: -${manager.price}$`);
+                } else {
+                    SoundSystem.playError();
+                    alert("رصيد غير كاف");
+                }
+            },
+            
+            // تم حذف دالة changeProjectType بالكامل
+            
+            saveProject: () => {
+                if(STATE.me.project) {
+                    db.ref(`rooms/${STATE.me.room}/players/${STATE.me.name}`).update({
+                        project: STATE.me.project,
+                        cash: STATE.me.cash
+                    });
+                    UI.updateHUD();
+                }
+            },
+            payRent: (owner, amount) => {
+                STATE.me.cash -= amount;
+                db.ref(`rooms/${STATE.me.room}/players/${STATE.me.name}/cash`).set(STATE.me.cash);
+                db.ref(`rooms/${STATE.me.room}/players/${owner}/cash`).transaction(c => (c||0) + amount);
+                UI.updateHUD();
+                Game.endTurn();
+            },
+            submitTask: () => {
+                SoundSystem.playClick();
+                const val = document.getElementById('task-answer').value;
+                
+                // حساب الراتب بناءً على المهنة والصعوبة
+                let salary = 0;
+                if(STATE.me.career === "مبرمج") salary = 1500;
+                else if(STATE.me.career === "مسوق") salary = 1000;
+                else if(STATE.me.career === "محلل") salary = 600;
+                else if(STATE.me.career === "سائق") salary = 400; // مهنة جديدة
+                else salary = 300; // حارس أمن
+
+                if(val.toUpperCase() === activeTask.a.toString().toUpperCase()) {
+                    SoundSystem.playSuccess();
+                    SoundSystem.playCoin();
+                    STATE.me.cash += salary; alert(`نجاح الاختراق! المكافأة: ${salary}$`);
+                } else {
+                    SoundSystem.playError();
+                    alert(`فشل!`);
+                }
+                clearInterval(taskTimerInt); document.getElementById('modal-job').style.display = 'none';
+                Game.saveState(); Game.endTurn();
+            },
+            endTurn: () => {
+                if(gameOverActive) return;
+                const pList = Object.keys(STATE.players);
+                let idx = pList.indexOf(STATE.me.name);
+                let next = pList[(idx + 1) % pList.length];
+                db.ref(`rooms/${STATE.me.room}/turn`).set(next);
+            },
+            saveState: () => {
+                db.ref(`rooms/${STATE.me.room}/players/${STATE.me.name}`).update({
+                    cash: parseInt(STATE.me.cash), pos: STATE.me.pos, rounds: STATE.me.rounds || 0,
+                    buildings: STATE.me.buildings || {}, portfolio: STATE.me.portfolio || {}, inventory: STATE.me.inventory || {}, avatar: STATE.me.avatar, actionAttempts: STATE.me.actionAttempts || 0
+                });
+                UI.updateHUD();
+            },
+            sendChat: () => {
+                SoundSystem.playClick();
+                const inp = document.getElementById('chat-input');
+                if(inp.value) { 
+                    db.ref(`rooms/${STATE.me.room}/chat`).push({ n: STATE.me.name, m: inp.value, a: STATE.me.avatar }); 
+                    inp.value = ""; 
+                }
+            },
+            buyProduct: (pid) => {
+                if(gameOverActive) return;
+                SoundSystem.playClick();
+                const p = CONFIG.PRODUCTS[pid];
+                db.ref(`rooms/${STATE.me.room}/inventory/${pid}`).transaction((q) => (q > 0) ? q - 1 : q, (e, c, s) => {
+                    if (c) {
+                        if (STATE.me.cash >= p.c) {
+                             SoundSystem.playBuy();
+                             STATE.me.cash -= p.c;
+                             if(!STATE.me.inventory) STATE.me.inventory = {};
+                             STATE.me.inventory[pid] = (STATE.me.inventory[pid] || 0) + 1;
+                             Game.saveState(); UI.toast(`تم الشراء`); UI.showStore(); 
+                        } else {
+                            SoundSystem.playError();
+                            alert("الرصيد لا يكفي");
+                        }
+                    } else {
+                        SoundSystem.playError();
+                        alert("نفذ المخزون");
+                    }
+                });
+            },
+            buyStock: (key) => {
+                if(gameOverActive) return;
+                SoundSystem.playClick();
+                const s = CONFIG.STOCKS[key];
+                const mVal = STATE.marketState.stocks[key] || 1;
+                const currentPrice = Math.floor(s.p * mVal);
+
+                if(STATE.me.cash >= currentPrice) {
+                    SoundSystem.playBuy();
+                    STATE.me.cash -= currentPrice;
+                    if(!STATE.me.portfolio) STATE.me.portfolio = {};
+                    
+                    // تحويل البنية القديمة للجديدة إذا لزم الأمر
+                    if(typeof STATE.me.portfolio[key] === 'number') {
+                        const oldQty = STATE.me.portfolio[key];
+                        STATE.me.portfolio[key] = [];
+                        for(let i = 0; i < oldQty; i++) {
+                            STATE.me.portfolio[key].push(Date.now() - (oldQty - i) * 1000);
+                        }
+                    }
+                    if(!Array.isArray(STATE.me.portfolio[key])) {
+                        STATE.me.portfolio[key] = [];
+                    }
+                    
+                    // إضافة timestamp جديد (آخر سهم تم شراؤه)
+                    STATE.me.portfolio[key].push(Date.now());
+                    Game.saveState(); UI.openStockModal(); UI.toast(`تم الاستثمار في ${s.name}`);
+                } else alert("الرصيد لا يكفي");
+            },
+            sellStock: (key) => {
+                if(gameOverActive) return;
+                SoundSystem.playClick();
+                if(!STATE.me.portfolio || !STATE.me.portfolio[key]) {
+                    SoundSystem.playError();
+                    alert("لا تملك أسهم من هذا النوع");
+                    return;
+                }
+                
+                // تحويل البنية القديمة للجديدة إذا لزم الأمر
+                if(typeof STATE.me.portfolio[key] === 'number') {
+                    const oldQty = STATE.me.portfolio[key];
+                    STATE.me.portfolio[key] = [];
+                    for(let i = 0; i < oldQty; i++) {
+                        STATE.me.portfolio[key].push(Date.now() - (oldQty - i) * 1000);
+                    }
+                }
+                
+                const stocks = STATE.me.portfolio[key];
+                if(!Array.isArray(stocks) || stocks.length === 0) {
+                    alert("لا تملك أسهم من هذا النوع");
+                    return;
+                }
+                
+                // بيع آخر سهم تم شراؤه (LIFO)
+                stocks.pop();
+                
+                // حساب السعر: نصف السعر الحالي للسوق
+                const s = CONFIG.STOCKS[key];
+                const currentMarketVal = STATE.marketState.stocks[key] || 1.0;
+                const currentPrice = Math.floor(s.p * currentMarketVal);
+                const sellPrice = Math.floor(currentPrice / 2);
+                
+                STATE.me.cash += sellPrice;
+                
+                // حذف المفتاح إذا لم يعد هناك أسهم
+                if(stocks.length === 0) {
+                    delete STATE.me.portfolio[key];
+                }
+SoundSystem.playSell();
+                Game.saveState(); 
+                UI.openStockModal(); 
+                UI.toast(`تم بيع سهم ${s.name} بـ ${sellPrice}$ (نصف السعر الحالي)`);
+            }
+        };
+
+        const UI = {
+            updateAvatarPreview: (v) => {
+                if(!STATE.customAvatarSelected) {
+                    document.getElementById('login-avatar').src = `https://ui-avatars.com/api/?name=${v}&background=fbbf24&color=451a03`;
+                }
+            },
+            
+            openAvatarSelection: () => {
+                SoundSystem.playClick();
+                const grid = document.getElementById('avatar-grid');
+                grid.innerHTML = '';
+                AVATARS.forEach(url => {
+                    const img = document.createElement('img');
+                    img.src = url;
+                    img.className = 'avatar-option';
+                    img.onclick = () => UI.selectAvatar(url);
+                    grid.appendChild(img);
+                });
+                document.getElementById('modal-avatar-selection').style.display = 'flex';
+            },
+            
+            selectAvatar: (url) => {
+                SoundSystem.playSuccess();
+                STATE.me.avatar = url;
+                STATE.customAvatarSelected = true;
+                document.getElementById('login-avatar').src = url;
+                document.getElementById('modal-avatar-selection').style.display = 'none';
+            },
+            
+            openSettings: () => {
+                SoundSystem.playClick();
+                document.getElementById('modal-settings').style.display = 'flex';
+                // تحديث حالة التبديل
+                const toggle = document.getElementById('sound-toggle');
+                const switchEl = document.getElementById('sound-switch');
+                if(toggle.checked) {
+                    switchEl.querySelector('span').style.transform = 'translateX(28px)';
+                    switchEl.style.background = 'var(--primary)';
+                } else {
+                    switchEl.querySelector('span').style.transform = 'translateX(0px)';
+                    switchEl.style.background = '#334155';
+                }
+            },
+toggleSound: () => {
+                const toggle = document.getElementById('sound-toggle');
+                const switchEl = document.getElementById('sound-switch');
+                SoundSystem.enabled = toggle.checked;
+                
+                if(toggle.checked) {
+                    switchEl.querySelector('span').style.transform = 'translateX(28px)';
+                    switchEl.style.background = 'var(--primary)';
+                    SoundSystem.playClick();
+                } else {
+                    switchEl.querySelector('span').style.transform = 'translateX(0px)';
+                    switchEl.style.background = '#334155';
+                }
+                
+                // حفظ الإعدادات
+                localStorage.setItem('soundEnabled', toggle.checked);
+            },
+            
+            exitGame: () => {
+                SoundSystem.playClick();
+                if(confirm('هل أنت متأكد من الخروج من اللعبة؟')) {
+                    SoundSystem.playNotification();
+                    // إزالة اللاعب من الغرفة
+                    if(STATE.me.room && STATE.me.name) {
+                        db.ref(`rooms/${STATE.me.room}/players/${STATE.me.name}`).remove();
+                    }
+                    // إعادة تحميل الصفحة
+                    window.location.reload();
+                }
+            },
+            showFinancialReport: (rep) => {
+                if(gameOverActive) return;
+                SoundSystem.playCoin();
+                const t = document.getElementById('game-toast');
+                let html = `<div style="font-weight:bold; color:var(--secondary); border-bottom:1px solid #334155; margin-bottom:5px;">SYSTEM REPORT</div>`;
+                html += `<div style="font-size:0.8rem;">Trade: ${rep.sales}$</div>`;
+                html += `<div style="font-size:0.8rem;">Invest: ${rep.stock ? rep.stock.toFixed(0) : 0}$</div>`;
+                if(rep.project !== undefined) {
+                    html += `<div style="font-size:0.8rem; color:${rep.project > 0 ? '#4ade80' : '#f87171'};">Corp: ${rep.project > 0 ? '+' : ''}${rep.project}$</div>`;
+                }
+                html += `<div style="font-weight:bold; margin-top:5px; color:${rep.total > 0 ? '#4ade80' : '#f87171'};">NET: ${rep.total > 0 ? '+' : ''}${rep.total}$</div>`;
+                t.innerHTML = html;
+                t.style.display = 'block';
+                setTimeout(() => { t.style.display = 'none'; }, 5000);
+            },
+
+            openNewsModal: () => {
+                SoundSystem.playClick();
+                const c = document.getElementById('news-feed-container');
+                c.innerHTML = '';
+                let now = Date.now();
+                let active = STATE.activeNews.filter(n => n.expires > now);
+                
+                if(active.length === 0) c.innerHTML = '<div style="text-align:center; padding:20px; color:#64748b;">SCANNING NETWORK... NO SIGNALS.</div>';
+                else {
+                    active.forEach(n => {
+                        let div = document.createElement('div');
+                        div.className = 'news-entry'; 
+                        div.innerHTML = `
+                            <span>${n.msg}</span>
+                            <span style="font-size:0.65rem; color:#64748b; white-space:nowrap; margin-right:10px;">[${Math.floor((n.expires - now)/1000)}s]</span>
+                        `;
+                        c.appendChild(div);
+                    });
+                }
+                document.getElementById('modal-news').style.display = 'flex';
+            },
+
+            openStockModal: () => {
+                SoundSystem.playClick();
+                const div = document.getElementById('stock-list');
+                const mState = STATE.marketState.stocks || {};
+
+                div.innerHTML = '';
+                for(let k in CONFIG.STOCKS) {
+                    const s = CONFIG.STOCKS[k];
+                    
+                    // حساب الكمية (دعم البنية القديمة والجديدة)
+                    let owned = 0;
+                    if(STATE.me.portfolio && STATE.me.portfolio[k]) {
+                        if(Array.isArray(STATE.me.portfolio[k])) {
+                            owned = STATE.me.portfolio[k].length;
+                        } else {
+                            owned = STATE.me.portfolio[k];
+                        }
+                    }
+                    
+                    const marketVal = mState[k] || 1.0;
+                    const currentPrice = Math.floor(s.p * marketVal);
+                    const sellPrice = Math.floor(currentPrice / 2); // نصف السعر الحالي
+                    
+                    div.innerHTML += `
+                        <div class="stock-row">
+                            <div>
+                                <div style="color:var(--text-main); font-weight:bold;">${s.name}</div>
+                                <div style="font-size:0.75rem; color:#94a3b8;">Price: <span style="color:white; font-size:0.9rem;">${currentPrice}$</span></div>
+                            </div>
+                            <div style="text-align:center;">
+                                <div style="font-size:0.7rem; color:var(--secondary); margin-bottom:3px;">Hold: ${owned}</div>
+                                <div style="display:flex; gap:5px; justify-content:center;">
+                                    <button class="btn btn-dark" style="padding:5px 12px; font-size:0.7rem; margin:0;" onclick="Game.buyStock('${k}')">BUY</button>
+                                    ${owned > 0 ? `<button class="btn btn-dark" style="padding:5px 12px; font-size:0.7rem; margin:0; background:rgba(244,63,94,0.1); border:1px solid var(--accent); color:var(--accent);" onclick="Game.sellStock('${k}')" title="Sell (${sellPrice}$)">SELL</button>` : ''}
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                }
+                document.getElementById('modal-stock').style.display = 'flex';
+            },
+
+            showJob: () => {
+                SoundSystem.playNotification();
+                const m = document.getElementById('modal-job');
+                m.style.display = 'flex';
+                
+                // تحديد الصعوبة والراتب حسب المهنة
+                let diff = 1;
+                let salary = 0;
+                if(STATE.me.career === "مبرمج") { diff = 5; salary = 1500; }
+                else if(STATE.me.career === "مسوق") { diff = 4; salary = 1000; }
+                else if(STATE.me.career === "محلل") { diff = 3; salary = 600; }
+                else if(STATE.me.career === "سائق") { diff = 2; salary = 400; } // مهنة جديدة
+                else { diff = 1; salary = 300; } // حارس أمن - مهنة جديدة
+
+                let type = Math.random() > 0.5 ? 'memory' : 'math';
+                let q="", a="";
+
+                if(type === 'memory') {
+                    let chars = "0123456789"; 
+                    if(diff > 2) chars+="ABC";
+                    
+                    // زيادة طول الكود مع زيادة الصعوبة
+                    let len = 3 + Math.floor((diff-1) * 1.5); 
+                    
+                    for(let i=0;i<len;i++) a+=chars.charAt(Math.floor(Math.random()*chars.length));
+                    q="MEMORIZE";
+                } else {
+                    // زيادة صعوبة الأرقام مع زيادة الصعوبة
+                    // المستوى 1: 2-5
+                    // المستوى 5: 12-27
+                    let min = 2 + (diff * 2);
+                    let max = 5 + (diff * 4);
+                    
+                    let x=Math.floor(Math.random()*(max-min))+min; 
+                    let y=Math.floor(Math.random()*(max-min))+min;
+                    q=`${x} × ${y}`; a=(x*y).toString();
+                }
+                activeTask = { q, a, type };
+                
+                const qDiv = document.getElementById('task-question');
+                const memDiv = document.getElementById('memory-display');
+                const inp = document.getElementById('task-answer');
+                
+                document.getElementById('job-desc').innerText = `PROTOCOL: ${type==='memory'?'MEMORY DUMP':'ENCRYPTION'} | CLASS: ${diff}`;
+                inp.value = ""; inp.style.display = 'block'; qDiv.style.display = 'block'; memDiv.style.display = 'none';
+
+                if(type === 'memory') {
+                    qDiv.style.display = 'none'; inp.style.display = 'none';
+                    memDiv.style.display = 'block'; memDiv.innerText = a;
+                    // الوقت المتاح للعرض يقل مع الصعوبة
+                    let showTime = Math.max(1000, 3500 - (diff * 400));
+                    setTimeout(() => {
+                        memDiv.style.display = 'none'; qDiv.innerText = q; qDiv.style.display = 'block';
+                        inp.style.display = 'block'; inp.type="text"; inp.focus();
+                    }, showTime); 
+                } else {
+                    qDiv.innerText = q; inp.type="number"; inp.focus();
+                }
+
+                let w = 100;
+                document.getElementById('task-timer-bar').style.width = '100%';
+                if(taskTimerInt) clearInterval(taskTimerInt);
+                taskTimerInt = setInterval(() => {
+                    w -= 0.5; document.getElementById('task-timer-bar').style.width = w + '%';
+                    if(w<=0) { clearInterval(taskTimerInt); Game.submitTask(); }
+                }, 150);
+            },
+
+            showStore: () => {
+                SoundSystem.playClick();
+                const d = document.getElementById('store-items');
+                d.innerHTML = '<div style="text-align:center; color:#64748b;">CONNECTING TO DARK WEB...</div>';
+                
+                db.ref(`rooms/${STATE.me.room}/inventory`).once('value', snap => {
+                    const inv = snap.val() || {};
+                    d.innerHTML = '';
+                    for(let k in CONFIG.PRODUCTS) {
+                        const p = CONFIG.PRODUCTS[k];
+                        const qty = inv[k] || 0;
+                        const owned = (STATE.me.inventory && STATE.me.inventory[k]) ? STATE.me.inventory[k] : 0;
+                        
+                        d.innerHTML += `<div style="display:flex; justify-content:space-between; padding:15px; border-bottom:1px solid #334155; align-items:center;">
+                            <div>
+                                <div style="color:#fff; font-weight:bold;">${p.n}</div>
+                                <small style="color:#64748b">Cost: ${p.c}$</small>
+                            </div>
+                            <div style="text-align:center;">
+                                <div style="font-size:0.6rem; color:var(--secondary);">Bag: ${owned}</div>
+                                <div style="font-size:0.6rem; color:#94a3b8; margin-bottom:4px;">Stock: ${qty}</div>
+                                <button class="btn btn-dark" style="padding:4px 12px; margin:0; font-size:0.75rem;" ${qty<=0 ? 'disabled' : ''} onclick="Game.buyProduct('${k}')">BUY</button>
+                            </div>
+                        </div>`;
+                    }
+                });
+                document.getElementById('modal-store').style.display = 'flex';
+            },
+
+            toast: (msg) => {
+                SoundSystem.playNotification();
+                const el = document.getElementById('game-toast');
+                el.innerText = msg; el.style.display = 'block';
+                setTimeout(() => el.style.display = 'none', 3000);
+            },
+
+            renderBoard: () => {
+                const b = document.getElementById('main-board');
+                b.innerHTML = '';
+                const mapToUse = STATE.mapConfig || CONFIG.MAP;
+                mapToUse.forEach((tile, i) => {
+                    const div = document.createElement('div');
+                    let cls = 'cell';
+                    if(STATE.buildings[i]) cls += (STATE.buildings[i] === STATE.me.name) ? ' my-prop' : ' enemy-prop';
+                    if(STATE.me.pos === i) cls += ' current-pos';
+                    
+                    div.className = cls;
+                    let icon = '';
+                    if(tile.t === 'Start') icon = '<i class="fa-solid fa-flag-checkered"></i>';
+                    else if(tile.t === 'J') icon = '<i class="fa-solid fa-user-secret" style="color:var(--accent)"></i>';
+                    else if(tile.t === 'S') icon = '<i class="fa-solid fa-cart-shopping" style="color:var(--secondary)"></i>';
+                    else if(tile.t === 'P') {
+                        if(STATE.buildings[i] === STATE.me.name) {
+                            icon = '<i class="fa-solid fa-building" style="color:var(--primary)"></i>';
+                        } else if(STATE.buildings[i]) {
+                            icon = '<i class="fa-solid fa-building" style="color:var(--accent)"></i>';
+                        } else {
+                            icon = '<i class="fa-solid fa-map-marker-alt" style="color:var(--secondary)"></i>';
+                        }
+                    } else if(STATE.buildings[i]) icon = '<i class="fa-solid fa-server" style="color:#fff"></i>';
+                    else icon = `<span style="font-family:'Exo 2'">${tile.p}</span>`;
+
+                    div.innerHTML = icon;
+                    
+                    Object.values(STATE.players).forEach(p => {
+                        // Use player's selected avatar or fallback
+                        const avatarUrl = p.avatar || `https://ui-avatars.com/api/?name=${p.name}&background=fbbf24&color=451a03&font-size=0.5&bold=true`;
+                        if(p.pos === i) div.innerHTML += `<img src="${avatarUrl}" class="pawn">`;
+                    });
+                    b.appendChild(div);
+                });
+                
+                // إظهار أزرار الشراء/البيع
+                UI.updateBuildingButtons();
+            },
+            
+            updateBuildingButtons: () => {
+                // إخفاء الأزرار القديمة
+                const oldBtns = document.querySelectorAll('.building-action-btn');
+                oldBtns.forEach(btn => btn.remove());
+                
+                if(gameOverActive) return;
+                
+                const mapToUse = STATE.mapConfig || CONFIG.MAP;
+                const currentTile = mapToUse[STATE.me.pos];
+                const owner = STATE.buildings[STATE.me.pos];
+                
+                if(currentTile.t === 'E') {
+                    if(!owner) {
+                        // زر الشراء
+                        const btn = document.createElement('button');
+                        btn.className = 'btn btn-main building-action-btn';
+                        btn.style.cssText = 'position:fixed; left:20px; bottom:220px; z-index:200; width:140px; padding:12px; margin:0; font-size:0.9rem;';
+                        btn.innerHTML = `<i class="fa-solid fa-shopping-cart"></i> BUY ${currentTile.p}$`;
+                        btn.onclick = () => {
+                            Game.buyBuilding(STATE.me.pos, currentTile.p);
+                            btn.remove();
+                        };
+                        document.body.appendChild(btn);
+                    } else if(owner === STATE.me.name) {
+                        // زر البيع
+                        const btn = document.createElement('button');
+                        btn.className = 'btn btn-dark building-action-btn';
+                        btn.style.cssText = 'position:fixed; left:20px; bottom:220px; z-index:200; width:140px; padding:12px; margin:0; background:linear-gradient(180deg, #ef4444 0%, #b91c1c 100%); font-size:0.9rem; border-color:#f87171;';
+                        btn.innerHTML = `<i class="fa-solid fa-dollar-sign"></i> SELL ${Math.floor(currentTile.p/2)}$`;
+                        btn.onclick = () => {
+                            Game.sellBuilding(STATE.me.pos, currentTile.p);
+                            btn.remove();
+                        };
+                        document.body.appendChild(btn);
+                    }
+                } else if(currentTile.t === 'P') {
+                    if(!owner) {
+                        // زر شراء المكان
+                        const btn = document.createElement('button');
+                        btn.className = 'btn btn-main building-action-btn';
+                        btn.style.cssText = 'position:fixed; left:20px; bottom:220px; z-index:200; width:140px; padding:12px; margin:0; font-size:0.9rem;';
+                        btn.innerHTML = `<i class="fa-solid fa-map-marker-alt"></i> BUY PLOT ${currentTile.p}$`;
+                        btn.onclick = () => {
+                            Game.buyPlace(STATE.me.pos, currentTile.p);
+                            btn.remove();
+                        };
+                        document.body.appendChild(btn);
+                    } else if(owner === STATE.me.name && STATE.me.project) {
+                        // التحقق من قفل البيع
+                        if(STATE.me.project.sellLockUntil && Date.now() < STATE.me.project.sellLockUntil) {
+                            return; // لا تظهر الزر
+                        }
+
+                        // زر بيع المكان
+                        const sellPrice = Game.getProjectSellPrice();
+                        const btn = document.createElement('button');
+                        btn.className = 'btn btn-dark building-action-btn';
+                        btn.style.cssText = 'position:fixed; left:20px; bottom:220px; z-index:200; width:140px; padding:12px; margin:0; background:linear-gradient(180deg, #ef4444 0%, #b91c1c 100%); font-size:0.9rem; border-color:#f87171;';
+                        btn.innerHTML = `<i class="fa-solid fa-dollar-sign"></i> SELL CORP ${sellPrice}$`;
+                        btn.onclick = () => {
+                            Game.sellPlace(STATE.me.pos);
+                            btn.remove();
+                        };
+                        document.body.appendChild(btn);
+                    }
+                }
+            },
+
+            updateHUD: () => {
+                document.getElementById('hud-cash').innerText = STATE.me.cash;
+                // التعديل: عرض عدد الجولات الكلية 7
+                document.getElementById('round-display').innerText = `${(STATE.me.rounds||0)}/7`;
+                document.getElementById('hud-name').innerText = STATE.me.name;
+            },
+
+            showGameOver: () => {
+                gameOverActive = true;
+                SoundSystem.playVictory();
+                const list = document.getElementById('winner-display');
+                list.innerHTML = '';
+                let ranks = [];
+                Object.values(STATE.players).forEach(p => {
+                    let bVal = 0;
+                    // حساب قيمة المباني (سعر الشراء) + الكاش + سعر شراء المشروع
+                    if(p.buildings) Object.values(p.buildings).forEach(v => bVal += v);
+                    // التعديل: إضافة سعر المشروع كاملاً
+                    if(p.project) bVal += p.project.price;
+                    ranks.push({ n: p.name, w: p.cash + bVal, avatar: p.avatar });
+                });
+                ranks.sort((a,b) => b.w - a.w);
+                ranks.forEach((r, i) => {
+                    const isWinner = i === 0;
+                    const avatarUrl = r.avatar || `https://ui-avatars.com/api/?name=${r.n}&background=fbbf24&color=451a03&font-size=0.5&bold=true`;
+                    list.innerHTML += `<div style="padding:15px; border-bottom:1px solid #334155; ${isWinner ? 'background:rgba(251, 191, 36, 0.1); border:1px solid var(--primary); border-radius:8px;' : ''}">
+                        <span style="color:${isWinner?'var(--primary)':'#94a3b8'}; font-weight:bold;">#${i+1}</span>
+                        <img src="${avatarUrl}" class="leaderboard-avatar">
+                        ${r.n} ${isWinner ? '🏆' : ''} 
+                        <span style="float:left; color:${isWinner ? 'var(--primary)' : '#cbd5e1'}; font-family:'Exo 2';">${r.w}$</span>
+                    </div>`;
+                });
+                document.getElementById('modal-gameover').style.display = 'flex';
+            },
+            
+            openProjectModal: () => {
+                SoundSystem.playClick();
+                const content = document.getElementById('project-content');
+                const proj = STATE.me.project;
+                
+                if(!proj) {
+                    content.innerHTML = '<div style="text-align:center; padding:20px; color:#64748b;">NO ACTIVE CORPORATION. PURCHASE LAND FIRST.</div>';
+                    document.getElementById('modal-project').style.display = 'flex';
+                    return;
+                }
+                
+                let html = '';
+                
+                // إذا لم يتم اختيار نوع المشروع بعد
+                if(!proj.category) {
+                    html = '<div style="text-align:center;"><h4 style="color:var(--primary); margin-bottom:15px;">SELECT INDUSTRY</h4>';
+                    html += '<button class="btn btn-main" onclick="Game.setProjectType(\'COMPANY\', \'\');" style="margin:8px 0;">🏢 TECH COMPANY</button>';
+                    html += '<button class="btn btn-main" onclick="Game.setProjectType(\'FARM\', \'\');" style="margin:8px 0;">🌾 AGRI FARM</button>';
+                    html += '<button class="btn btn-main" onclick="Game.setProjectType(\'RESTAURANT\', \'\');" style="margin:8px 0;">🍽️ RESTAURANT CHAIN</button>';
+                    html += '</div>';
+                } else if(!proj.type) {
+                    // اختيار نوع محدد
+                    const types = CONFIG.PROJECT_TYPES[proj.category].types;
+                    html = `<div style="text-align:center;"><h4 style="color:var(--primary); margin-bottom:15px;">SELECT NICHE</h4>`;
+                    types.forEach(type => {
+                        html += `<button class="btn btn-dark" onclick="Game.setProjectType('${proj.category}', '${type}'); setTimeout(() => { document.getElementById('modal-project').style.display='none'; }, 500);" style="margin:8px 0;">${type}</button>`;
+                    });
+                    html += '</div>';
+                } else {
+                    // إدارة المشروع
+                    const config = CONFIG.PROJECT_TYPES[proj.category];
+                    const employees = proj.employees || 0;
+                    const manager = proj.manager;
+                    // تم إزالة typeLuck
+                    const bankrupt = proj.bankrupt || false;
+                    const hasJohnson = proj.hasJohnson || false;
+                    
+                    html = `<div style="text-align:right;">
+                        <h4 style="color:var(--primary); margin-bottom:15px; font-size:1.2rem;">${proj.name}</h4>
+                        <div style="background:#020617; padding:20px; border-radius:16px; margin-bottom:20px; border:1px solid #334155;">
+                            <div style="margin-bottom:10px; display:flex; justify-content:space-between;">
+                                <span>${config.employeeNamePlural}:</span>
+                                <span style="color:white; font-family:'Exo 2'">${employees}</span>
+                            </div>
+                            <div style="margin-bottom:10px; display:flex; justify-content:space-between;">
+                                <span>Manager:</span>
+                                <span style="color:${hasJohnson ? '#fbbf24' : 'var(--secondary)'}; font-weight:${hasJohnson?'bold':'normal'}">
+                                    ${manager ? (manager.name + (hasJohnson ? ' (ACTIVE)' : '')) : 'None'}
+                                </span>
+                            </div>
+                            ${bankrupt ? '<div style="color:var(--accent); font-weight:bold; margin-top:10px; text-align:center;">⚠️ BANKRUPTCY DETECTED</div>' : ''}
+                        </div>
+                        
+                        <div style="margin-bottom:20px;">
+                            <h5 style="color:var(--text-muted); text-transform:uppercase; font-size:0.8rem;">Staffing</h5>
+                            <div style="display:flex; gap:10px; margin-top:10px;">
+                                <button class="btn btn-main" onclick="Game.addEmployee(); setTimeout(() => UI.openProjectModal(), 200);" style="flex:1; margin:0; padding:12px; font-size:0.8rem;">HIRE (${config.employeePrice}$)</button>
+                                <button class="btn btn-dark" onclick="Game.removeEmployee(); setTimeout(() => UI.openProjectModal(), 200);" style="flex:1; margin:0; padding:12px; background:linear-gradient(180deg, #ef4444 0%, #b91c1c 100%); border-color:#f87171; font-size:0.8rem;" ${employees <= 0 ? 'disabled' : ''}>FIRE</button>
+                            </div>
+                        </div>
+                        
+                        <div style="margin-bottom:15px;">
+                            <h5 style="color:var(--text-muted); text-transform:uppercase; font-size:0.8rem;">Management</h5>
+                            <div style="display:flex; flex-direction:column; gap:8px; margin-top:10px;">`;
+                    
+                    if(hasJohnson) {
+                        // Mr. Johnson Active UI (Locked)
+                        html += `<div style="padding:15px; background:rgba(251,191,36,0.1); border:1px solid var(--primary); border-radius:12px; text-align:center; display:flex; align-items:center; justify-content:center; gap:10px;">
+                             <img src="${manager.img}" style="width:40px; height:40px; border-radius:50%; border:2px solid var(--primary);">
+                             <div style="color:var(--primary); font-weight:bold;">MR. JOHNSON IS IN CHARGE</div>
+                        </div>
+                        <div style="font-size:0.7rem; color:#94a3b8; text-align:center; margin-top:5px;">Standard management locked until Round 6.</div>
+                        `;
+                    } else {
+                        // Standard Managers
+                        config.managers.forEach((mgr, idx) => {
+                            const isCurrent = manager && manager.index === idx;
+                            html += `<button class="btn ${isCurrent ? 'btn-main' : 'btn-dark'}" onclick="Game.setManager(${idx}); setTimeout(() => UI.openProjectModal(), 200);" style="margin:0; padding:12px; text-align:right; font-size:0.85rem;" ${bankrupt ? 'disabled' : ''}>
+                                ${mgr.name} - ${mgr.price}$ ${isCurrent ? '✓' : ''}
+                            </button>`;
+                        });
+                    }
+                    
+                    html += `</div></div>
+                    </div>`;
+                }
+                
+                content.innerHTML = html;
+                document.getElementById('modal-project').style.display = 'flex';
+            },
+            
+            // تم إزالة دالة openProjectAIModal
+            
+            openGuideModal: () => {
+                SoundSystem.playClick();
+                document.getElementById('modal-guide').style.display = 'flex';
+            }
+        };
+
+        const App = {
+            joinLobby: (isHost) => {
+                SoundSystem.playClick();
+                const n = document.getElementById('inp-name').value;
+                const r = document.getElementById('inp-room').value;
+                const c = document.getElementById('inp-career').value;
+                if(!n || !r) {
+                    SoundSystem.playError();
+                    return alert("REQUIRED: CREDENTIALS");
+                }
+
+                STATE.me.name = n; STATE.me.room = r; STATE.me.career = c;
+                // If no custom avatar selected, generate a default one but ensure it's not empty
+                if(!STATE.me.avatar) {
+                    STATE.me.avatar = `https://ui-avatars.com/api/?name=${n}&background=fbbf24&color=451a03&font-size=0.5&bold=true`;
+                }
+                
+                document.getElementById('scr-login').classList.remove('active');
+                document.getElementById('scr-login').style.display = 'flex'; 
+                document.querySelector('.holo-card').style.display = 'none'; 
+                document.querySelector('h1').style.display = 'none'; 
+                document.querySelector('h2').style.display = 'none'; 
+                document.getElementById('lobby-area').style.display = 'block';
+
+                if(isHost) {
+                    db.ref(`rooms/${r}`).set({ status: "LOBBY", turn: n, activeNews: [], marketState: {} });
+                    let time = 90;
+                    lobbyTimerInt = setInterval(() => {
+                        time--; db.ref(`rooms/${r}/lobbyTime`).set(time);
+                        if(time <= 0) { clearInterval(lobbyTimerInt); App.startGame(); }
+                    }, 1000);
+                }
+
+                db.ref(`rooms/${r}/players/${n}`).set({ 
+                    name: n, cash: 3000, pos: 0, career: c, rounds: 0, buildings: {}, portfolio: {}, inventory: {}, project: null, avatar: STATE.me.avatar, actionAttempts: 0
+                });
+                db.ref(`rooms/${r}/players/${n}`).onDisconnect().remove();
+                App.listenLobby();
+            },
+            listenLobby: () => {
+                db.ref(`rooms/${STATE.me.room}/chat`).on('child_added', snap => {
+                    const m = snap.val();
+                    const d = document.getElementById('chat-wrapper');
+                    const avatarUrl = m.a || `https://ui-avatars.com/api/?name=${m.n}&background=fbbf24&color=451a03&font-size=0.5&bold=true`;
+                    d.innerHTML += `<div style="margin-bottom:8px;">
+                        <img src="${avatarUrl}" class="chat-avatar">
+                        <span style="color:${m.n===STATE.me.name?'var(--primary)':'#60a5fa'}; font-weight:bold;">${m.n}:</span> 
+                        <span style="color:#e2e8f0; font-size:0.85rem;">${m.m}</span>
+                    </div>`;
+                    d.scrollTop = d.scrollHeight;
+                });
+                db.ref(`rooms/${STATE.me.room}/lobbyTime`).on('value', snap => {
+                    if(snap.val()) document.getElementById('lobby-timer').innerText = snap.val();
+                });
+                db.ref(`rooms/${STATE.me.room}/status`).on('value', snap => {
+                    if(snap.val() === 'ACTIVE') {
+                        document.getElementById('scr-login').classList.remove('active');
+                        document.getElementById('scr-login').style.display = 'none';
+                        document.getElementById('scr-game').classList.add('active');
+                        App.listenGame();
+                        if(lobbyTimerInt) clearInterval(lobbyTimerInt);
+                    }
+                });
+            },
+            startGame: () => {
+                db.ref(`rooms/${STATE.me.room}/status`).set('ACTIVE');
+                Host.initGame(STATE.me.room);
+            },
+            listenGame: () => {
+                db.ref(`rooms/${STATE.me.room}`).on('value', snap => {
+                    const data = snap.val();
+                    if(!data) return;
+                    
+                    // التحقق من حالة انتهاء اللعبة أولاً
+                    if(data.status === 'GAMEOVER' && !gameOverActive) {
+                        gameOverActive = true;
+                        UI.showGameOver();
+                        // إيقاف جميع الأنظمة
+                        document.getElementById('move-controls').style.display = 'none';
+                        document.getElementById('wait-msg').style.display = 'none';
+                        return;
+                    }
+                    
+                    if(gameOverActive) return; // لا تحديثات بعد انتهاء اللعبة
+                    
+                    STATE.players = data.players || {};
+                    STATE.buildings = data.buildings || {};
+                    STATE.turn = data.turn;
+                    STATE.marketState = data.marketState || { stocks: {}, products: {} };
+                    STATE.inventory = data.inventory || {}; 
+                    STATE.activeNews = data.activeNews || [];
+                    STATE.mapConfig = data.mapConfig || null;
+                    STATE.projectNews = data.projectNews || {};
+
+                    if(STATE.players[STATE.me.name]) {
+                        const sMe = STATE.players[STATE.me.name];
+                        STATE.me.cash = sMe.cash; STATE.me.rounds = sMe.rounds;
+                        STATE.me.buildings = sMe.buildings; 
+                        STATE.me.project = sMe.project || null;
+                        // تحويل المحفظة للبنية الجديدة إذا لزم الأمر
+                        STATE.me.portfolio = normalizePortfolio(sMe.portfolio);
+                        STATE.me.inventory = sMe.inventory;
+                        STATE.me.actionAttempts = sMe.actionAttempts || 0;
+                        
+                        // إظهار/إخفاء زر المشروع
+                        const projectBtn = document.getElementById('project-btn');
+                        if(STATE.me.project) {
+                            projectBtn.style.display = 'flex';
+                        } else {
+                            projectBtn.style.display = 'none';
+                        }
+
+                        // Round 4 Button Logic
+                        const actionBtn = document.getElementById('action-card-btn');
+                        if(STATE.me.rounds === 4 && STATE.me.actionAttempts < 3) {
+                            actionBtn.style.display = 'flex';
+                        } else {
+                            actionBtn.style.display = 'none';
+                        }
+                        
+                        if(sMe.lastFinancial && sMe.lastFinancial.t > (STATE.lastReportTime || 0)) {
+                            STATE.lastReportTime = sMe.lastFinancial.t;
+                            if(!gameOverActive) UI.showFinancialReport(sMe.lastFinancial);
+                        }
+                        UI.updateHUD();
+                    }
+
+                    const isMyTurn = STATE.turn === STATE.me.name && !gameOverActive;
+                    document.getElementById('move-controls').style.display = isMyTurn ? 'flex' : 'none';
+                    document.getElementById('wait-msg').style.display = isMyTurn ? 'none' : 'block';
+                    document.getElementById('turn-name').innerText = STATE.turn || '...';
+                    UI.renderBoard();
+                });
+            }
+        };
+
+        // نظام الصوتيات
+        const SoundSystem = {
+            audioContext: null,
+            sounds: {},
+            enabled: true,
+            
+            init: () => {
+                try {
+                    SoundSystem.audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                } catch(e) {
+                    console.log('Audio not supported');
+                    SoundSystem.enabled = false;
+                }
+            },
+            
+            playTone: (freq, duration, type = 'sine', volume = 0.3) => {
+                if(!SoundSystem.enabled || !SoundSystem.audioContext) return;
+                
+                const oscillator = SoundSystem.audioContext.createOscillator();
+                const gainNode = SoundSystem.audioContext.createGain();
+                
+                oscillator.connect(gainNode);
+                gainNode.connect(SoundSystem.audioContext.destination);
+                
+                oscillator.frequency.value = freq;
+                oscillator.type = type;
+                
+                gainNode.gain.setValueAtTime(volume, SoundSystem.audioContext.currentTime);
+                gainNode.gain.exponentialRampToValueAtTime(0.01, SoundSystem.audioContext.currentTime + duration);
+                
+                oscillator.start(SoundSystem.audioContext.currentTime);
+                oscillator.stop(SoundSystem.audioContext.currentTime + duration);
+            },
+            
+            playClick: () => {
+                SoundSystem.playTone(800, 0.1, 'sine', 0.2);
+            },
+            
+            playBuy: () => {
+                SoundSystem.playTone(600, 0.15, 'sine', 0.3);
+                setTimeout(() => SoundSystem.playTone(800, 0.2, 'sine', 0.25), 50);
+            },
+            
+            playSell: () => {
+                SoundSystem.playTone(400, 0.2, 'sine', 0.3);
+                setTimeout(() => SoundSystem.playTone(300, 0.15, 'sine', 0.25), 100);
+            },
+            
+            playMove: () => {
+                SoundSystem.playTone(500, 0.1, 'square', 0.2);
+            },
+            
+            playSuccess: () => {
+                SoundSystem.playTone(523, 0.1, 'sine', 0.3);
+                setTimeout(() => SoundSystem.playTone(659, 0.1, 'sine', 0.3), 100);
+                setTimeout(() => SoundSystem.playTone(784, 0.2, 'sine', 0.3), 200);
+            },
+            
+            playError: () => {
+                SoundSystem.playTone(200, 0.3, 'sawtooth', 0.4);
+            },
+            
+            playCoin: () => {
+                SoundSystem.playTone(1000, 0.15, 'sine', 0.25);
+                setTimeout(() => SoundSystem.playTone(1200, 0.1, 'sine', 0.2), 80);
+            },
+            
+            playNotification: () => {
+                SoundSystem.playTone(600, 0.1, 'sine', 0.25);
+                setTimeout(() => SoundSystem.playTone(800, 0.15, 'sine', 0.25), 150);
+            },
+            
+            playVictory: () => {
+                // نغمة انتصار حماسية
+                SoundSystem.playTone(523, 0.15, 'sine', 0.4);
+                setTimeout(() => SoundSystem.playTone(659, 0.15, 'sine', 0.4), 150);
+                setTimeout(() => SoundSystem.playTone(784, 0.15, 'sine', 0.4), 300);
+                setTimeout(() => SoundSystem.playTone(1047, 0.3, 'sine', 0.5), 450);
+            },
+            
+            playWarning: () => {
+                // نغمة تحذير
+                SoundSystem.playTone(400, 0.2, 'square', 0.3);
+                setTimeout(() => SoundSystem.playTone(350, 0.2, 'square', 0.3), 200);
+            },
+            
+            playProjectSuccess: () => {
+                // نغمة نجاح المشروع
+                SoundSystem.playTone(800, 0.1, 'sine', 0.3);
+                setTimeout(() => SoundSystem.playTone(1000, 0.15, 'sine', 0.3), 100);
+                setTimeout(() => SoundSystem.playTone(1200, 0.2, 'sine', 0.3), 200);
+            },
+            
+            playLevelUp: () => {
+                // نغمة تقدم
+                const notes = [523, 659, 784, 1047];
+                notes.forEach((freq, i) => {
+                    setTimeout(() => SoundSystem.playTone(freq, 0.15, 'sine', 0.3), i * 100);
+                });
+            },
+
+            playWelcome: () => {
+                // Function removed as per user request
+            }
+        };
+
+        // تهيئة نظام الصوت
+        SoundSystem.init();
+        
+        // تفعيل الصوت عند أول تفاعل
+        document.addEventListener('click', () => {
+            if(SoundSystem.audioContext && SoundSystem.audioContext.state === 'suspended') {
+                SoundSystem.audioContext.resume();
+            }
+            // Trigger welcome message on first interaction (logic removed)
+            if(!SoundSystem.welcomePlayed) {
+                // SoundSystem.playWelcome(); // Disabled
+                SoundSystem.welcomePlayed = true;
+            }
+        }, { once: true });
+
+        // خلفية متحركة محسنة
+        const c = document.getElementById('bg-canvas');
+        const ctx = c.getContext('2d');
+        c.width = window.innerWidth; c.height = window.innerHeight;
+        
+        let particles = [];
+        for(let i=0; i<150; i++) {
+            particles.push({
+                x: Math.random() * c.width,
+                y: Math.random() * c.height,
+                r: Math.random() * 3 + 1,
+                s: Math.random() * 0.8 + 0.2,
+                opacity: Math.random() * 0.5 + 0.2,
+                color: Math.random() > 0.7 ? 'rgba(251, 191, 36, ' : 'rgba(6, 182, 212, '
+            });
+        }
+
+        function animateBg(){
+            ctx.fillStyle = 'rgba(2, 6, 23, 0.1)';
+            ctx.fillRect(0, 0, c.width, c.height);
+            
+            particles.forEach(p => {
+                p.y -= p.s;
+                if(p.y < 0) {
+                    p.y = c.height;
+                    p.x = Math.random() * c.width;
+                }
+                
+                ctx.globalAlpha = p.opacity;
+                ctx.fillStyle = p.color + p.opacity + ')';
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+                ctx.fill();
+                
+                // تأثير توهج للجسيمات
+                ctx.shadowBlur = 15;
+                ctx.shadowColor = p.color.includes('251') ? '#fbbf24' : '#06b6d4';
+                ctx.fill();
+                ctx.shadowBlur = 0;
+            });
+            
+            ctx.globalAlpha = 1;
+            requestAnimationFrame(animateBg);
+        }
+        animateBg();
+
+        // تحديث حجم Canvas عند تغيير حجم النافذة
+        window.addEventListener('resize', () => {
+            c.width = window.innerWidth;
+            c.height = window.innerHeight;
+        });
+
+        // تسجيل Service Worker
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/service-worker.js')
+                    .then((registration) => {
+                        console.log('SW registered: ', registration);
+                    })
+                    .catch((registrationError) => {
+                        console.log('SW registration failed: ', registrationError);
+                    });
+            });
+        }
+        
+        // Remove Intro Overlay after 6 seconds (updated)
+        setTimeout(() => {
+            const intro = document.getElementById('intro-overlay');
+            if(intro) {
+                intro.style.display = 'none';
+            }
+        }, 6000);
+    </script>
+</body> ص دي بيانات العبة كاملة احنا مش هنغير محتوي العبة خالص ولا هنغير الفكرة احنا بس هنغير طريقة العب
+RIOS طريقة العب انا هغيرها من مجرد لوحة مربعة مقيدة الي مدينة
+المدينة هتكون فيها شوارع كتيرة وهتكون فيها نفس المباني بس هتتحط في نص الطريق بحيث لو حد اشتري المبني دة ولاعب تاني عايز يعدي هيبقي لازم يدفع ولو دفع تلقاءي بيروح لبعد المبني مباشرة تب لو عايز يرجع بردو لازم يدفع وهيروح للده التانية مباشرة بعد الدفع وزرار الدفع بظهر لما تكون قدام المبني مباشرة طبعا المدينة متحاوطة بحواف يعني مش مفتوحة وخلاص كدة بس مش ضيقة هي مايلة انها تكون واسعة
+في نقطة مهمة ان باقي الخانات ماعدا المبني هتكون علي جانبي الطريق ممكن واحد يمين او شمال وهكذا
+البورصة هتكون مركز ضخم في نص المدينة ولما بتقرب علي الباب بتاعة بيظهر زرار الدخول ولو ضغطة بينقلك الي واجهة الاثتثمار بتاعة البورصة الطبيعية الي في الكود دة يعني مجرد بس طريقة الوصل الي البورصة هي الي اتغيرت
+المشروع هيبقي علي اليمين مرة وعلي الشمال مرة بشكل عشواءي ولو قربت منه هيظهر زرار شراء المشروع ولو اشتريته هيظهر الزرار القديم بتاع المشروع تحت عندك الي بتقدر تختار منه نوع المشروع ولو عايز تبيع مشروعك لازم تروح عند المشروع ولو شريه بيظهر زرار البيع عادي وبتبيعه بنفس القوانين بتاعت الكود دة
+وزرار الردار هيبقي موجود اساسي عندك وحاول تصغر حجمه شوية وهيبقي بنفس السيستم بتاعه بدون اي تغيير وحتي ارتباط الاسهم وامنتجاتبالذكاء الاصتناعي هيبقي بردو نفس الي في الكود دة يعني متفصلهمش عن بعض تمام
+نظام المنتجات هيبقي كالاتي هيبقي فيه خانات عشواءية في المدينة المفروض تتطلع منها حاجة اسمها تصريح لبناء متجر بعد لما تروح لخانة التصريح بيظهر زرار لعمل تصريح فانت Fالي Aبتروح وبتعمل تصريح وبيظهر علي الشاشة فوق علي اليمين تايمر مدته دقيقتين بعد الدقيتقين بيظهر لمدة 5 ثواني حرف عشواءي من ِ
+دول اسماء خانات المتاجر الموجودة في العبة وبيكونوا موجودين في اماكن عشواءية في المدينة لو ظهرلك حرف معين فانت بتدور علي مكان خانة المتجر الي طلعلك اسمه والمتجر دة بالذات لازم يكون متعلم بالون الاخضر عن باقي المتاجر يعني مش كل الاعبين بيشوفوه احضر ولما بتروح هناك بيظهر زرار شراء المنتجات ودة نفس الزرار الي موجود في الكود دة ولما تتباع المنتجات او جزء منها بتروح تاني لمتجرك عشان تشتري منتجات تانية وهكذا ولازم تروح بنفسك يعني مش هيظهر زرار تحت نهاءي لشراء المنتجات لازم تروح امام متجرك عشان تشتري المنتجات الي عايزها
+نظام الفلوس برده زي ما هو بيبقي معاك في الاول 3000
+طبعا انت هتعمل شكل العبة كانه مدينة وكل حاجة ليها شكل وطبعا العبة 2 دي عادي بس من فوق يعني منظور من فوق وهيكون مفيش بين الخانات عالمات او فواصل تبين انها خانات مبرمجة يعني الاعب هيقبي عنده بدل الخطوات هيبقي عنده ازرار تحكم امام وخلف ويمين ويسار وبقيبقي للاعب خطوات الخطوات دي بتبقي خانات صغيرة بحيث لو عايز يروح يمين او شمال او امام او خلف وبيكون الطريق مليان خانات بس مش كتيرة اوي عشان متبطاش من سرعة الجيم وطبعا سرعة الاعب طبعية مع هذة الخانات الغير مرءية في الجبم يعني الاعب هيشوف بس شكل الشارع مش هيشوف الخانت الصغيرة خالص دي
+العبة هتكون بوقت ولما يخلص الوقت العبة بتقف عند كل الاعبين وبيتطلع لوحة الترتيب والشخص الفاءز بيبقي جنبه كاس
+وبدل ما في واجهة البداية في اختاير الاسم ورقم السيرفر احنا هنخلي بس 3 ازرار زرار الدخول وزرار الدليل وزرار الانشاء لو الاعب دخل انشاء بيظهر له واجهة جديدة يختار منها شكل الشخصية بتاعته والاسم والسيرفر والوقت بتاع العبة لان الي بيعمل انشاء هو الي بيختار الوقت
+الوقت هيبقي اربع اختيارات 15 دقيقة او 20 دقيقة او 30 دقيقة او 45 دقيقة وطبعا التايمر بتاع الجيم بيبقي في فوق علي الشمال والشات هيبقي موجود عادب خالص بغرفة الانتظار اخر حاجة بعد لما غرفة الانتظار تخلص الاعبين بيداوا من بداية المدينة خالص وبيكونوا موازيين لبعض عند البداية بعض كدة بيبدا الجيم تمام
+اهم حاجة شكل المدينة يبقي كويس وكل حاجة مميزة بشكل وحط اشكال مباني 2 دي وكمان اشكال شوارع وكدة وممكن اشجار للزينة
+</html>                                                                                  
