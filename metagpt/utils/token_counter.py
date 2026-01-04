@@ -498,13 +498,51 @@ def count_message_tokens(messages, model="gpt-3.5-turbo-0125"):
             if isinstance(value, list):
                 # for gpt-4v
                 for item in value:
-                    if isinstance(item, dict) and item.get("type") in ["text"]:
-                        content = item.get("text", "")
-            num_tokens += len(encoding.encode(content))
+                    if isinstance(item, dict):
+                        if item.get("type") == "text":
+                            content = item.get("text", "")
+                            num_tokens += len(encoding.encode(content))
+                        elif item.get("type") == "image_url":
+                            image_url = item.get("image_url", {})
+                            url = image_url.get("url", "")
+                            detail = image_url.get("detail", "auto")
+                            num_tokens += count_image_tokens(url, detail)
+            else:
+                num_tokens += len(encoding.encode(content))
             if key == "name":
                 num_tokens += tokens_per_name
     num_tokens += 3  # every reply is primed with <|start|>assistant<|message|>
     return num_tokens
+
+
+def count_image_tokens(image_url: str, detail: str = "auto") -> int:
+    """
+    Calculate the number of tokens for an image based on OpenAI's pricing model.
+    Ref: https://platform.openai.com/docs/guides/vision/calculating-costs
+
+    Args:
+        image_url (str): The URL or base64 of the image.
+        detail (str): The detail level of the image ('low', 'high', 'auto').
+
+    Returns:
+        int: The estimated token count for the image.
+    """
+    if detail == "low":
+        return 85
+
+    # For 'auto' or 'high', we ideally need image dimensions.
+    # Since we don't fetch the image here to avoid latency/dependencies,
+    # we make a simplified assumption or fallback.
+    # TODO: Implement optional fetching or dimension parsing if critical.
+    # For now, if we can't determine dimensions, we assume 'high' detail 
+    # with a standard 1024x1024 size which results in 765 tokens (4 tiles).
+    
+    # Base cost
+    base_tokens = 85
+    
+    # If we assume standard high detail (1024x1024 -> 768 short side -> 4 512px tiles):
+    # 4 tiles * 170 + 85 = 765
+    return 765
 
 
 def count_output_tokens(string: str, model: str) -> int:
