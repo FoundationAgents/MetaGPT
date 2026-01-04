@@ -36,7 +36,10 @@ TOKEN_COSTS = {
     "gpt-4-0125-preview": {"prompt": 0.01, "completion": 0.03},
     "gpt-4-turbo": {"prompt": 0.01, "completion": 0.03},
     "gpt-4-turbo-2024-04-09": {"prompt": 0.01, "completion": 0.03},
-    "gpt-4-vision-preview": {"prompt": 0.01, "completion": 0.03},  # TODO add extra image price calculator
+    "gpt-4-vision-preview": {
+        "prompt": 0.01,
+        "completion": 0.03,
+    },  # TODO add extra image price calculator
     "gpt-4-1106-vision-preview": {"prompt": 0.01, "completion": 0.03},
     "gpt-4o": {"prompt": 0.005, "completion": 0.015},
     "gpt-4o-mini": {"prompt": 0.00015, "completion": 0.0006},
@@ -48,14 +51,23 @@ TOKEN_COSTS = {
     "o1-mini": {"prompt": 0.003, "completion": 0.012},
     "o1-mini-2024-09-12": {"prompt": 0.003, "completion": 0.012},
     "text-embedding-ada-002": {"prompt": 0.0004, "completion": 0.0},
-    "glm-3-turbo": {"prompt": 0.0007, "completion": 0.0007},  # 128k version, prompt + completion tokens=0.005￥/k-tokens
-    "glm-4": {"prompt": 0.014, "completion": 0.014},  # 128k version, prompt + completion tokens=0.1￥/k-tokens
+    "glm-3-turbo": {
+        "prompt": 0.0007,
+        "completion": 0.0007,
+    },  # 128k version, prompt + completion tokens=0.005￥/k-tokens
+    "glm-4": {
+        "prompt": 0.014,
+        "completion": 0.014,
+    },  # 128k version, prompt + completion tokens=0.1￥/k-tokens
     "glm-4-flash": {"prompt": 0, "completion": 0},
     "glm-4-plus": {"prompt": 0.007, "completion": 0.007},
     "gemini-1.5-flash": {"prompt": 0.000075, "completion": 0.0003},
     "gemini-1.5-pro": {"prompt": 0.0035, "completion": 0.0105},
     "gemini-1.0-pro": {"prompt": 0.0005, "completion": 0.0015},
-    "moonshot-v1-8k": {"prompt": 0.012, "completion": 0.012},  # prompt + completion tokens=0.012￥/k-tokens
+    "moonshot-v1-8k": {
+        "prompt": 0.012,
+        "completion": 0.012,
+    },  # prompt + completion tokens=0.012￥/k-tokens
     "moonshot-v1-32k": {"prompt": 0.024, "completion": 0.024},
     "moonshot-v1-128k": {"prompt": 0.06, "completion": 0.06},
     "open-mistral-7b": {"prompt": 0.00025, "completion": 0.00025},
@@ -68,7 +80,10 @@ TOKEN_COSTS = {
     "claude-2.1": {"prompt": 0.008, "completion": 0.024},
     "claude-3-sonnet-20240229": {"prompt": 0.003, "completion": 0.015},
     "claude-3-5-sonnet": {"prompt": 0.003, "completion": 0.015},
-    "claude-3-5-sonnet-v2": {"prompt": 0.003, "completion": 0.015},  # alias of newer 3.5 sonnet
+    "claude-3-5-sonnet-v2": {
+        "prompt": 0.003,
+        "completion": 0.015,
+    },  # alias of newer 3.5 sonnet
     "claude-3-5-sonnet-20240620": {"prompt": 0.003, "completion": 0.015},
     "claude-3-opus-20240229": {"prompt": 0.015, "completion": 0.075},
     "claude-3-haiku-20240307": {"prompt": 0.00025, "completion": 0.00125},
@@ -83,9 +98,15 @@ TOKEN_COSTS = {
     "openai/gpt-4o-mini-2024-07-18": {"prompt": 0.00015, "completion": 0.0006},
     "google/gemini-flash-1.5": {"prompt": 0.00025, "completion": 0.00075},
     "deepseek/deepseek-coder": {"prompt": 0.00014, "completion": 0.00028},
-    "deepseek/deepseek-chat": {"prompt": 0.00014, "completion": 0.00028},  # end, for openrouter
+    "deepseek/deepseek-chat": {
+        "prompt": 0.00014,
+        "completion": 0.00028,
+    },  # end, for openrouter
     "yi-large": {"prompt": 0.0028, "completion": 0.0028},
-    "microsoft/wizardlm-2-8x22b": {"prompt": 0.00108, "completion": 0.00108},  # for openrouter, start
+    "microsoft/wizardlm-2-8x22b": {
+        "prompt": 0.00108,
+        "completion": 0.00108,
+    },  # for openrouter, start
     "meta-llama/llama-3-70b-instruct": {"prompt": 0.008, "completion": 0.008},
     "llama3-70b-8192": {"prompt": 0.0059, "completion": 0.0079},
     "openai/gpt-3.5-turbo-0125": {"prompt": 0.0005, "completion": 0.0015},
@@ -94,13 +115,22 @@ TOKEN_COSTS = {
     "openai/o1-mini": {"prompt": 0.003, "completion": 0.012},
     "anthropic/claude-3-opus": {"prompt": 0.015, "completion": 0.075},
     "anthropic.claude-3-5-sonnet-20241022-v2:0": {"prompt": 0.003, "completion": 0.015},
-    "us.anthropic.claude-3-5-sonnet-20241022-v2:0": {"prompt": 0.003, "completion": 0.015},
+    "us.anthropic.claude-3-5-sonnet-20241022-v2:0": {
+        "prompt": 0.003,
+        "completion": 0.015,
+    },
     "anthropic/claude-3.7-sonnet": {"prompt": 0.003, "completion": 0.015},
     "anthropic/claude-3.7-sonnet:beta": {"prompt": 0.003, "completion": 0.015},
     "anthropic/claude-3.7-sonnet:thinking": {"prompt": 0.003, "completion": 0.015},
     "anthropic.claude-3-7-sonnet-20250219-v1:0": {"prompt": 0.003, "completion": 0.015},
-    "us.anthropic.claude-3-7-sonnet-20250219-v1:0": {"prompt": 0.003, "completion": 0.015},
-    "google/gemini-pro-1.5": {"prompt": 0.0025, "completion": 0.0075},  # for openrouter, end
+    "us.anthropic.claude-3-7-sonnet-20250219-v1:0": {
+        "prompt": 0.003,
+        "completion": 0.015,
+    },
+    "google/gemini-pro-1.5": {
+        "prompt": 0.0025,
+        "completion": 0.0075,
+    },  # for openrouter, end
     "deepseek-chat": {"prompt": 0.00027, "completion": 0.0011},
     "deepseek-coder": {"prompt": 0.00027, "completion": 0.0011},
     "deepseek-reasoner": {"prompt": 0.00055, "completion": 0.0022},
@@ -113,10 +143,13 @@ TOKEN_COSTS = {
     "doubao-pro-128k-240515": {"prompt": 0.0007, "completion": 0.0013},
     "llama3-70b-llama3-70b-instruct": {"prompt": 0.0, "completion": 0.0},
     "llama3-8b-llama3-8b-instruct": {"prompt": 0.0, "completion": 0.0},
-    "llama-4-Scout-17B-16E-Instruct-FP8" : {"prompt": 0.0, "completion": 0.0}, # start, for Llama API
+    "llama-4-Scout-17B-16E-Instruct-FP8": {
+        "prompt": 0.0,
+        "completion": 0.0,
+    },  # start, for Llama API
     "llama-4-Maverick-17B-128E-Instruct-FP8": {"prompt": 0.0, "completion": 0.0},
     "llama-3.3-8B-Instruct": {"prompt": 0.0, "completion": 0.0},
-    "llama-3.3-70B-Instruct": {"prompt": 0.0, "completion": 0.0}, # end, for Llama API
+    "llama-3.3-70B-Instruct": {"prompt": 0.0, "completion": 0.0},  # end, for Llama API
 }
 
 
@@ -218,7 +251,10 @@ DASHSCOPE_TOKEN_COSTS = {
     "baichuan-7b-v1": {"prompt": 0.0, "completion": 0.0},
     "chatglm-6b-v2": {"prompt": 0.0011, "completion": 0.0011},
     "chatglm3-6b": {"prompt": 0.0, "completion": 0.0},
-    "ziya-llama-13b-v1": {"prompt": 0.0, "completion": 0.0},  # no price page, judge it as free
+    "ziya-llama-13b-v1": {
+        "prompt": 0.0,
+        "completion": 0.0,
+    },  # no price page, judge it as free
     "dolly-12b-v2": {"prompt": 0.0, "completion": 0.0},
     "belle-llama-13b-2m-v1": {"prompt": 0.0, "completion": 0.0},
     "moss-moon-003-sft-v1": {"prompt": 0.0, "completion": 0.0},
@@ -229,7 +265,10 @@ DASHSCOPE_TOKEN_COSTS = {
 
 FIREWORKS_GRADE_TOKEN_COSTS = {
     "-1": {"prompt": 0.0, "completion": 0.0},  # abnormal condition
-    "16": {"prompt": 0.2, "completion": 0.8},  # 16 means model size <= 16B; 0.2 means $0.2/1M tokens
+    "16": {
+        "prompt": 0.2,
+        "completion": 0.8,
+    },  # 16 means model size <= 16B; 0.2 means $0.2/1M tokens
     "80": {"prompt": 0.7, "completion": 2.8},  # 80 means 16B < model size <= 80B
     "mixtral-8x7b": {"prompt": 0.4, "completion": 1.6},
 }
@@ -369,18 +408,39 @@ BEDROCK_TOKEN_COSTS = {
     "anthropic.claude-v2:0:18k": {"prompt": 0.008, "completion": 0.0024},
     "anthropic.claude-v2:1:200k": {"prompt": 0.008, "completion": 0.0024},
     "anthropic.claude-3-sonnet-20240229-v1:0": {"prompt": 0.003, "completion": 0.015},
-    "anthropic.claude-3-sonnet-20240229-v1:0:28k": {"prompt": 0.003, "completion": 0.015},
-    "anthropic.claude-3-sonnet-20240229-v1:0:200k": {"prompt": 0.003, "completion": 0.015},
+    "anthropic.claude-3-sonnet-20240229-v1:0:28k": {
+        "prompt": 0.003,
+        "completion": 0.015,
+    },
+    "anthropic.claude-3-sonnet-20240229-v1:0:200k": {
+        "prompt": 0.003,
+        "completion": 0.015,
+    },
     "anthropic.claude-3-5-sonnet-20240620-v1:0": {"prompt": 0.003, "completion": 0.015},
-    "anthropic.claude-3-haiku-20240307-v1:0": {"prompt": 0.00025, "completion": 0.00125},
-    "anthropic.claude-3-haiku-20240307-v1:0:48k": {"prompt": 0.00025, "completion": 0.00125},
-    "anthropic.claude-3-haiku-20240307-v1:0:200k": {"prompt": 0.00025, "completion": 0.00125},
+    "anthropic.claude-3-haiku-20240307-v1:0": {
+        "prompt": 0.00025,
+        "completion": 0.00125,
+    },
+    "anthropic.claude-3-haiku-20240307-v1:0:48k": {
+        "prompt": 0.00025,
+        "completion": 0.00125,
+    },
+    "anthropic.claude-3-haiku-20240307-v1:0:200k": {
+        "prompt": 0.00025,
+        "completion": 0.00125,
+    },
     # currently (2024-4-29) only available at US West (Oregon) AWS Region.
     "anthropic.claude-3-opus-20240229-v1:0": {"prompt": 0.015, "completion": 0.075},
     "anthropic.claude-3-5-sonnet-20241022-v2:0": {"prompt": 0.003, "completion": 0.015},
-    "us.anthropic.claude-3-5-sonnet-20241022-v2:0": {"prompt": 0.003, "completion": 0.015},
+    "us.anthropic.claude-3-5-sonnet-20241022-v2:0": {
+        "prompt": 0.003,
+        "completion": 0.015,
+    },
     "anthropic.claude-3-7-sonnet-20250219-v1:0": {"prompt": 0.003, "completion": 0.015},
-    "us.anthropic.claude-3-7-sonnet-20250219-v1:0": {"prompt": 0.003, "completion": 0.015},
+    "us.anthropic.claude-3-7-sonnet-20250219-v1:0": {
+        "prompt": 0.003,
+        "completion": 0.015,
+    },
     "cohere.command-text-v14": {"prompt": 0.0015, "completion": 0.0015},
     "cohere.command-text-v14:7:4k": {"prompt": 0.0015, "completion": 0.0015},
     "cohere.command-light-text-v14": {"prompt": 0.0003, "completion": 0.0003},
@@ -498,13 +558,50 @@ def count_message_tokens(messages, model="gpt-3.5-turbo-0125"):
             if isinstance(value, list):
                 # for gpt-4v
                 for item in value:
-                    if isinstance(item, dict) and item.get("type") in ["text"]:
-                        content = item.get("text", "")
-            num_tokens += len(encoding.encode(content))
+                    if isinstance(item, dict):
+                        if item.get("type") == "text":
+                            content = item.get("text", "")
+                            num_tokens += len(encoding.encode(content))
+                        elif item.get("type") == "image_url":
+                            image_url = item.get("image_url", {})
+                            url = image_url.get("url", "")
+                            detail = image_url.get("detail", "auto")
+                            num_tokens += count_image_tokens(url, detail)
+            else:
+                num_tokens += len(encoding.encode(content))
             if key == "name":
                 num_tokens += tokens_per_name
     num_tokens += 3  # every reply is primed with <|start|>assistant<|message|>
     return num_tokens
+
+
+def count_image_tokens(image_url: str, detail: str = "auto") -> int:
+    """
+    Calculate the number of tokens for an image based on OpenAI's pricing model.
+    Ref: https://platform.openai.com/docs/guides/vision/calculating-costs
+
+    Args:
+        image_url (str): The URL or base64 of the image.
+        detail (str): The detail level of the image ('low', 'high', 'auto').
+
+    Returns:
+        int: The estimated token count for the image.
+    """
+    if detail == "low":
+        return 85
+
+    # For 'auto' or 'high', we ideally need image dimensions.
+    # Since we don't fetch the image here to avoid latency/dependencies,
+    # we make a simplified assumption or fallback.
+    # TODO: Implement optional fetching or dimension parsing if critical.
+    # For now, if we can't determine dimensions, we assume 'high' detail
+    # with a standard 1024x1024 size which results in 765 tokens (4 tiles).
+
+    # Base cost
+
+    # If we assume standard high detail (1024x1024 -> 768 short side -> 4 512px tiles):
+    # 4 tiles * 170 + 85 = 765
+    return 765
 
 
 def count_output_tokens(string: str, model: str) -> int:
