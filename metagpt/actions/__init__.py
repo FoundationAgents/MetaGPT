@@ -26,6 +26,14 @@ from metagpt.actions.di.execute_nb_code import ExecuteNbCode
 from metagpt.actions.di.write_analysis_code import WriteAnalysisCode
 from metagpt.actions.di.write_plan import WritePlan
 
+# SCRUM ceremony actions
+from metagpt.actions.scrum import (
+    SprintPlanningAction,
+    DailyStandupAction,
+    SprintReviewAction,
+    RetrospectiveAction,
+)
+
 
 class ActionType(Enum):
     """All types of Actions, used for indexing."""
@@ -48,10 +56,20 @@ class ActionType(Enum):
     EXECUTE_NB_CODE = ExecuteNbCode
     WRITE_ANALYSIS_CODE = WriteAnalysisCode
     WRITE_PLAN = WritePlan
+    # SCRUM ceremony actions
+    SPRINT_PLANNING = SprintPlanningAction
+    DAILY_STANDUP = DailyStandupAction
+    SPRINT_REVIEW = SprintReviewAction
+    RETROSPECTIVE = RetrospectiveAction
 
 
 __all__ = [
     "ActionType",
     "Action",
     "ActionOutput",
+    "SprintPlanningAction",
+    "DailyStandupAction",
+    "SprintReviewAction",
+    "RetrospectiveAction",
 ]
+

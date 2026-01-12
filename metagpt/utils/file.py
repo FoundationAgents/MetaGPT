@@ -11,7 +11,12 @@ from pathlib import Path
 from typing import Optional, Tuple, Union
 
 import aiofiles
-from fsspec.implementations.memory import MemoryFileSystem as _MemoryFileSystem
+try:
+    from fsspec.implementations.memory import MemoryFileSystem as _MemoryFileSystem
+except ImportError:
+    class _MemoryFileSystem:
+        def _strip_protocol(self, path):
+            return path
 
 from metagpt.config2 import config
 from metagpt.logs import logger

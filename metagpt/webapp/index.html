@@ -1,0 +1,461 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MetaGPT SCRUM Dashboard</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/styles.css">
+</head>
+
+<body>
+    <div class="app-container">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="logo">
+                <div class="logo-icon">🚀</div>
+                <span>MetaGPT<span class="pro">Pro</span></span>
+            </div>
+
+            <nav class="nav-menu">
+                <a href="#" class="nav-item" data-view="newproject">
+                    <span class="nav-icon">➕</span>
+                    New Project
+                </a>
+                <a href="#" class="nav-item active" data-view="dashboard">
+                    <span class="nav-icon">📊</span>
+                    Dashboard
+                </a>
+                <a href="#" class="nav-item" data-view="backlog">
+                    <span class="nav-icon">📋</span>
+                    Backlog
+                </a>
+                <a href="#" class="nav-item" data-view="board">
+                    <span class="nav-icon">📌</span>
+                    Kanban Board
+                </a>
+                <a href="#" class="nav-item" data-view="sprints">
+                    <span class="nav-icon">🏃</span>
+                    Sprints
+                </a>
+                <a href="#" class="nav-item" data-view="ceremonies">
+                    <span class="nav-icon">🎯</span>
+                    Ceremonies
+                </a>
+                <a href="#" class="nav-item" data-view="team">
+                    <span class="nav-icon">👥</span>
+                    AI Team
+                </a>
+            </nav>
+
+            <div class="sidebar-footer">
+                <div class="project-selector">
+                    <label>Project</label>
+                    <select id="project-select">
+                        <option value="demo_project">Demo Project</option>
+                    </select>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Header -->
+            <header class="header">
+                <div class="header-left">
+                    <h1 id="page-title">Dashboard</h1>
+                    <span class="breadcrumb">MetaGPT Pro / SCRUM</span>
+                </div>
+                <div class="header-right">
+                    <div class="connection-status" id="connection-status">
+                        <span class="status-dot"></span>
+                        <span>Connecting...</span>
+                    </div>
+                    <button class="btn btn-primary" id="refresh-btn">
+                        🔄 Refresh
+                    </button>
+                </div>
+            </header>
+
+            <!-- New Project View -->
+            <section id="newproject-view" class="view">
+                <div class="project-creation-container">
+                    <!-- Left: Chat Interface -->
+                    <div class="chat-panel">
+                        <div class="card">
+                            <div class="card-header">
+                                <h2>💬 Describe Your Project</h2>
+                                <span class="badge" id="chat-status">Ready</span>
+                            </div>
+                            <div class="card-body">
+                                <div class="chat-messages" id="chat-messages">
+                                    <div class="chat-message ai">
+                                        <div class="message-avatar">🤖</div>
+                                        <div class="message-content">
+                                            <strong>AI Product Manager</strong>
+                                            <p>Hello! I'm your AI Product Manager. Tell me about the software you want
+                                                to build, and I'll help refine your requirements. What would you like to
+                                                create?</p>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="chat-input-container">
+                                    <textarea id="chat-input" placeholder="Describe your software idea..."
+                                        rows="3"></textarea>
+                                    <button class="btn btn-primary" onclick="sendChatMessage()">
+                                        Send 📤
+                                    </button>
+                                </div>
+                                <div class="chat-actions" id="chat-actions">
+                                    <button class="btn btn-secondary" onclick="skipQuestionsAndApprove()" id="skip-btn"
+                                        style="display: none;">
+                                        ⏩ Skip Questions & Proceed
+                                    </button>
+                                    <button class="btn btn-primary" onclick="approveRequirements()" id="approve-btn"
+                                        style="display: none;">
+                                        ✅ Approve & Start Development
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Right: Agent Activity -->
+                    <div class="activity-panel">
+                        <div class="card">
+                            <div class="card-header">
+                                <h2>🤖 Agent Activity</h2>
+                                <span class="badge" id="agents-status">Idle</span>
+                            </div>
+                            <div class="card-body">
+                                <div class="agent-activity-feed" id="agent-activity-feed">
+                                    <p class="empty-state">Submit requirements to see AI agents in action.</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Live Status -->
+                        <div class="card" style="margin-top: 16px;">
+                            <div class="card-header">
+                                <h2>📊 Live Status</h2>
+                            </div>
+                            <div class="card-body">
+                                <div class="agent-status-list" id="agent-status-list">
+                                    <div class="agent-status-item">
+                                        <span class="agent-dot idle"></span>
+                                        <span class="agent-name">Product Owner</span>
+                                        <span class="agent-task">Waiting</span>
+                                    </div>
+                                    <div class="agent-status-item">
+                                        <span class="agent-dot idle"></span>
+                                        <span class="agent-name">Architect</span>
+                                        <span class="agent-task">Waiting</span>
+                                    </div>
+                                    <div class="agent-status-item">
+                                        <span class="agent-dot idle"></span>
+                                        <span class="agent-name">Engineer</span>
+                                        <span class="agent-task">Waiting</span>
+                                    </div>
+                                    <div class="agent-status-item">
+                                        <span class="agent-dot idle"></span>
+                                        <span class="agent-name">QA Engineer</span>
+                                        <span class="agent-task">Waiting</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Dashboard View -->
+            <section id="dashboard-view" class="view active">
+                <!-- Metrics Cards -->
+                <div class="metrics-grid">
+                    <div class="metric-card">
+                        <div class="metric-icon progress-icon">📈</div>
+                        <div class="metric-content">
+                            <span class="metric-value" id="progress-percent">0%</span>
+                            <span class="metric-label">Sprint Progress</span>
+                        </div>
+                        <div class="metric-bar">
+                            <div class="metric-bar-fill" id="progress-bar" style="width: 0%"></div>
+                        </div>
+                    </div>
+
+                    <div class="metric-card">
+                        <div class="metric-icon points-icon">⭐</div>
+                        <div class="metric-content">
+                            <span class="metric-value" id="points-completed">0</span>
+                            <span class="metric-label">Points Completed</span>
+                        </div>
+                    </div>
+
+                    <div class="metric-card">
+                        <div class="metric-icon remaining-icon">⏳</div>
+                        <div class="metric-content">
+                            <span class="metric-value" id="points-remaining">0</span>
+                            <span class="metric-label">Points Remaining</span>
+                        </div>
+                    </div>
+
+                    <div class="metric-card alert">
+                        <div class="metric-icon blocked-icon">🚫</div>
+                        <div class="metric-content">
+                            <span class="metric-value" id="blocked-count">0</span>
+                            <span class="metric-label">Blocked Items</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Sprint Overview -->
+                <div class="card">
+                    <div class="card-header">
+                        <h2>Current Sprint</h2>
+                        <span class="badge" id="sprint-badge">Sprint 1</span>
+                    </div>
+                    <div class="card-body">
+                        <div class="sprint-goals" id="sprint-goals">
+                            <p class="empty-state">No sprint active. Run Sprint Planning to begin.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Quick Actions -->
+                <div class="card">
+                    <div class="card-header">
+                        <h2>Quick Actions</h2>
+                    </div>
+                    <div class="card-body">
+                        <div class="quick-actions">
+                            <button class="action-btn" onclick="runCeremony('sprint-planning')">
+                                <span class="action-icon">📋</span>
+                                <span>Start Sprint Planning</span>
+                            </button>
+                            <button class="action-btn" onclick="runCeremony('daily-standup')">
+                                <span class="action-icon">☀️</span>
+                                <span>Daily Standup</span>
+                            </button>
+                            <button class="action-btn" onclick="runCeremony('sprint-review')">
+                                <span class="action-icon">✅</span>
+                                <span>Sprint Review</span>
+                            </button>
+                            <button class="action-btn" onclick="runCeremony('retrospective')">
+                                <span class="action-icon">🔄</span>
+                                <span>Retrospective</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Backlog View -->
+            <section id="backlog-view" class="view">
+                <div class="view-actions">
+                    <button class="btn btn-primary" onclick="prioritizeBacklog()">
+                        🤖 AI Prioritize
+                    </button>
+                </div>
+                <div class="card">
+                    <div class="card-header">
+                        <h2>Product Backlog</h2>
+                        <span class="badge" id="backlog-points">0 points</span>
+                    </div>
+                    <div class="card-body">
+                        <div id="backlog-list" class="backlog-list">
+                            <p class="empty-state">No stories in backlog. Add requirements to begin.</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Kanban Board View -->
+            <section id="board-view" class="view">
+                <div class="kanban-board" id="kanban-board">
+                    <div class="kanban-column" data-status="todo">
+                        <div class="column-header">
+                            <span class="column-title">📝 To Do</span>
+                            <span class="column-count" id="todo-count">0</span>
+                        </div>
+                        <div class="column-tasks" id="todo-tasks"></div>
+                    </div>
+
+                    <div class="kanban-column" data-status="in_progress">
+                        <div class="column-header">
+                            <span class="column-title">🔨 In Progress</span>
+                            <span class="column-count" id="in-progress-count">0</span>
+                        </div>
+                        <div class="column-tasks" id="in-progress-tasks"></div>
+                    </div>
+
+                    <div class="kanban-column" data-status="review">
+                        <div class="column-header">
+                            <span class="column-title">👀 Review</span>
+                            <span class="column-count" id="review-count">0</span>
+                        </div>
+                        <div class="column-tasks" id="review-tasks"></div>
+                    </div>
+
+                    <div class="kanban-column" data-status="done">
+                        <div class="column-header">
+                            <span class="column-title">✅ Done</span>
+                            <span class="column-count" id="done-count">0</span>
+                        </div>
+                        <div class="column-tasks" id="done-tasks"></div>
+                    </div>
+
+                    <div class="kanban-column blocked-column" data-status="blocked">
+                        <div class="column-header">
+                            <span class="column-title">🚫 Blocked</span>
+                            <span class="column-count" id="blocked-tasks-count">0</span>
+                        </div>
+                        <div class="column-tasks" id="blocked-tasks"></div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Sprints View -->
+            <section id="sprints-view" class="view">
+                <div class="sprints-timeline" id="sprints-timeline">
+                    <p class="empty-state">No sprints created yet. Run Sprint Planning to create your first sprint.</p>
+                </div>
+            </section>
+
+            <!-- Ceremonies View -->
+            <section id="ceremonies-view" class="view">
+                <div class="ceremonies-grid">
+                    <div class="ceremony-card" onclick="runCeremony('sprint-planning')">
+                        <div class="ceremony-icon">📋</div>
+                        <h3>Sprint Planning</h3>
+                        <p>Select stories, create sprint backlog, define sprint goals</p>
+                        <button class="btn btn-primary">Run Ceremony</button>
+                    </div>
+
+                    <div class="ceremony-card" onclick="runCeremony('daily-standup')">
+                        <div class="ceremony-icon">☀️</div>
+                        <h3>Daily Standup</h3>
+                        <p>Track progress, identify blockers, sync the team</p>
+                        <button class="btn btn-primary">Run Ceremony</button>
+                    </div>
+
+                    <div class="ceremony-card" onclick="runCeremony('sprint-review')">
+                        <div class="ceremony-icon">✅</div>
+                        <h3>Sprint Review</h3>
+                        <p>Demo completed work, validate acceptance criteria</p>
+                        <button class="btn btn-primary">Run Ceremony</button>
+                    </div>
+
+                    <div class="ceremony-card" onclick="runCeremony('retrospective')">
+                        <div class="ceremony-icon">🔄</div>
+                        <h3>Retrospective</h3>
+                        <p>Analyze sprint, identify improvements, create action items</p>
+                        <button class="btn btn-primary">Run Ceremony</button>
+                    </div>
+                </div>
+
+                <!-- Ceremony Output -->
+                <div class="card" id="ceremony-output-card" style="display: none;">
+                    <div class="card-header">
+                        <h2 id="ceremony-output-title">Ceremony Output</h2>
+                        <button class="btn btn-secondary" onclick="closeCeremonyOutput()">✕ Close</button>
+                    </div>
+                    <div class="card-body">
+                        <div id="ceremony-output" class="ceremony-output"></div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Team View -->
+            <section id="team-view" class="view">
+                <div class="team-grid">
+                    <div class="team-card product-owner">
+                        <div class="team-avatar">📋</div>
+                        <h3>Alice</h3>
+                        <span class="role-badge">Product Owner</span>
+                        <p>Manages backlog, defines priorities, approves increments</p>
+                        <ul class="capabilities">
+                            <li>Backlog Prioritization</li>
+                            <li>Acceptance Criteria</li>
+                            <li>Story Writing</li>
+                        </ul>
+                    </div>
+
+                    <div class="team-card scrum-master">
+                        <div class="team-avatar">🏃</div>
+                        <h3>Bob</h3>
+                        <span class="role-badge">Scrum Master</span>
+                        <p>Facilitates ceremonies, removes blockers, coaches the team</p>
+                        <ul class="capabilities">
+                            <li>Sprint Planning</li>
+                            <li>Daily Standup</li>
+                            <li>Retrospective</li>
+                        </ul>
+                    </div>
+
+                    <div class="team-card architect">
+                        <div class="team-avatar">🏗️</div>
+                        <h3>David</h3>
+                        <span class="role-badge">Architect</span>
+                        <p>Designs system architecture, makes technical decisions</p>
+                        <ul class="capabilities">
+                            <li>System Design</li>
+                            <li>API Design</li>
+                            <li>Tech Stack Selection</li>
+                        </ul>
+                    </div>
+
+                    <div class="team-card engineer">
+                        <div class="team-avatar">💻</div>
+                        <h3>Alex</h3>
+                        <span class="role-badge">Engineer</span>
+                        <p>Implements features, writes production code</p>
+                        <ul class="capabilities">
+                            <li>Code Implementation</li>
+                            <li>Feature Development</li>
+                            <li>Bug Fixes</li>
+                        </ul>
+                    </div>
+
+                    <div class="team-card qa-engineer">
+                        <div class="team-avatar">🧪</div>
+                        <h3>Charlie</h3>
+                        <span class="role-badge">QA Engineer</span>
+                        <p>Writes tests, ensures quality, validates functionality</p>
+                        <ul class="capabilities">
+                            <li>Test Writing</li>
+                            <li>Quality Assurance</li>
+                            <li>Bug Verification</li>
+                        </ul>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- Modal -->
+    <div class="modal-overlay" id="modal-overlay">
+        <div class="modal" id="modal">
+            <div class="modal-header">
+                <h2 id="modal-title">Modal</h2>
+                <button class="modal-close" onclick="closeModal()">✕</button>
+            </div>
+            <div class="modal-body" id="modal-body"></div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeModal()">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Loading Overlay -->
+    <div class="loading-overlay" id="loading-overlay">
+        <div class="loading-spinner"></div>
+        <p id="loading-text">Loading...</p>
+    </div>
+
+    <script src="/static/app.bundle.js"></script>
+</body>
+
+</html>

@@ -4,6 +4,8 @@ from metagpt.team import Team
 from metagpt.config2 import config
 from metagpt.logs import logger
 from metagpt.api.schemas import CompanyStatus, RoleStatus, ProjectRequest
+from metagpt.project.state_manager import state_manager
+from metagpt.project.event_system import event_bus, Event, EventType
 
 class GlobalOrchestrator:
     _instance = None
@@ -29,37 +31,29 @@ class GlobalOrchestrator:
         return "idle"
 
     def hire(self, roles: list = None):
-        """Initialize a new company team"""
-        # If roles is None, Team will load default from SoftwareCompany or empty, 
-        # but SoftwareCompany logic usually does config.roles/startup. 
-        # For API, we initialize a fresh Team.
-        self.team = Team()
-        self.team.hire(roles or [
-            # Default roles if none provided, imported dynamically to avoid circular imports if possible
-            # But Team() might be empty.
-            # We typically want the Standard Software Company Structure.
-            # We'll rely on Team default behavior or caller to provide roles.
-            # For now, let's just init an empty Team or check config.
-        ])
+        """Initialize a new company team with SCRUM agents"""
+        # CRITICAL: Use use_mgx=False to avoid MGXEnv which requires a "Mike" TeamLeader role
+        # Standard Environment works with any roles without special requirements
+        self.team = Team(use_mgx=False)
+        self.team.hire(roles or [])
         
-        # HACK: Replicate "Software Company" setup if empty
+        # Hire our custom SCRUM agents if no roles provided
         if not self.team.env.get_roles():
-            from metagpt.roles.project_manager import ProjectManager
-            from metagpt.roles.product_manager import ProductManager
-            from metagpt.roles.architect import Architect
-            from metagpt.roles.engineer import Engineer
-            from metagpt.roles.qa_engineer import QaEngineer
-            from metagpt.roles.di.team_leader import TeamLeader
-            from metagpt.roles.di.engineer2 import Engineer2
-            from metagpt.roles.di.data_analyst import DataAnalyst
+            from metagpt.roles.scrum.product_owner import ProductOwner
+            from metagpt.roles.scrum.scrum_master import ScrumMaster
+            from metagpt.roles.scrum.architect import Architect
+            from metagpt.roles.scrum.engineer import Engineer
+            from metagpt.roles.scrum.qa_engineer import QAEngineer
             
-            self.team.hire([
-                TeamLeader(),
-                ProductManager(),
-                Architect(),
-                Engineer2(), # Use Engineer2 as per software_company.py default
-                DataAnalyst(),
-            ])
+            scrum_team = [
+                ProductOwner(),  # Alice - manages backlog
+                ScrumMaster(),   # Bob - facilitates ceremonies
+                Architect(),     # (uses default name) - system design
+                Engineer(),      # Alex - implements features
+                QAEngineer(),    # Charlie - writes tests
+            ]
+            self.team.hire(scrum_team)
+            logger.info(f"Hired SCRUM team: {[r.name for r in scrum_team]}")
         logger.info("New Team hired.")
 
     async def start_project(self, req: ProjectRequest):
@@ -67,6 +61,7 @@ class GlobalOrchestrator:
             raise ValueError("Company is already running a project.")
         
         requirement_text = req.requirement
+        
         # Determine project_id with proper precedence
         if req.project_name:
             project_id = req.project_name
@@ -76,6 +71,14 @@ class GlobalOrchestrator:
             project_id = "default_project"
         
         try:
+            # 1. Initialize Persistent Project State
+            project_meta = await state_manager.create_project(
+                name=project_id,
+                description=f"Project derived from conversation {req.conversation_id}",
+            )
+            # Reassign project_id to ensure consistency (though usually same)
+            project_id = project_meta.id
+            
             # Check if using pre-approved requirements from conversation
             if req.conversation_id:
                 from metagpt.conversation import conversation_manager
@@ -83,10 +86,8 @@ class GlobalOrchestrator:
                 if approved_text:
                     requirement_text = approved_text
                     logger.info(f"Using approved requirements from conversation {req.conversation_id}")
-                else:
-                    logger.warning(f"No approved requirements found for {req.conversation_id}, using provided requirement")
             
-            # 1. Handle Project Name
+            # 2. Handle Project Name config updates
             if req.project_name:
                 config.update_via_cli(
                     project_path=req.project_name, 
@@ -96,14 +97,15 @@ class GlobalOrchestrator:
                     max_auto_summarize_code=0
                 )
             
-            # 2. Generate Task Breakdown & Sprint Plan
+            # 3. Generate Task Breakdown & Sprint Plan
+            # Pass persistence-aware project_id
             await self._initialize_project_management(project_id, requirement_text)
             
             if not self.team:
                 self.hire()
 
-            # 3. Hook Environment for Real-time structured events
-            self._hook_environment()
+            # 4. Hook Environment for Real-time structured events
+            self._hook_environment(project_id)
 
             self.team.invest(req.investment)
             self.team.run_project(requirement_text)  # Use potentially enhanced requirement
@@ -112,8 +114,8 @@ class GlobalOrchestrator:
             raise ValueError(f"Start Project failed at step: {e}")
         
         # Start background task
-        self.running_task = asyncio.create_task(self._run_loop(req.n_round))
-        logger.info(f"Project started: {req.project_name}")
+        self.running_task = asyncio.create_task(self._run_loop(req.n_round, project_id))
+        logger.info(f"Project started: {project_id}")
     
     async def _initialize_project_management(self, project_id: str, requirements: str):
         """Initialize task breakdown, sprints, and Kanban board"""
@@ -151,7 +153,7 @@ class GlobalOrchestrator:
             logger.warning(f"Failed to initialize project management: {e}")
             # Non-fatal - continue with standard workflow
 
-    def _hook_environment(self):
+    def _hook_environment(self, project_id: str):
         if hasattr(self.team.env, "_is_hooked") and self.team.env._is_hooked:
             return
             
@@ -163,25 +165,39 @@ class GlobalOrchestrator:
                 message = args[0]
                 if hasattr(message, 'content'):
                     # Emit structured event
-                    asyncio.create_task(self._broadcast({
-                        "type": "message",
-                        "role": message.role,
-                        "content": message.content,
-                        "cause_by": str(message.cause_by),
-                        "sent_from": message.sent_from,
-                        # "send_to": list(message.send_to) if message.send_to else []
-                    }))
+                    asyncio.create_task(event_bus.publish(Event(
+                        type=EventType.AGENT_ACTING,
+                        project_id=project_id,
+                        agent_id=message.role,
+                        payload={
+                            "role": message.role,
+                            "content": message.content,
+                            "cause_by": str(message.cause_by),
+                            "sent_from": message.sent_from
+                        }
+                    )))
             return original_publish(*args, **kwargs)
         
         object.__setattr__(self.team.env, "publish_message", new_publish)
         self.team.env._is_hooked = True
 
-    async def _run_loop(self, n_round: int):
+    async def _run_loop(self, n_round: int, project_id: str):
         try:
             self._status = "running"
-            await self.team.run(n_round=n_round, idea=None) # idea already set in run_project
+            await self.team.run(n_round=n_round, idea=None)
+            
+            # Broadcast completion
+            await event_bus.publish(Event(
+                type=EventType.PROJECT_COMPLETED,
+                project_id=project_id
+            ))
         except Exception as e:
             logger.exception(f"Error in project run loop: {e}")
+            await event_bus.publish(Event(
+                type=EventType.SYSTEM_ERROR,
+                project_id=project_id,
+                payload={"error": str(e)}
+            ))
         finally:
             self._status = "idle"
 
@@ -217,28 +233,23 @@ class GlobalOrchestrator:
 
     # Log Streaming Logic
     def _log_sink(self, message):
-         asyncio.create_task(self._broadcast(str(message)))
-
-    async def _broadcast(self, message):
-        import json
-        msg_str = json.dumps(message) if isinstance(message, dict) else str(message)
-        for ws in self._websockets:
-            try:
-                await ws.send_text(msg_str)
-            except Exception:
-                pass
-
-    def add_websocket(self, ws):
-        self._websockets.add(ws)
-
-    def remove_websocket(self, ws):
-        self._websockets.remove(ws)
+         # Broadcast raw log as System Info event
+         # Note: logging sink is sync, need careful async handling
+         # For simplicity, we might skip full Event wrapping for high-volume logs 
+         # or fire-and-forget
+         pass 
 
     def start_log_stream(self):
-        if not hasattr(self, "_streaming_started") or not self._streaming_started:
-            from metagpt.logs import logger
-            logger.add(self._log_sink, level="INFO")
-            self._streaming_started = True
+        # Deprecated: Loguru sink should likely be handled by EventSystem or global logger config
+        pass
+
+    def add_websocket(self, ws):
+        # Backward compatibility wrapper
+        event_bus.add_websocket(ws)
+
+    def remove_websocket(self, ws):
+        # Backward compatibility wrapper
+        event_bus.remove_websocket(ws)
 
     async def get_plan(self):
         """Retrieve the current project plan/tasks from the generated file"""
@@ -268,5 +279,3 @@ class GlobalOrchestrator:
 
 # Global Instance
 orchestrator = GlobalOrchestrator()
-orchestrator._websockets = set()
-orchestrator.start_log_stream()

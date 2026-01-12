@@ -30,7 +30,11 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Callable, Dict, List
 
-from gitignore_parser import parse_gitignore
+try:
+    from gitignore_parser import parse_gitignore
+except ImportError:
+    def parse_gitignore(full_path):
+        return lambda x: False
 
 from metagpt.tools.libs.shell import shell_execute
 

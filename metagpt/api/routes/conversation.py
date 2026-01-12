@@ -26,6 +26,7 @@ router = APIRouter()
 
 @router.post("/start", response_model=ConversationStartResponse)
 async def start_conversation(req: ConversationStartRequest):
+    print(f"DEBUG: Received start_conversation request with idea: {req.initial_idea}")
     """
     Start a new conversation session with AI Product Manager.
     
@@ -97,10 +98,35 @@ async def approve_requirements(req: ApprovalRequest):
     """
     try:
         project_id = await conversation_manager.approve(req.conversation_id)
+        
+        # Now trigger the actual agent execution
+        from metagpt.api.orchestrator import orchestrator
+        from metagpt.api.schemas import ProjectRequest
+        
+        # Get the approved requirement text
+        requirement_text = await conversation_manager.get_approved_requirement_text(req.conversation_id)
+        if not requirement_text:
+            requirement_text = f"Build the project approved in conversation {req.conversation_id}"
+        
+        # Start the project with agents
+        try:
+            project_req = ProjectRequest(
+                requirement=requirement_text,
+                project_name=project_id,
+                conversation_id=req.conversation_id,
+                investment=3.0,
+                n_round=5
+            )
+            await orchestrator.start_project(project_req)
+            logger.info(f"Triggered project execution for {project_id}")
+        except Exception as e:
+            logger.exception(f"Failed to start project execution: {e}")
+            # Still return success for the approval - project can be started manually
+        
         return ApprovalResponse(
             project_id=project_id,
             status="approved",
-            message="Requirements approved. Development can now start."
+            message="Requirements approved. Development agents started."
         )
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))

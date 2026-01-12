@@ -193,11 +193,55 @@ class BacklogManager:
         await self.save()
         return True
     
-    def reprioritize_story(self, story_id: str, new_index: int) -> bool:
-        """Move a story to a new position in priority order"""
-        if not self._backlog or story_id not in self._backlog.priority_order:
-            return False
-        
         self._backlog.priority_order.remove(story_id)
         self._backlog.priority_order.insert(new_index, story_id)
         return True
+
+    async def add_story(self, title: str, description: str, priority: Priority) -> Story:
+        """Add a new user story to the backlog"""
+        if not self._backlog:
+            # Initialize empty backlog if needed
+            self._backlog = Backlog(project_id=self.project_id)
+        
+        story = Story(
+            title=title,
+            description=description,
+            priority=priority,
+            status=TaskStatus.TODO
+        )
+        
+        self._backlog.stories[story.id] = story
+        self._backlog.priority_order.append(story.id)
+        
+        await self.save()
+        return story
+
+    async def add_task(self, title: str, description: str, priority: Priority, type: str = "task", parent_story_id: Optional[str] = None) -> Task:
+        """Add a new task or bug to the backlog"""
+        if not self._backlog:
+            self._backlog = Backlog(project_id=self.project_id)
+            
+        task = Task(
+            title=title,
+            description=description,
+            type=type, # task, bug
+            status=TaskStatus.TODO,
+            parent_story=parent_story_id
+        )
+        
+        self._backlog.tasks[task.id] = task
+        
+        # Link to story if parent provided
+        if parent_story_id and parent_story_id in self._backlog.stories:
+            self._backlog.stories[parent_story_id].tasks.append(task.id)
+            
+        await self.save()
+        
+        # Also add to Board? Yes, if it's actionable.
+        # We need to import board_tracker strictly or assume caller handles it.
+        # But to be safe, let's keep BacklogManager focused on storage 
+        # and let the Controller (project.py) handle Board sync to avoid circular imports?
+        # Actually board_tracker is a singleton imported in project.py.
+        # So we leave board sync to project.py.
+        
+        return task

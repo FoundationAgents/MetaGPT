@@ -4,9 +4,13 @@
 import copy
 import os
 
-import qianfan
-from qianfan import ChatCompletion
-from qianfan.resources.typing import JsonBody
+try:
+    import qianfan
+    from qianfan import ChatCompletion
+    from qianfan.resources.typing import JsonBody
+except ImportError:
+    class ChatCompletion: pass
+    JsonBody = dict
 
 from metagpt.configs.llm_config import LLMConfig, LLMType
 from metagpt.const import USE_CONFIG_TIMEOUT

@@ -19,10 +19,87 @@ from metagpt.project.schemas import (
     BoardResponse,
     ProjectMetrics,
     Task,
+    Story,
+    Priority
 )
 from metagpt.logs import logger
+from pydantic import BaseModel
+from metagpt.project.state_manager import state_manager
+from metagpt.project.schemas import (
+    TaskStatus,
+    TaskMoveRequest,
+    TaskMoveResponse,
+    SprintResponse,
+    BacklogResponse,
+    BoardResponse,
+    ProjectMetrics,
+    Task,
+    Story,
+    Priority,
+    ProjectMetadata
+)
+
+class AddStoryRequest(BaseModel):
+    title: str
+    description: str = ""
+    priority: Priority = Priority.MEDIUM
+
+class AddTaskRequest(BaseModel):
+    title: str
+    description: str = ""
+    priority: Priority = Priority.MEDIUM
+    type: str = "task" # task, bug
+    parent_story_id: str = None
 
 router = APIRouter()
+
+@router.get("/", response_model=List[ProjectMetadata])
+async def list_projects():
+    """List all persistent projects"""
+    try:
+        return await state_manager.list_projects()
+    except Exception as e:
+        logger.exception(f"Failed to list projects: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/{project_id}/backlog/story", response_model=Story)
+async def add_story(project_id: str, req: AddStoryRequest):
+    """Add a new story to the backlog"""
+    try:
+        manager = _get_backlog_manager(project_id)
+        story = await manager.add_story(
+            title=req.title,
+            description=req.description,
+            priority=req.priority
+        )
+        return story
+    except Exception as e:
+        logger.exception(f"Failed to add story: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/{project_id}/backlog/task", response_model=Task)
+async def add_task(project_id: str, req: AddTaskRequest):
+    """Add a new task or bug to the backlog and board"""
+    try:
+        manager = _get_backlog_manager(project_id)
+        task = await manager.add_task(
+            title=req.title,
+            description=req.description,
+            priority=req.priority,
+            type=req.type,
+            parent_story_id=req.parent_story_id
+        )
+        
+        # Sync to board
+        await board_tracker.add_task(project_id, task)
+        
+        return task
+    except Exception as e:
+        logger.exception(f"Failed to add task: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
 
 # Cache backlog managers per project
 _backlog_managers: dict[str, BacklogManager] = {}
@@ -94,7 +171,12 @@ async def get_backlog(project_id: str):
         backlog = await manager.load()
         
         if not backlog:
-            raise HTTPException(status_code=404, detail="Backlog not found")
+            # Return empty backlog instead of 404
+            return BacklogResponse(
+                stories=[],
+                total_points=0,
+                priority_order=[]
+            )
         
         return BacklogResponse(
             stories=list(backlog.stories.values()),
@@ -119,7 +201,15 @@ async def get_board(project_id: str):
             # Try loading from disk
             board = await board_tracker.load_board(project_id)
             if not board:
-                raise HTTPException(status_code=404, detail="Board not found")
+                # Return empty board instead of 404
+                return BoardResponse(
+                    todo=[],
+                    in_progress=[],
+                    review=[],
+                    testing=[],
+                    done=[],
+                    blocked=[]
+                )
         
         def get_tasks_for_column(task_ids: List[str]) -> List[Task]:
             return [tasks[tid] for tid in task_ids if tid in tasks]

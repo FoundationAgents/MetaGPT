@@ -6,24 +6,40 @@ import json
 from http import HTTPStatus
 from typing import Any, AsyncGenerator, Dict, List, Union
 
-import dashscope
-from dashscope.aigc.generation import Generation
-from dashscope.api_entities.aiohttp_request import AioHttpRequest
-from dashscope.api_entities.api_request_data import ApiRequestData
-from dashscope.api_entities.api_request_factory import _get_protocol_params
-from dashscope.api_entities.dashscope_response import (
-    GenerationOutput,
-    GenerationResponse,
-    Message,
-)
-from dashscope.client.base_api import BaseAioApi
-from dashscope.common.constants import SERVICE_API_PATH, ApiProtocol
-from dashscope.common.error import (
-    InputDataRequired,
-    InputRequired,
-    ModelRequired,
-    UnsupportedApiProtocol,
-)
+try:
+    import dashscope
+    from dashscope.aigc.generation import Generation
+    from dashscope.api_entities.aiohttp_request import AioHttpRequest
+    from dashscope.api_entities.api_request_data import ApiRequestData
+    from dashscope.api_entities.api_request_factory import _get_protocol_params
+    from dashscope.api_entities.dashscope_response import (
+        GenerationOutput,
+        GenerationResponse,
+        Message,
+    )
+    from dashscope.client.base_api import BaseAioApi
+    from dashscope.common.constants import SERVICE_API_PATH, ApiProtocol
+    from dashscope.common.error import (
+        InputDataRequired,
+        InputRequired,
+        ModelRequired,
+        UnsupportedApiProtocol,
+    )
+except ImportError:
+    class Generation: task = "generation"
+    class BaseAioApi: pass
+    class AioHttpRequest: pass
+    class ApiRequestData: pass
+    class GenerationOutput(dict): pass
+    class GenerationResponse: pass
+    class Message: pass
+    class UnsupportedApiProtocol(Exception): pass
+    class InputDataRequired(Exception): pass
+    class InputRequired(Exception): pass
+    class ModelRequired(Exception): pass
+    SERVICE_API_PATH = ""
+    class ApiProtocol: HTTP="http"; HTTPS="https"
+    def _get_protocol_params(kwargs): return [None]*13
 
 from metagpt.const import USE_CONFIG_TIMEOUT
 from metagpt.logs import log_llm_stream

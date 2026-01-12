@@ -1,6 +1,16 @@
 """Cleaner."""
 
-from unidiff import Hunk, PatchedFile, PatchSet
+try:
+    from unidiff import Hunk, PatchedFile, PatchSet
+except ImportError:
+    class Hunk:
+        def __init__(self, **kwargs): pass
+        def append(self, line): pass
+    class PatchedFile:
+        def __init__(self, **kwargs): pass
+        def append(self, hunk): pass
+    class PatchSet(list):
+        def __init__(self, content): pass
 
 from metagpt.logs import logger
 

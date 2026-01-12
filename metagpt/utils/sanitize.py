@@ -10,8 +10,12 @@ import traceback
 from enum import Enum
 from typing import Dict, Generator, List, Optional, Set, Tuple
 
-import tree_sitter_python
-from tree_sitter import Language, Node, Parser
+try:
+    import tree_sitter_python
+    from tree_sitter import Language, Node, Parser
+except ImportError:
+    tree_sitter_python = None
+    Language = Node = Parser = object
 
 
 class NodeType(Enum):
@@ -133,6 +137,9 @@ def sanitize(code: str, entrypoint: Optional[str] = None) -> str:
     :return: A sanitized version of the input code, containing only relevant parts.
     """
     code = code_extract(code)
+    if tree_sitter_python is None:
+        return code
+
     code_bytes = bytes(code, "utf8")
     parser = Parser(Language(tree_sitter_python.language()))
     tree = parser.parse(code_bytes)

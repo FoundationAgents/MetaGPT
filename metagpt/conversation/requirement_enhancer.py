@@ -166,7 +166,10 @@ class RequirementEnhancer:
         )
         
         try:
+            print(f"DEBUG: RequirementEnhancer.generate_clarifying_questions calling LLM...")
+            # print(f"DEBUG: Prompt: {prompt}")
             response = await llm.aask(prompt)
+            print(f"DEBUG: LLM Response received: {response[:100]}...")
             import json
             import re
             

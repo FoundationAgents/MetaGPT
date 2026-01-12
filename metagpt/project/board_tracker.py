@@ -17,6 +17,7 @@ from metagpt.const import DEFAULT_WORKSPACE_ROOT
 from metagpt.project.schemas import (
     BoardState, Task, TaskStatus, ProjectMetrics
 )
+from metagpt.project.event_system import event_bus, Event, EventType
 
 
 class BoardTracker:
@@ -64,6 +65,48 @@ class BoardTracker:
         await self._save_board(project_id)
         logger.info(f"Initialized board for project {project_id} with {len(tasks)} tasks")
         return board
+    
+    async def add_task(self, project_id: str, task: Task) -> bool:
+        """Add a new task to the board"""
+        if project_id not in self._boards:
+            # If board doesn't exist, we might need to initialize it?
+            # Or just fail? For now, assume board exists or we initialize empty.
+            await self.initialize_board(project_id, {task.id: task})
+            return True
+        
+        board = self._boards[project_id]
+        if project_id not in self._tasks:
+            self._tasks[project_id] = {}
+            
+        self._tasks[project_id][task.id] = task
+        
+        # Add to column based on status
+        column = getattr(board, task.status.value, board.todo)
+        if task.id not in column:
+            column.append(task.id)
+            
+        await self._save_board(project_id)
+        
+        # Notify
+        await self._broadcast(project_id, {
+            "type": "task_created",
+            "task_id": task.id,
+            "task_title": task.title,
+            "status": task.status.value,
+            "timestamp": datetime.now().isoformat()
+        })
+        
+        # Also publish to global event bus
+        event = Event(
+            type=EventType.TASK_CREATED,
+            project_id=project_id,
+            task_id=task.id,
+            payload={"task": task.model_dump()},
+            metadata={"title": task.title}
+        )
+        await event_bus.publish(event)
+        
+        return True
     
     async def move_task(
         self,
@@ -116,14 +159,27 @@ class BoardTracker:
         await self._save_board(project_id)
         
         if notify:
-            await self._broadcast(project_id, {
+            msg_payload = {
                 "type": "task_moved",
                 "task_id": task_id,
                 "task_title": task.title,
                 "old_status": old_status.value,
                 "new_status": new_status.value,
                 "timestamp": datetime.now().isoformat()
-            })
+            }
+            
+            # Broadcast to board-specific websockets
+            await self._broadcast(project_id, msg_payload)
+            
+            # Also publish to global event bus for activity stream
+            event = Event(
+                type=EventType.TASK_MOVED,
+                project_id=project_id,
+                task_id=task_id,
+                payload=msg_payload,
+                metadata={"title": task.title, "from": old_status.value, "to": new_status.value}
+            )
+            await event_bus.publish(event)
         
         # Check if this unblocks other tasks
         await self._check_unblock_dependents(project_id, task_id, new_status)

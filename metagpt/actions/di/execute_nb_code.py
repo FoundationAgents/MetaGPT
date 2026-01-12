@@ -11,18 +11,52 @@ import base64
 import re
 from typing import Literal, Tuple
 
-import nbformat
-from nbclient import NotebookClient
-from nbclient.exceptions import CellExecutionComplete, CellTimeoutError, DeadKernelError
-from nbclient.util import ensure_async
-from nbformat import NotebookNode
-from nbformat.v4 import new_code_cell, new_markdown_cell, new_output, output_from_msg
-from rich.box import MINIMAL
-from rich.console import Console, Group
-from rich.live import Live
-from rich.markdown import Markdown
-from rich.panel import Panel
-from rich.syntax import Syntax
+try:
+    import nbformat
+    from nbclient import NotebookClient
+    from nbclient.exceptions import CellExecutionComplete, CellTimeoutError, DeadKernelError
+    from nbclient.util import ensure_async
+    from nbformat import NotebookNode
+    from nbformat.v4 import new_code_cell, new_markdown_cell, new_output, output_from_msg
+    from rich.box import MINIMAL
+    from rich.console import Console, Group
+    from rich.live import Live
+    from rich.markdown import Markdown
+    from rich.panel import Panel
+    from rich.syntax import Syntax
+except ImportError:
+    class NotebookClient: pass
+    class CellExecutionComplete(Exception): pass
+    class CellTimeoutError(Exception): pass
+    class DeadKernelError(Exception): pass
+    class NotebookNode(dict): pass
+    class Console: pass
+    class Syntax: pass
+    class Panel: pass
+    class Markdown: pass
+    class Live:
+        def __init__(self, **kwargs): pass
+        def __enter__(self): return self
+        def __exit__(self, exc_type, exc_val, exc_tb): pass
+        def update(self, *args): pass
+        def refresh(self): pass
+    class Group: pass
+    MINIMAL = None
+    def ensure_async(x): return x
+    def new_code_cell(**kwargs): return {}
+    def new_markdown_cell(**kwargs): return {}
+    def new_output(**kwargs): return {}
+    def output_from_msg(msg): return {}
+    class nbformat:
+        class v4:
+            @staticmethod
+            def new_notebook(): return {"cells": []}
+            @staticmethod
+            def new_code_cell(**kwargs): return {}
+            @staticmethod
+            def new_markdown_cell(**kwargs): return {}
+        @staticmethod
+        def write(nb, fp): pass
 
 from metagpt.actions import Action
 from metagpt.logs import logger

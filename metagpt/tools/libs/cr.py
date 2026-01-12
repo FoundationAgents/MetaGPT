@@ -5,7 +5,11 @@ from typing import Optional
 
 import aiofiles
 from bs4 import BeautifulSoup
-from unidiff import PatchSet
+try:
+    from unidiff import PatchSet
+except ImportError:
+    class PatchSet:
+        def __init__(self, content): pass
 
 import metagpt.ext.cr
 from metagpt.ext.cr.actions.code_review import CodeReview as CodeReview_

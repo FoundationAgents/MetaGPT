@@ -6,7 +6,12 @@ from typing import Any
 
 import numpy as np
 from pydantic import BaseModel, field_validator
-from rank_bm25 import BM25Okapi
+try:
+    from rank_bm25 import BM25Okapi
+except ImportError:
+    class BM25Okapi:
+        def __init__(self, corpus): pass
+        def get_scores(self, query): return []
 
 from metagpt.llm import LLM
 from metagpt.logs import logger

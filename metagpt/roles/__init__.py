@@ -17,6 +17,8 @@ from metagpt.roles.sales import Sales
 from metagpt.roles.di.data_analyst import DataAnalyst
 from metagpt.roles.di.team_leader import TeamLeader
 from metagpt.roles.di.engineer2 import Engineer2
+from metagpt.roles.scrum_master import ScrumMaster
+from metagpt.roles.product_owner import ProductOwner
 
 
 __all__ = [
@@ -31,4 +33,7 @@ __all__ = [
     "DataAnalyst",
     "TeamLeader",
     "Engineer2",
+    "ScrumMaster",
+    "ProductOwner",
 ]
+

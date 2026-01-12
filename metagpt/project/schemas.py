@@ -22,6 +22,34 @@ class TaskStatus(str, Enum):
     BLOCKED = "blocked"
 
 
+class ProjectStatus(str, Enum):
+    PLANNING = "planning"
+    ACTIVE = "active"
+    PAUSED = "paused"
+    COMPLETED = "completed"
+    ARCHIVED = "archived"
+
+
+class ExecutionMode(str, Enum):
+    AUTONOMOUS = "autonomous"
+    HYBRID = "hybrid"
+    INTERACTIVE = "interactive"
+
+
+class ProjectMetadata(BaseModel):
+    id: str
+    name: str
+    description: str = ""
+    status: ProjectStatus = ProjectStatus.PLANNING
+    mode: ExecutionMode = ExecutionMode.HYBRID
+    created_at: datetime = Field(default_factory=datetime.now)
+    updated_at: datetime = Field(default_factory=datetime.now)
+    owner: Optional[str] = None
+    
+    class Config:
+        json_encoders = {datetime: lambda v: v.isoformat()}
+
+
 class TaskType(str, Enum):
     EPIC = "epic"
     STORY = "story"

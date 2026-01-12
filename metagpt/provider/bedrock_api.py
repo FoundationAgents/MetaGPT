@@ -4,8 +4,11 @@ import os
 from functools import partial
 from typing import List, Literal
 
-import boto3
-from botocore.eventstream import EventStream
+try:
+    import boto3
+    from botocore.eventstream import EventStream
+except ImportError:
+    class EventStream: pass
 
 from metagpt.configs.llm_config import LLMConfig, LLMType
 from metagpt.const import USE_CONFIG_TIMEOUT

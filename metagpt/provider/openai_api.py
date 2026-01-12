@@ -137,19 +137,33 @@ class OpenAILLM(BaseLLM):
         return full_reply_content
 
     def _cons_kwargs(self, messages: list[dict], timeout=USE_CONFIG_TIMEOUT, **extra_kwargs) -> dict:
+        max_tokens = self._get_max_tokens(messages)
+        
+        # Determine which token parameter to use based on model
+        # Newer models (gpt-4o, o1, o3, etc.) require max_completion_tokens
+        uses_new_token_param = any(prefix in self.model.lower() for prefix in [
+            "gpt-4o", "o1-", "o3-", "chatgpt-4o"
+        ])
+        
         kwargs = {
             "messages": messages,
-            "max_tokens": self._get_max_tokens(messages),
-            # "n": 1,  # Some services do not provide this parameter, such as mistral
-            # "stop": None,  # default it's None and gpt4-v can't have this one
             "temperature": self.config.temperature,
             "model": self.model,
             "timeout": self.get_timeout(timeout),
         }
-        if "o1-" in self.model:
-            # compatible to openai o1-series
+        
+        # Add the appropriate max tokens parameter
+        if "o1-" in self.model or "o3-" in self.model:
+            # o1 and o3 reasoning models need max_completion_tokens and temp=1
+            kwargs["max_completion_tokens"] = max_tokens
             kwargs["temperature"] = 1
-            kwargs.pop("max_tokens")
+        elif uses_new_token_param:
+            # Newer models use max_completion_tokens
+            kwargs["max_completion_tokens"] = max_tokens
+        else:
+            # Older models use max_tokens
+            kwargs["max_tokens"] = max_tokens
+            
         if extra_kwargs:
             kwargs.update(extra_kwargs)
         return kwargs

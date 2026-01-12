@@ -2,9 +2,20 @@
 # -*- coding: utf-8 -*-
 # @Desc   : werewolf observation/action space and its action definition
 
-from gymnasium import spaces
-from pydantic import ConfigDict, Field
+try:
+    from gymnasium import spaces
+except ImportError:
+    from typing import Any
+    class MockSpace:
+        def __init__(self, *args, **kwargs): pass
+        def __class_getitem__(cls, item): return Any
+    class spaces:
+        Dict = MockSpace
+        Text = MockSpace
+        Discrete = MockSpace
+        Tuple = MockSpace
 
+from pydantic import ConfigDict, Field
 from metagpt.base.base_env_space import BaseEnvAction, BaseEnvActionType
 from metagpt.environment.werewolf.const import STEP_INSTRUCTIONS
 

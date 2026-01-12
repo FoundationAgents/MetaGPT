@@ -4,7 +4,11 @@ import re
 from pathlib import Path
 from typing import Optional
 
-from unidiff import PatchSet
+try:
+    from unidiff import PatchSet
+except ImportError:
+    class PatchSet:
+        def __init__(self, content): pass
 
 from metagpt.actions.action import Action
 from metagpt.ext.cr.utils.cleaner import (

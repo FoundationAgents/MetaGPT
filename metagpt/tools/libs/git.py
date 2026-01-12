@@ -6,8 +6,12 @@ import urllib
 from pathlib import Path
 from typing import Optional
 
-from github.Issue import Issue
-from github.PullRequest import PullRequest
+try:
+    from github.Issue import Issue
+    from github.PullRequest import PullRequest
+except ImportError:
+    class Issue: pass
+    class PullRequest: pass
 
 from metagpt.tools.tool_registry import register_tool
 

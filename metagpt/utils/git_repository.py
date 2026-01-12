@@ -19,14 +19,29 @@ from urllib.parse import quote
 
 from git.repo import Repo
 from git.repo.fun import is_git_dir
-from github import Auth, BadCredentialsException, Github
-from github.GithubObject import NotSet
-from github.Issue import Issue
-from github.Label import Label
-from github.Milestone import Milestone
-from github.NamedUser import NamedUser
-from github.PullRequest import PullRequest
-from gitignore_parser import parse_gitignore
+try:
+    from github import Auth, BadCredentialsException, Github
+    from github.GithubObject import NotSet
+    from github.Issue import Issue
+    from github.Label import Label
+    from github.Milestone import Milestone
+    from github.NamedUser import NamedUser
+    from github.PullRequest import PullRequest
+except ImportError:
+    class Auth: pass
+    class BadCredentialsException(Exception): pass
+    class Github: pass
+    class Issue: pass
+    class Label: pass
+    class Milestone: pass
+    class NamedUser: pass
+    class PullRequest: pass
+    NotSet = object()
+try:
+    from gitignore_parser import parse_gitignore
+except ImportError:
+    def parse_gitignore(full_path):
+        return lambda x: False
 from pydantic import BaseModel
 from tenacity import retry, stop_after_attempt, wait_random_exponential
 

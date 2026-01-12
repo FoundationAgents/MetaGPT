@@ -23,6 +23,5 @@ RUN mkdir workspace &&\
 
 EXPOSE 8000
 
-# Running with an infinite loop using the tail command
-CMD ["sh", "-c", "tail -f /dev/null"]
-
+# Run the SCRUM Dashboard API server
+CMD ["python", "-m", "metagpt.api.server"]

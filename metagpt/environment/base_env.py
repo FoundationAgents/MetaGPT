@@ -7,8 +7,20 @@ from abc import abstractmethod
 from enum import Enum
 from typing import Any, Dict, Iterable, Optional, Set, Union
 
-from gymnasium import spaces
-from gymnasium.core import ActType, ObsType
+try:
+    from gymnasium import spaces
+    from gymnasium.core import ActType, ObsType
+except ImportError:
+    from typing import Any
+    ActType = Any
+    ObsType = Any
+    
+    class MockSpace:
+        def __init__(self, *args, **kwargs): pass
+        def __class_getitem__(cls, item): return Any
+        
+    class spaces:
+        Space = MockSpace
 from pydantic import BaseModel, ConfigDict, Field, SerializeAsAny, model_validator
 
 from metagpt.base import BaseEnvironment, BaseRole

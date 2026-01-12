@@ -1,8 +1,13 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-from anthropic import AsyncAnthropic
-from anthropic.types import Message, Usage
+try:
+    from anthropic import AsyncAnthropic
+    from anthropic.types import Message, Usage
+except ImportError:
+    class AsyncAnthropic: pass
+    class Message: pass
+    class Usage: pass
 
 from metagpt.configs.llm_config import LLMConfig, LLMType
 from metagpt.const import USE_CONFIG_TIMEOUT

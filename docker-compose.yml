@@ -1,0 +1,39 @@
+version: '3.8'
+
+services:
+  metagpt-scrum:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: metagpt-scrum-dashboard
+    ports:
+      - "8000:8000"
+    volumes:
+      # Mount config for API keys
+      - ./config:/app/metagpt/config
+      # Mount workspace for persistent data
+      - ./workspace:/app/metagpt/workspace
+      # Mount webapp for development (optional)
+      - ./metagpt/webapp:/app/metagpt/metagpt/webapp
+    environment:
+      - PYTHONUNBUFFERED=1
+      - METAGPT_ROOT=/app/metagpt
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # Optional: Redis for caching (uncomment if needed)
+  # redis:
+  #   image: redis:alpine
+  #   container_name: metagpt-redis
+  #   ports:
+  #     - "6379:6379"
+  #   restart: unless-stopped
+
+networks:
+  default:
+    name: metagpt-network

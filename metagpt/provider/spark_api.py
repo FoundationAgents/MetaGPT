@@ -1,13 +1,22 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-from sparkai.core.messages import _convert_to_message, convert_to_messages
-from sparkai.core.messages.ai import AIMessage
-from sparkai.core.messages.base import BaseMessage
-from sparkai.core.messages.human import HumanMessage
-from sparkai.core.messages.system import SystemMessage
-from sparkai.core.outputs.llm_result import LLMResult
-from sparkai.llm.llm import ChatSparkLLM
+try:
+    from sparkai.core.messages import _convert_to_message, convert_to_messages
+    from sparkai.core.messages.ai import AIMessage
+    from sparkai.core.messages.base import BaseMessage
+    from sparkai.core.messages.human import HumanMessage
+    from sparkai.core.messages.system import SystemMessage
+    from sparkai.core.outputs.llm_result import LLMResult
+    from sparkai.llm.llm import ChatSparkLLM
+except ImportError:
+    # Handle missing optional dependency
+    class BaseMessage: pass
+    class AIMessage(BaseMessage): pass
+    class LLMResult: pass
+    class ChatSparkLLM: pass
+    def _convert_to_message(msg): pass
+    def convert_to_messages(msgs): pass
 
 from metagpt.configs.llm_config import LLMConfig, LLMType
 from metagpt.const import USE_CONFIG_TIMEOUT

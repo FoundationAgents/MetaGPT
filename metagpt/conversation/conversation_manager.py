@@ -84,6 +84,7 @@ class ConversationManager:
         return self._llm
     
     async def start_session(self, initial_idea: str) -> tuple[str, str]:
+        print(f"DEBUG: ConversationManager.start_session called with: {initial_idea}")
         """
         Start a new conversation session.
         
@@ -100,25 +101,18 @@ class ConversationManager:
         user_msg = ConversationMessage(role="user", content=initial_idea)
         session.messages.append(user_msg)
         
-        # Generate first question from AI
-        llm = self._get_llm()
-        prompt = FIRST_QUESTION_PROMPT.format(idea=initial_idea)
-        
+        # Initialize LLM and generate first question
         try:
-            first_question = await llm.aask(prompt)
+            print("DEBUG: Calling enhancer.generate_clarifying_questions...")
+            questions = await self._enhancer.generate_clarifying_questions(initial_idea)
+            
+            first_q = questions[0] if questions else "Could you provide more details about the platform and key features?"
         except Exception as e:
-            logger.exception(f"Failed to generate first question: {e}")
-            first_question = (
-                f"Thanks for sharing your idea about '{initial_idea}'. "
-                "I have a few questions to help me understand better:\n\n"
-                "1. What platform should this run on (Web, Mobile, CLI)?\n"
-                "2. Who are the primary users of this application?\n"
-                "3. Are there any specific features you'd like to prioritize?"
-            )
-        
-        # Add AI response
-        ai_msg = ConversationMessage(role="assistant", content=first_question)
-        session.messages.append(ai_msg)
+            logger.exception(f"Failed to generate opening question: {e}")
+            print(f"DEBUG: Exception in generate_clarifying_questions: {e}")
+            first_q = "Could you tell me more about what you want to build?"
+            
+        session.messages.append(ConversationMessage(role="assistant", content=first_q))
         
         # Store session
         self._sessions[session.id] = session
@@ -127,7 +121,7 @@ class ConversationManager:
         await self._approval.save_session(session)
         
         logger.info(f"Started conversation session: {session.id}")
-        return session.id, first_question
+        return session.id, first_q
     
     async def add_message(self, conversation_id: str, user_message: str) -> tuple[str, Optional[EnhancedRequirements], bool]:
         """

@@ -9,7 +9,11 @@ import re
 from pathlib import Path
 from typing import Tuple, Union
 
-from gitignore_parser import parse_gitignore
+try:
+    from gitignore_parser import parse_gitignore
+except ImportError:
+    def parse_gitignore(full_path):
+        return lambda x: False
 
 from metagpt.logs import logger
 from metagpt.utils.common import (

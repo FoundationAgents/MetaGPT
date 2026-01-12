@@ -7,7 +7,19 @@ from typing import Union
 
 import numpy as np
 import numpy.typing as npt
-from gymnasium import spaces
+try:
+    from gymnasium import spaces
+except ImportError:
+    from typing import Any
+    class MockSpace:
+        def __init__(self, *args, **kwargs): pass
+        def __class_getitem__(cls, item): return Any
+    class spaces:
+        Dict = MockSpace
+        Text = MockSpace
+        Discrete = MockSpace
+        Box = MockSpace
+
 from pydantic import ConfigDict, Field, field_validator
 
 from metagpt.base.base_env_space import (

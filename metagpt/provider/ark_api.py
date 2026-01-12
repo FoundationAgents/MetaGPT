@@ -17,10 +17,17 @@ llm:
 from typing import Optional, Union
 
 from pydantic import BaseModel
-from volcenginesdkarkruntime import AsyncArk
-from volcenginesdkarkruntime._base_client import AsyncHttpxClientWrapper
-from volcenginesdkarkruntime._streaming import AsyncStream
-from volcenginesdkarkruntime.types.chat import ChatCompletion, ChatCompletionChunk
+try:
+    from volcenginesdkarkruntime import AsyncArk
+    from volcenginesdkarkruntime._base_client import AsyncHttpxClientWrapper
+    from volcenginesdkarkruntime._streaming import AsyncStream
+    from volcenginesdkarkruntime.types.chat import ChatCompletion, ChatCompletionChunk
+except ImportError:
+    class AsyncArk: pass
+    class AsyncHttpxClientWrapper: pass
+    class AsyncStream: pass
+    class ChatCompletion: pass
+    class ChatCompletionChunk: pass
 
 from metagpt.configs.llm_config import LLMType
 from metagpt.const import USE_CONFIG_TIMEOUT

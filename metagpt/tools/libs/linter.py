@@ -12,8 +12,13 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Optional
 
-from grep_ast import TreeContext, filename_to_lang
-from tree_sitter_languages import get_parser  # noqa: E402
+try:
+    from grep_ast import TreeContext, filename_to_lang
+    from tree_sitter_languages import get_parser  # noqa: E402
+except ImportError:
+    class TreeContext: pass
+    def filename_to_lang(fname): return None
+    def get_parser(lang): pass
 
 # tree_sitter is throwing a FutureWarning
 warnings.simplefilter("ignore", category=FutureWarning)
