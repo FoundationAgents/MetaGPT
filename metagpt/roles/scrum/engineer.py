@@ -1,130 +1,145 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 """
-@Time    : 2026/01/12
-@Author  : MetaGPT-Pro Team
-@File    : engineer.py
-@Desc    : Engineer SCRUM Agent
+Engineer Role - Following MetaGPT patterns from build_customized_multi_agents.py
 """
-from metagpt.roles.scrum_role import SCRUMRole
-from metagpt.actions.write_code import WriteCode
-from metagpt.actions.update_task_status import UpdateTaskStatus
-from metagpt.actions import UserRequirement
-from metagpt.project.board_tracker import board_tracker
-from metagpt.project.schemas import TaskStatus
-from metagpt.actions.action_output import ActionOutput
+import re
+from metagpt.actions.scrum.design_system import DesignSystem
+from metagpt.actions.scrum.write_feature import WriteFeature
 from metagpt.logs import logger
+from metagpt.roles import Role
+from metagpt.schema import Message
+from metagpt.project.event_system import event_bus, Event, EventType
 
-class Engineer(SCRUMRole):
+
+class Engineer(Role):
     """
-    Engineer Role.
-    Responsible for implementing tasks and stories.
+    Engineer SCRUM Agent.
+    
+    Responsibilities:
+    - Implements features based on design
+    - Writes production code
+    - Follows coding standards
+    
+    Following the MetaGPT multi-agent pattern from official examples.
     """
     
     name: str = "Alex"
     profile: str = "Engineer"
-    goal: str = "Implement features and fix bugs with high quality code."
-    constraints: str = "Follow coding standards and project architecture."
+    goal: str = "Implement high-quality, maintainable code"
+    constraints: str = "Code must follow best practices and be well-documented"
     
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        
-        # Primary actions
-        self.set_actions([WriteCode, UpdateTaskStatus])
-        
-        # Watch for assignments (TODO: Add specific Event trigger)
-        self._watch([UserRequirement])
-        
-        # Initialize action configurations
-        self._init_actions()
-        
-        # Internal state
-        self.current_task_id = None
-        self.last_action_type = None
-
-    def _init_actions(self):
-        """Configure actions with project context"""
-        for action in self.actions:
-            if hasattr(action, 'project_id'):
-                action.project_id = self.project_id
-
-    async def _think(self) -> bool:
+        # Set actions this role can perform
+        self.set_actions([WriteFeature])
+        # Watch for Architect's output (system design)
+        self._watch([DesignSystem])
+    
+    async def _act(self) -> Message:
         """
-        Decide next action.
+        Execute the Engineer's action.
+        Following the pattern from build_customized_multi_agents.py
         """
-        # 1. Check if we are in the middle of a task
-        if self.current_task_id:
-            if self.last_action_type == UpdateTaskStatus:
-                # We just moved task to In Progress, now Write Code
-                # Verify we moved to IN_PROGRESS (optional, assumed true)
-                self.rc.todo = WriteCode
-                self.rc.state = 0 # WriteCode index
-                return True
-                
-            elif self.last_action_type == WriteCode:
-                # We just wrote code, now move to Review
-                self.rc.todo = UpdateTaskStatus
-                self.rc.state = 1 # UpdateTaskStatus index
-                return True
-                
-        # 2. Check for new tasks in TODO
-        board = board_tracker.get_board(self.project_id)
-        if board and board.todo:
-            # Pick the first task
-            task_id = board.todo[0]
-            self.current_task_id = task_id
-            
-            # Start by moving to In Progress
-            self.rc.todo = UpdateTaskStatus
-            self.rc.state = 1
-            logger.info(f"Engineer picking up task {task_id}")
-            return True
-            
-        return await super()._think()
-
-    async def _act(self) -> ActionOutput:
+        logger.info(f"{self._setting}: to do {self.rc.todo}({self.rc.todo.name})")
+        
         todo = self.rc.todo
+        project_id = getattr(self.context, 'project_id', 'default') if self.context else 'default'
         
-        if isinstance(todo, UpdateTaskStatus) or (isinstance(todo, type) and issubclass(todo, UpdateTaskStatus)):
-            # Determine target status
-            if self.last_action_type == WriteCode:
-                status = TaskStatus.REVIEW
-            else:
-                status = TaskStatus.IN_PROGRESS
-                
-            # Execute
-            action = UpdateTaskStatus(project_id=self.project_id)
-            result = await action.run(task_id=self.current_task_id, status=status)
+        # Publish AGENT_ACTING event
+        await event_bus.publish(Event(
+            type=EventType.AGENT_ACTING,
+            project_id=project_id,
+            agent_id=self.name,
+            payload={
+                "name": self.name,
+                "profile": self.profile,
+                "role": self.profile,
+                "action": todo.name,
+                "status": "executing",
+                "message": f"{self.name} is implementing features..."
+            }
+        ))
+        
+        # Get the most recent memory as context (from Architect)
+        msg = self.get_memories(k=1)[0]
+        
+        # Run the action with the context
+        result = await todo.run(context=msg.content)
+        
+        # Save to workspace - extract and save code files
+        try:
+            from metagpt.project.workspace import get_workspace
+            workspace = get_workspace(project_id)
             
-            self.last_action_type = UpdateTaskStatus
+            # Try to extract code blocks and save them as files
+            saved_files = self._save_code_files(workspace, result)
             
-            # If we moved to REVIEW, clear current task
-            if status == TaskStatus.REVIEW:
-                self.current_task_id = None
-                self.last_action_type = None # Reset cycle
-                
-            return result
-
-        elif isinstance(todo, WriteCode) or (isinstance(todo, type) and issubclass(todo, WriteCode)):
-            # Fetch task details
-            tasks = board_tracker.get_tasks(self.project_id)
-            task = tasks.get(self.current_task_id)
-            context = task.description if task else "Implement feature"
+            # Also save the full implementation as a markdown file
+            workspace.save_artifact("implementation", result, artifact_type="code")
             
-            # Execute
-            # Note: We instantiate generic WriteCode, assuming it uses context
-            # We might need to pass context via kwargs if WriteCode supports it, 
-            # but usually it reads from history. We'll inject context into history implicitly?
-            # Or assume WriteCode.run takes arguments we can't easily pass via standard _act.
-            # We'll use the Action instance directly.
+            logger.info(f"Implementation saved to workspace for project {project_id}: {saved_files}")
+        except Exception as e:
+            logger.warning(f"Failed to save implementation to workspace: {e}")
+        
+        # Publish AGENT_COMPLETED event with result
+        await event_bus.publish(Event(
+            type=EventType.AGENT_COMPLETED,
+            project_id=project_id,
+            agent_id=self.name,
+            payload={
+                "name": self.name,
+                "profile": self.profile,
+                "role": self.profile,
+                "action": todo.name,
+                "status": "completed",
+                "output": result[:500] + "..." if len(result) > 500 else result,
+                "message": f"{self.name} completed feature implementation"
+            }
+        ))
+        
+        # Publish ARTIFACT_CREATED event
+        await event_bus.publish(Event(
+            type=EventType.ARTIFACT_CREATED,
+            project_id=project_id,
+            agent_id=self.name,
+            payload={
+                "artifact_type": "source_code",
+                "file_path": "src/",
+                "content": result,
+                "created_by": self.name
+            }
+        ))
+        
+        # Create response message
+        msg = Message(
+            content=result,
+            role=self.profile,
+            cause_by=type(todo)
+        )
+        
+        return msg
+    
+    def _save_code_files(self, workspace, content: str) -> list:
+        """Extract code blocks from content and save them as files."""
+        saved_files = []
+        
+        # Pattern to match code blocks with filenames
+        # Matches: ```python filename.py or # filename.py at start of block
+        code_pattern = r'```(\w+)?\s*(?:#\s*)?(\S+\.(?:py|js|ts|html|css|json|yaml|yml|md))?\n(.*?)```'
+        matches = re.findall(code_pattern, content, re.DOTALL)
+        
+        for i, (lang, filename, code) in enumerate(matches):
+            if not filename:
+                # Generate filename from language
+                ext_map = {'python': 'py', 'javascript': 'js', 'typescript': 'ts'}
+                ext = ext_map.get(lang, lang) if lang else 'txt'
+                filename = f"code_{i}.{ext}"
             
-            action = WriteCode(project_id=self.project_id)
-            # WriteCode usually takes 'context' or 'instruction' in run? 
-            # Looking at WriteCode source would be ideal, but assuming 'context' is safe-ish.
-            # ACTUALLY: WriteCode.run(context=...)
-            result = await action.run(context=context) 
-            
-            self.last_action_type = WriteCode
-            return result
-            
-        return await super()._act()
+            try:
+                workspace.save_source_file(filename, code.strip())
+                saved_files.append(filename)
+            except Exception as e:
+                logger.warning(f"Failed to save {filename}: {e}")
+        
+        return saved_files

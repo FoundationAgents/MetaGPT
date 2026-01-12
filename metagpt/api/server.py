@@ -3,7 +3,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
-from metagpt.api.routes import company, config, roles, files, stream, conversation, project, agents, bugs, versions, scrum
+from metagpt.api.routes import company, config, roles, files, stream, conversation, project, agents, bugs, versions, scrum, feedback
 
 app = FastAPI(
     title="MetaGPT-Pro Enterprise API",
@@ -32,6 +32,7 @@ app.include_router(agents.router, prefix="/v1/agents", tags=["Agent Collaboratio
 app.include_router(bugs.router, prefix="/v1/project", tags=["Bug Tracking"])
 app.include_router(versions.router, prefix="/v1/project", tags=["Versioning"])
 app.include_router(scrum.router, prefix="/v1/scrum", tags=["SCRUM Ceremonies"])
+app.include_router(feedback.router, prefix="/v1/feedback", tags=["Feedback"])
 
 # Static files for web app
 WEBAPP_DIR = Path(__file__).parent.parent / "webapp"

@@ -182,6 +182,10 @@ class ProjectMetrics(BaseModel):
     points_remaining: int = 0
     blocked_count: int = 0
     estimated_completion: Optional[str] = None
+    # Task counts
+    tasks_done: int = 0
+    tasks_in_progress: int = 0
+    tasks_remaining: int = 0
 
 
 class TaskMoveRequest(BaseModel):

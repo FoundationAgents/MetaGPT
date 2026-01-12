@@ -29,6 +29,10 @@
                     <span class="nav-icon">📊</span>
                     Dashboard
                 </a>
+                <a href="#" class="nav-item" data-view="monitoring">
+                    <span class="nav-icon">📡</span>
+                    Live Monitoring
+                </a>
                 <a href="#" class="nav-item" data-view="backlog">
                     <span class="nav-icon">📋</span>
                     Backlog
@@ -40,6 +44,10 @@
                 <a href="#" class="nav-item" data-view="sprints">
                     <span class="nav-icon">🏃</span>
                     Sprints
+                </a>
+                <a href="#" class="nav-item" data-view="artifacts">
+                    <span class="nav-icon">📁</span>
+                    Artifacts
                 </a>
                 <a href="#" class="nav-item" data-view="ceremonies">
                     <span class="nav-icon">🎯</span>
@@ -70,6 +78,10 @@
                     <span class="breadcrumb">MetaGPT Pro / SCRUM</span>
                 </div>
                 <div class="header-right">
+                    <div class="execution-mode" id="execution-mode-display">
+                        <span class="mode-label">Mode:</span>
+                        <span class="mode-value" id="current-mode">Interactive</span>
+                    </div>
                     <div class="connection-status" id="connection-status">
                         <span class="status-dot"></span>
                         <span>Connecting...</span>
@@ -80,51 +92,87 @@
                 </div>
             </header>
 
-            <!-- New Project View -->
+            <!-- New Project View (Simplified) -->
             <section id="newproject-view" class="view">
-                <div class="project-creation-container">
-                    <!-- Left: Chat Interface -->
-                    <div class="chat-panel">
-                        <div class="card">
-                            <div class="card-header">
-                                <h2>💬 Describe Your Project</h2>
-                                <span class="badge" id="chat-status">Ready</span>
-                            </div>
-                            <div class="card-body">
-                                <div class="chat-messages" id="chat-messages">
-                                    <div class="chat-message ai">
-                                        <div class="message-avatar">🤖</div>
-                                        <div class="message-content">
-                                            <strong>AI Product Manager</strong>
-                                            <p>Hello! I'm your AI Product Manager. Tell me about the software you want
-                                                to build, and I'll help refine your requirements. What would you like to
-                                                create?</p>
+                <div class="project-creation-simple">
+                    <div class="card project-card">
+                        <div class="card-header">
+                            <h2>🚀 Create New Project</h2>
+                        </div>
+                        <div class="card-body">
+                            <!-- Mode Selection -->
+                            <div class="mode-selection" id="mode-selection">
+                                <h3>Select Execution Mode</h3>
+                                <div class="mode-options">
+                                    <label class="mode-option selected" data-mode="interactive">
+                                        <input type="radio" name="exec-mode" value="interactive" checked>
+                                        <div class="mode-content">
+                                            <span class="mode-icon">🎮</span>
+                                            <span class="mode-title">Interactive</span>
+                                            <span class="mode-desc">Review and approve each step</span>
                                         </div>
+                                    </label>
+                                    <label class="mode-option" data-mode="autonomous">
+                                        <input type="radio" name="exec-mode" value="autonomous">
+                                        <div class="mode-content">
+                                            <span class="mode-icon">🤖</span>
+                                            <span class="mode-title">Autonomous</span>
+                                            <span class="mode-desc">Fully automated execution</span>
+                                        </div>
+                                    </label>
+                                </div>
+                            </div>
+
+                            <!-- Chat Interface -->
+                            <div class="chat-messages" id="chat-messages">
+                                <div class="chat-message ai">
+                                    <div class="message-avatar">🤖</div>
+                                    <div class="message-content">
+                                        <strong>AI Product Manager</strong>
+                                        <p>Hello! I'm your AI Product Manager. Tell me about the software you want
+                                            to build, and I'll help refine your requirements. What would you like to
+                                            create?</p>
                                     </div>
                                 </div>
-                                <div class="chat-input-container">
-                                    <textarea id="chat-input" placeholder="Describe your software idea..."
-                                        rows="3"></textarea>
-                                    <button class="btn btn-primary" onclick="sendChatMessage()">
-                                        Send 📤
-                                    </button>
-                                </div>
-                                <div class="chat-actions" id="chat-actions">
-                                    <button class="btn btn-secondary" onclick="skipQuestionsAndApprove()" id="skip-btn"
-                                        style="display: none;">
-                                        ⏩ Skip Questions & Proceed
-                                    </button>
-                                    <button class="btn btn-primary" onclick="approveRequirements()" id="approve-btn"
-                                        style="display: none;">
-                                        ✅ Approve & Start Development
-                                    </button>
+                            </div>
+                            <div class="chat-input-container">
+                                <textarea id="chat-input" placeholder="Describe your software idea..."
+                                    rows="3"></textarea>
+                                <button class="btn btn-primary" onclick="sendChatMessage()">
+                                    Send 📤
+                                </button>
+                            </div>
+                            <div class="chat-actions" id="chat-actions">
+                                <button class="btn btn-secondary" onclick="skipQuestionsAndApprove()" id="skip-btn"
+                                    style="display: none;">
+                                    ⏩ Skip Questions & Proceed
+                                </button>
+                                <button class="btn btn-primary" onclick="approveRequirements()" id="approve-btn"
+                                    style="display: none;">
+                                    ✅ Approve & Start Development
+                                </button>
+                            </div>
+
+                            <!-- PRD Preview (shown after requirements confirmed) -->
+                            <div class="prd-preview" id="prd-preview" style="display: none;">
+                                <h3>📄 Product Requirements Document</h3>
+                                <div class="prd-content" id="prd-content"></div>
+                                <div class="prd-actions">
+                                    <button class="btn btn-secondary" onclick="editPRD()">✏️ Edit PRD</button>
+                                    <button class="btn btn-primary" onclick="acceptPRD()">✅ Accept & Start
+                                        Project</button>
                                 </div>
                             </div>
                         </div>
                     </div>
+                </div>
+            </section>
 
-                    <!-- Right: Agent Activity -->
-                    <div class="activity-panel">
+            <!-- Live Monitoring View (New) -->
+            <section id="monitoring-view" class="view">
+                <div class="monitoring-container">
+                    <!-- Left: Agent Activity -->
+                    <div class="monitoring-main">
                         <div class="card">
                             <div class="card-header">
                                 <h2>🤖 Agent Activity</h2>
@@ -132,13 +180,32 @@
                             </div>
                             <div class="card-body">
                                 <div class="agent-activity-feed" id="agent-activity-feed">
-                                    <p class="empty-state">Submit requirements to see AI agents in action.</p>
+                                    <p class="empty-state">No active project. Start a new project to see agents in
+                                        action.</p>
                                 </div>
                             </div>
                         </div>
 
-                        <!-- Live Status -->
-                        <div class="card" style="margin-top: 16px;">
+                        <!-- Interactive Mode: Approval Panel -->
+                        <div class="card approval-panel" id="approval-panel" style="display: none;">
+                            <div class="card-header">
+                                <h2>⏸️ Awaiting Your Approval</h2>
+                            </div>
+                            <div class="card-body">
+                                <div id="approval-content"></div>
+                                <div class="approval-actions">
+                                    <button class="btn btn-secondary" onclick="requestChanges()">✏️ Request
+                                        Changes</button>
+                                    <button class="btn btn-primary" onclick="approveAndContinue()">✅ Approve &
+                                        Continue</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Right: Live Status -->
+                    <div class="monitoring-sidebar">
+                        <div class="card">
                             <div class="card-header">
                                 <h2>📊 Live Status</h2>
                             </div>
@@ -164,6 +231,31 @@
                                         <span class="agent-name">QA Engineer</span>
                                         <span class="agent-task">Waiting</span>
                                     </div>
+                                    <div class="agent-status-item">
+                                        <span class="agent-dot idle"></span>
+                                        <span class="agent-name">Scrum Master</span>
+                                        <span class="agent-task">Waiting</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Current Sprint Progress -->
+                        <div class="card" style="margin-top: 16px;">
+                            <div class="card-header">
+                                <h2>🏃 Sprint Progress</h2>
+                            </div>
+                            <div class="card-body">
+                                <div class="sprint-mini-progress">
+                                    <div class="progress-bar-container">
+                                        <div class="progress-bar-fill" id="sprint-progress-bar" style="width: 0%"></div>
+                                    </div>
+                                    <span id="sprint-progress-text">0%</span>
+                                </div>
+                                <div class="sprint-stats">
+                                    <div class="stat"><span id="tasks-done">0</span> Done</div>
+                                    <div class="stat"><span id="tasks-in-progress">0</span> In Progress</div>
+                                    <div class="stat"><span id="tasks-remaining">0</span> Remaining</div>
                                 </div>
                             </div>
                         </div>
@@ -250,6 +342,46 @@
                         </div>
                     </div>
                 </div>
+
+                <!-- Feedback Chat - For existing project updates -->
+                <div class="card feedback-chat-card">
+                    <div class="card-header">
+                        <h2>💬 Request Changes or Report Issues</h2>
+                        <span class="badge" id="feedback-status">Ready</span>
+                    </div>
+                    <div class="card-body">
+                        <p class="feedback-intro">Describe what you need - a bug fix, new feature, enhancement, or
+                            change.
+                            The AI will analyze and categorize your request automatically.</p>
+
+                        <div class="feedback-messages" id="feedback-messages">
+                            <div class="chat-message ai">
+                                <div class="message-avatar">🤖</div>
+                                <div class="message-content">
+                                    <strong>AI Assistant</strong>
+                                    <p>What would you like me to help you with? You can describe a bug, request a new
+                                        feature,
+                                        or ask for an enhancement to your current project.</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="feedback-input-container">
+                            <textarea id="feedback-input"
+                                placeholder="Describe your request (bug, feature, or change)..." rows="2"></textarea>
+                            <button class="btn btn-primary" onclick="sendFeedbackChat()">
+                                Send 📤
+                            </button>
+                        </div>
+                        <div class="feedback-result" id="feedback-result" style="display: none;">
+                            <div class="feedback-classification" id="feedback-classification"></div>
+                            <div class="feedback-actions">
+                                <button class="btn btn-secondary" onclick="editFeedbackRequest()">✏️ Edit</button>
+                                <button class="btn btn-primary" onclick="submitFeedbackRequest()">✅ Confirm & Create
+                                    Task</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </section>
 
             <!-- Backlog View -->
@@ -257,6 +389,10 @@
                 <div class="view-actions">
                     <button class="btn btn-primary" onclick="prioritizeBacklog()">
                         🤖 AI Prioritize
+                    </button>
+                    <button class="btn btn-secondary" onclick="approveBacklog()" id="approve-backlog-btn"
+                        style="display: none;">
+                        ✅ Approve Backlog
                     </button>
                 </div>
                 <div class="card">
@@ -319,8 +455,36 @@
 
             <!-- Sprints View -->
             <section id="sprints-view" class="view">
+                <div class="view-actions">
+                    <button class="btn btn-primary" onclick="approveSprint()" id="approve-sprint-btn"
+                        style="display: none;">
+                        ✅ Approve Sprint Plan
+                    </button>
+                </div>
                 <div class="sprints-timeline" id="sprints-timeline">
                     <p class="empty-state">No sprints created yet. Run Sprint Planning to create your first sprint.</p>
+                </div>
+            </section>
+
+            <!-- Artifacts View (New) -->
+            <section id="artifacts-view" class="view">
+                <div class="artifacts-container">
+                    <div class="card">
+                        <div class="card-header">
+                            <h2>📁 Project Artifacts</h2>
+                            <button class="btn btn-primary" onclick="downloadProject()">⬇️ Download All</button>
+                        </div>
+                        <div class="card-body">
+                            <div class="file-explorer" id="file-explorer">
+                                <div class="file-tree" id="file-tree">
+                                    <p class="empty-state">No artifacts generated yet.</p>
+                                </div>
+                                <div class="file-preview" id="file-preview">
+                                    <p class="empty-state">Select a file to preview</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </section>
 
@@ -449,11 +613,70 @@
         </div>
     </div>
 
+    <!-- Project Review Modal -->
+    <div class="modal-overlay" id="review-modal-overlay" style="display: none;">
+        <div class="modal modal-large" id="review-modal">
+            <div class="modal-header">
+                <h2>🎉 Project Complete - Review</h2>
+                <button class="modal-close" onclick="closeReviewModal()">✕</button>
+            </div>
+            <div class="modal-body">
+                <div class="review-summary" id="review-summary"></div>
+                <div class="review-actions">
+                    <h3>What would you like to do?</h3>
+                    <div class="review-options">
+                        <button class="review-option" onclick="submitFeedback('done')">
+                            <span class="option-icon">✅</span>
+                            <span class="option-title">Project Complete</span>
+                            <span class="option-desc">Mark as done and close</span>
+                        </button>
+                        <button class="review-option" onclick="submitFeedback('change')">
+                            <span class="option-icon">✏️</span>
+                            <span class="option-title">Change Request</span>
+                            <span class="option-desc">Request modifications</span>
+                        </button>
+                        <button class="review-option" onclick="submitFeedback('bug')">
+                            <span class="option-icon">🐛</span>
+                            <span class="option-title">Report Bug</span>
+                            <span class="option-desc">Report an issue</span>
+                        </button>
+                        <button class="review-option" onclick="submitFeedback('feature')">
+                            <span class="option-icon">🌟</span>
+                            <span class="option-title">New Feature</span>
+                            <span class="option-desc">Request new functionality</span>
+                        </button>
+                    </div>
+                </div>
+                <div class="feedback-form" id="feedback-form" style="display: none;">
+                    <h3 id="feedback-title">Describe your feedback</h3>
+                    <textarea id="feedback-text" rows="5"
+                        placeholder="Describe the changes, bugs, or features..."></textarea>
+                    <div class="feedback-actions">
+                        <button class="btn btn-secondary" onclick="cancelFeedback()">Cancel</button>
+                        <button class="btn btn-primary" onclick="sendFeedback()">Submit</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Loading Overlay -->
     <div class="loading-overlay" id="loading-overlay">
         <div class="loading-spinner"></div>
         <p id="loading-text">Loading...</p>
     </div>
+
+    <!-- Mermaid.js for Diagrams -->
+    <script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+    <!-- Prism.js for Syntax Highlighting -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css" rel="stylesheet" />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-python.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-javascript.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-css.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-json.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-bash.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-markdown.min.js"></script>
 
     <script src="/static/app.bundle.js"></script>
 </body>

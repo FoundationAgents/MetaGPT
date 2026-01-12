@@ -1,66 +1,119 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 """
-@Time    : 2026/01/12
-@Author  : MetaGPT-Pro Team
-@File    : product_owner.py
-@Desc    : Product Owner SCRUM Agent
+Product Owner Role - Following MetaGPT patterns from build_customized_multi_agents.py
 """
-from typing import Type
-
-from metagpt.roles.scrum_role import SCRUMRole
-from metagpt.actions.refine_backlog import RefineBacklog
-from metagpt.actions.write_prd import WritePRD
+import asyncio
 from metagpt.actions import UserRequirement
+from metagpt.actions.scrum.refine_story import RefineStory
 from metagpt.logs import logger
+from metagpt.roles import Role
+from metagpt.schema import Message
+from metagpt.project.event_system import event_bus, Event, EventType
 
-class ProductOwner(SCRUMRole):
+
+class ProductOwner(Role):
     """
-    Product Owner Role.
-    Responsible for defining stories, prioritizing backlog, and maintaining product vision.
+    Product Owner SCRUM Agent.
+    
+    Responsibilities:
+    - Refines and prioritizes user stories
+    - Defines acceptance criteria
+    - Manages product backlog
+    
+    Following the MetaGPT multi-agent pattern from official examples.
     """
     
     name: str = "Alice"
     profile: str = "Product Owner"
-    goal: str = "Maximize product value by managing and prioritizing the product backlog."
-    constraints: str = "Ensure stories are convenient, valuable, and verifiable."
+    goal: str = "Define and prioritize product requirements as user stories"
+    constraints: str = "Stories must have clear acceptance criteria and business value"
     
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        
-        # Primary actions
-        self.set_actions([RefineBacklog])
-        
-        # Watch for User Requirements
+        # Set actions this role can perform
+        self.set_actions([RefineStory])
+        # Watch for user requirements (initial trigger)
         self._watch([UserRequirement])
-        
-        # Initialize action configurations
-        self._init_actions()
-
-    def _init_actions(self):
-        """Configure actions with project context"""
-        for action in self.actions:
-            if hasattr(action, 'project_id'):
-                action.project_id = self.project_id
-
-    async def _think(self) -> bool:
+    
+    async def _act(self) -> Message:
         """
-        Decide next action.
-        If new UserRequirement observed -> RefineBacklog
+        Execute the Product Owner's action.
+        Following the pattern from build_customized_multi_agents.py
         """
-        # Default behavior from Role might be enough if we set_actions correctly.
-        # But we might want custom logic to decide between RefineBacklog vs WritePRD.
+        logger.info(f"{self._setting}: to do {self.rc.todo}({self.rc.todo.name})")
         
-        # For now, simplistic React:
-        # For now, simplistic React:
-        if self.rc.news:
-            last_msg = self.rc.news[-1]
-            if last_msg.cause_by == UserRequirement:
-                # Find RefineBacklog action
-                for i, action in enumerate(self.actions):
-                    if isinstance(action, RefineBacklog):
-                        self.rc.todo = action
-                        self.rc.state = i
-                        return True
-                
-        return await super()._think()
+        todo = self.rc.todo
+        project_id = getattr(self.context, 'project_id', 'default') if self.context else 'default'
+        
+        # Publish AGENT_ACTING event
+        await event_bus.publish(Event(
+            type=EventType.AGENT_ACTING,
+            project_id=project_id,
+            agent_id=self.name,
+            payload={
+                "name": self.name,
+                "profile": self.profile,
+                "role": self.profile,
+                "action": todo.name,
+                "status": "executing",
+                "message": f"{self.name} is refining user stories..."
+            }
+        ))
+        
+        # Get the most recent memory as context
+        msg = self.get_memories(k=1)[0]
+        
+        # Run the action with the context
+        result = await todo.run(context=msg.content)
+        
+        # Save to workspace
+        try:
+            from metagpt.project.workspace import get_workspace
+            workspace = get_workspace(project_id)
+            workspace.save_prd(result, metadata={
+                "agent": self.name,
+                "action": todo.name,
+                "source": "product_owner"
+            })
+            logger.info(f"PRD saved to workspace for project {project_id}")
+        except Exception as e:
+            logger.warning(f"Failed to save PRD to workspace: {e}")
+        
+        # Publish AGENT_COMPLETED event with result
+        await event_bus.publish(Event(
+            type=EventType.AGENT_COMPLETED,
+            project_id=project_id,
+            agent_id=self.name,
+            payload={
+                "name": self.name,
+                "profile": self.profile,
+                "role": self.profile,
+                "action": todo.name,
+                "status": "completed",
+                "output": result[:500] + "..." if len(result) > 500 else result,
+                "message": f"{self.name} completed story refinement"
+            }
+        ))
+        
+        # Publish ARTIFACT_CREATED event
+        await event_bus.publish(Event(
+            type=EventType.ARTIFACT_CREATED,
+            project_id=project_id,
+            agent_id=self.name,
+            payload={
+                "artifact_type": "user_stories",
+                "file_path": "docs/PRD.md",
+                "content": result,
+                "created_by": self.name
+            }
+        ))
+        
+        # Create response message
+        msg = Message(
+            content=result,
+            role=self.profile,
+            cause_by=type(todo)
+        )
+        
+        return msg

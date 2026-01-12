@@ -166,5 +166,32 @@ class StateManager:
             logger.error(f"Failed to load project {project_id}: {e}")
             return None
 
+    async def set_project_mode(self, project_id: str, mode: str) -> bool:
+        """Set execution mode for a project"""
+        try:
+            exec_mode = ExecutionMode(mode)
+            project = await self.update_project(project_id, mode=exec_mode)
+            return project is not None
+        except ValueError:
+            logger.warning(f"Invalid execution mode: {mode}")
+            return False
+
+    async def get_project_mode(self, project_id: str) -> Optional[str]:
+        """Get execution mode for a project"""
+        project = await self.get_project(project_id)
+        if project:
+            return project.mode.value if project.mode else "interactive"
+        return None
+
+    async def update_project_status(self, project_id: str, status: str) -> bool:
+        """Update project status"""
+        try:
+            proj_status = ProjectStatus(status)
+            project = await self.update_project(project_id, status=proj_status)
+            return project is not None
+        except ValueError:
+            logger.warning(f"Invalid project status: {status}")
+            return False
+
 # Global instance
 state_manager = StateManager()

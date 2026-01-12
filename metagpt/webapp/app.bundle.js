@@ -552,52 +552,67 @@ async function sendChatMessage() {
     addChatMessage(message, 'user');
     input.value = '';
 
-    // Update status
-    document.getElementById('chat-status').textContent = 'Thinking...';
-    document.getElementById('chat-status').style.background = 'rgba(210, 153, 34, 0.15)';
-    document.getElementById('chat-status').style.color = 'var(--accent-warning)';
+    // Update status (if element exists)
+    const chatStatus = document.getElementById('chat-status');
+    if (chatStatus) {
+        chatStatus.textContent = 'Thinking...';
+        chatStatus.style.background = 'rgba(210, 153, 34, 0.15)';
+        chatStatus.style.color = 'var(--accent-warning)';
+    }
+
+    console.log('Sending chat message:', message);
 
     try {
         let response;
 
         if (!currentConversationId) {
             // Start new conversation
+            console.log('Starting new conversation...');
             response = await apiPost('/conversation/start', { initial_idea: message });
+            console.log('Conversation start response:', response);
+
             if (response) {
                 currentConversationId = response.conversation_id;
                 addChatMessage(response.first_question, 'ai');
                 // Show Skip button after first message
-                document.getElementById('skip-btn').style.display = 'inline-flex';
+                const skipBtn = document.getElementById('skip-btn');
+                if (skipBtn) skipBtn.style.display = 'inline-flex';
             }
         } else {
             // Continue conversation
+            console.log('Continuing conversation:', currentConversationId);
             response = await apiPost('/conversation/message', {
                 conversation_id: currentConversationId,
                 message: message
             });
+            console.log('Conversation message response:', response);
+
             if (response) {
                 addChatMessage(response.ai_response, 'ai');
 
                 // Show approve button if ready
                 if (response.requires_approval) {
-                    document.getElementById('approve-btn').style.display = 'inline-flex';
-                    document.getElementById('chat-status').textContent = 'Ready to Approve';
-                    document.getElementById('chat-status').style.background = 'rgba(63, 185, 80, 0.15)';
-                    document.getElementById('chat-status').style.color = 'var(--accent-success)';
+                    const approveBtn = document.getElementById('approve-btn');
+                    if (approveBtn) approveBtn.style.display = 'inline-flex';
+                    if (chatStatus) {
+                        chatStatus.textContent = 'Ready to Approve';
+                        chatStatus.style.background = 'rgba(63, 185, 80, 0.15)';
+                        chatStatus.style.color = 'var(--accent-success)';
+                    }
                 }
             }
         }
 
-        if (!response || !response.requires_approval) {
-            document.getElementById('chat-status').textContent = 'Active';
-            document.getElementById('chat-status').style.background = 'rgba(88, 166, 255, 0.15)';
-            document.getElementById('chat-status').style.color = 'var(--accent-primary)';
+        if (chatStatus && (!response || !response.requires_approval)) {
+            chatStatus.textContent = 'Active';
+            chatStatus.style.background = 'rgba(88, 166, 255, 0.15)';
+            chatStatus.style.color = 'var(--accent-primary)';
         }
     } catch (error) {
         console.error('Chat error:', error);
         addChatMessage('Sorry, I encountered an error. Please try again.', 'ai');
-        document.getElementById('chat-status').textContent = 'Error';
-        alert('Chat Error: ' + error.message);
+        if (chatStatus) chatStatus.textContent = 'Error';
+        showModal('Chat Error', 'Failed to communicate with AI: ' + (error.message || 'Unknown error'));
     }
 }
 
@@ -1015,9 +1030,11 @@ switchView = function (viewName) {
         const titles = {
             'newproject': 'New Project',
             'dashboard': 'Dashboard',
+            'monitoring': 'Live Monitoring',
             'backlog': 'Product Backlog',
             'board': 'Kanban Board',
             'sprints': 'Sprints',
+            'artifacts': 'Project Artifacts',
             'ceremonies': 'SCRUM Ceremonies',
             'team': 'AI Team'
         };
@@ -1037,6 +1054,721 @@ switchView = function (viewName) {
             case 'sprints':
                 loadSprints();
                 break;
+            case 'monitoring':
+                if (!activityWebSocket || activityWebSocket.readyState !== WebSocket.OPEN) {
+                    startActivityStream();
+                }
+                break;
+            case 'artifacts':
+                loadArtifacts();
+                break;
         }
     }
 };
+
+// ============================================
+// EXECUTION MODE HANDLING
+// ============================================
+
+let executionMode = 'interactive'; // 'interactive' or 'autonomous'
+
+// Initialize mode selection
+document.querySelectorAll('.mode-option')?.forEach(option => {
+    option.addEventListener('click', () => {
+        const mode = option.dataset.mode;
+        setExecutionMode(mode);
+    });
+});
+
+function setExecutionMode(mode) {
+    executionMode = mode;
+
+    // Update UI
+    document.querySelectorAll('.mode-option').forEach(opt => {
+        opt.classList.remove('selected');
+        if (opt.dataset.mode === mode) {
+            opt.classList.add('selected');
+        }
+    });
+
+    // Update header display
+    const modeDisplay = document.getElementById('current-mode');
+    if (modeDisplay) {
+        modeDisplay.textContent = mode === 'interactive' ? 'Interactive' : 'Autonomous';
+    }
+
+    console.log('Execution mode set to:', mode);
+}
+
+// ============================================
+// FILE EXPLORER / ARTIFACTS
+// ============================================
+
+async function loadArtifacts() {
+    const fileTree = document.getElementById('file-tree');
+    const filePreview = document.getElementById('file-preview');
+
+    fileTree.innerHTML = '<p style="color: var(--text-muted); padding: 20px;">Loading files...</p>';
+    filePreview.innerHTML = '<p class="empty-state">Select a file to preview</p>';
+
+    try {
+        const data = await apiGet(`/files/project/${currentProjectId}/tree`);
+
+        if (data && data.items && data.items.length > 0) {
+            fileTree.innerHTML = renderFileTree(data.items);
+
+            // Add click handlers for files
+            fileTree.querySelectorAll('.file-item[data-type="file"]').forEach(item => {
+                item.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    loadFilePreview(item.dataset.path);
+                });
+            });
+
+            // Add click handlers for folders (simple toggle)
+            fileTree.querySelectorAll('.file-item[data-type="directory"]').forEach(item => {
+                item.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    item.classList.toggle('expanded');
+                    const children = item.nextElementSibling;
+                    if (children && children.classList.contains('folder-children')) {
+                        children.classList.toggle('visible');
+                    }
+                });
+            });
+        } else {
+            fileTree.innerHTML = '<p class="empty-state">No artifacts generated yet.</p>';
+        }
+    } catch (e) {
+        console.error('Failed to load artifacts:', e);
+        fileTree.innerHTML = '<p class="empty-state">Failed to load artifacts.</p>';
+    }
+}
+
+function renderFileTree(items, prefix = '') {
+    let html = '';
+
+    // Sort: directories first, then files
+    const sortedItems = items.sort((a, b) => {
+        if (a.type === b.type) return a.name.localeCompare(b.name);
+        return a.type === 'directory' ? -1 : 1;
+    });
+
+    sortedItems.forEach(item => {
+        const icon = item.type === 'directory' ? '📁' : getFileIcon(item.extension);
+        const sizeStr = item.type === 'file' ? formatFileSize(item.size) : '';
+        const arrow = item.type === 'directory' ? '<span class="arrow">▶</span>' : '';
+
+        html += `
+            <div class="file-item ${item.type}" data-path="${item.path}" data-type="${item.type}">
+                ${arrow}
+                <span class="file-icon">${icon}</span>
+                <span class="file-name">${item.name}</span>
+                ${sizeStr ? `<span class="file-size">${sizeStr}</span>` : ''}
+            </div>
+        `;
+
+        // Always render children container, but hidden by default
+        if (item.type === 'directory') {
+            const childrenHtml = item.children ? renderFileTree(item.children) : '';
+            html += `<div class="folder-children">${childrenHtml}</div>`;
+        }
+    });
+
+    return html;
+}
+
+function getFileIcon(ext) {
+    const icons = {
+        '.py': '🐍',
+        '.js': '📜',
+        '.ts': '📘',
+        '.html': '🌐',
+        '.css': '🎨',
+        '.json': '📋',
+        '.md': '📄',
+        '.yaml': '⚙️',
+        '.yml': '⚙️',
+        '.txt': '📝',
+        '.sh': '🐚',
+        '.dockerfile': '🐳',
+        '.png': '🖼️',
+        '.jpg': '🖼️',
+        '.jpeg': '🖼️',
+        '.svg': '🖼️'
+    };
+    // Handle special cases
+    if (ext === '.gitignore') return '👁️';
+
+    return icons[ext] || '📄';
+}
+
+function formatFileSize(bytes) {
+    if (bytes < 1024) return bytes + ' B';
+    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+    return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+}
+
+async function loadFilePreview(path) {
+    const preview = document.getElementById('file-preview');
+    preview.innerHTML = '<p style="color: var(--text-muted); padding: 20px;">Loading...</p>';
+
+    // Update selection
+    document.querySelectorAll('.file-item').forEach(item => {
+        item.classList.remove('selected');
+        if (item.dataset.path === path) {
+            item.classList.add('selected');
+        }
+    });
+
+    try {
+        const data = await apiGet(`/files/project/${currentProjectId}/content?path=${encodeURIComponent(path)}`);
+
+        if (data && data.content !== undefined) {
+            const ext = path.split('.').pop().toLowerCase();
+            const languageMap = {
+                'py': 'python',
+                'js': 'javascript',
+                'ts': 'typescript',
+                'html': 'html',
+                'css': 'css',
+                'json': 'json',
+                'md': 'markdown',
+                'sh': 'bash',
+                'yaml': 'yaml',
+                'yml': 'yaml'
+            };
+            const lang = languageMap[ext] || 'clike';
+
+            preview.innerHTML = `
+                <div class="code-preview-container">
+                    <pre><code class="language-${lang}">${escapeHtml(data.content)}</code></pre>
+                </div>
+            `;
+
+            // Apply syntax highlighting
+            if (window.Prism) {
+                try {
+                    Prism.highlightAllUnder(preview);
+                } catch (e) {
+                    console.warn('Prism highlighting failed:', e);
+                }
+            }
+        } else {
+            preview.innerHTML = '<p class="empty-state">Cannot preview this file</p>';
+        }
+    } catch (e) {
+        console.error('File preview error:', e);
+        preview.innerHTML = '<p class="empty-state">Failed to load file</p>';
+    }
+}
+
+function escapeHtml(text) {
+    if (!text) return '';
+    const map = {
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#039;'
+    };
+    return text.replace(/[&<>"']/g, function (m) { return map[m]; });
+}
+
+async function downloadProject() {
+    showLoading('Preparing download...');
+
+    try {
+        const response = await fetch(`${API_BASE}/files/project/${currentProjectId}/download`);
+        if (response.ok) {
+            const blob = await response.blob();
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `${currentProjectId}.zip`;
+            document.body.appendChild(a);
+            a.click();
+            window.URL.revokeObjectURL(url);
+            a.remove();
+        } else {
+            throw new Error('Download failed');
+        }
+    } catch (e) {
+        showModal('Error', 'Failed to download project files.');
+    }
+
+    hideLoading();
+}
+
+// ============================================
+// PROJECT REVIEW MODAL
+// ============================================
+
+let feedbackType = null;
+
+function showProjectReview() {
+    const modal = document.getElementById('review-modal-overlay');
+    const summary = document.getElementById('review-summary');
+
+    summary.innerHTML = `
+        <h3>🎉 Project Completed!</h3>
+        <p>Your AI team has finished working on the project. Review the generated artifacts and provide feedback.</p>
+        <ul style="margin-top: 12px;">
+            <li>📄 Documentation generated</li>
+            <li>💻 Source code implemented</li>
+            <li>🧪 Tests written</li>
+        </ul>
+    `;
+
+    modal.style.display = 'flex';
+}
+
+function closeReviewModal() {
+    document.getElementById('review-modal-overlay').style.display = 'none';
+    document.getElementById('feedback-form').style.display = 'none';
+}
+
+function submitFeedback(type) {
+    feedbackType = type;
+
+    if (type === 'done') {
+        // Mark project as complete
+        apiPost(`/project/${currentProjectId}/complete`, { status: 'completed' })
+            .then(() => {
+                closeReviewModal();
+                showModal('Success', 'Project marked as complete!');
+            });
+        return;
+    }
+
+    // Show feedback form for other types
+    const titles = {
+        'change': 'Describe the changes you need:',
+        'bug': 'Describe the bug you found:',
+        'feature': 'Describe the new feature:'
+    };
+
+    document.getElementById('feedback-title').textContent = titles[type] || 'Describe your feedback:';
+    document.getElementById('feedback-form').style.display = 'block';
+}
+
+function cancelFeedback() {
+    document.getElementById('feedback-form').style.display = 'none';
+    feedbackType = null;
+}
+
+async function sendFeedback() {
+    const text = document.getElementById('feedback-text').value.trim();
+
+    if (!text) {
+        alert('Please describe your feedback');
+        return;
+    }
+
+    showLoading('Submitting feedback...');
+
+    try {
+        await apiPost(`/project/${currentProjectId}/feedback`, {
+            type: feedbackType,
+            description: text
+        });
+
+        hideLoading();
+        closeReviewModal();
+        showModal('Feedback Submitted', 'A new iteration will be started based on your feedback.');
+
+        // Clear form
+        document.getElementById('feedback-text').value = '';
+        feedbackType = null;
+
+    } catch (e) {
+        hideLoading();
+        showModal('Error', 'Failed to submit feedback. Please try again.');
+    }
+}
+
+// ============================================
+// PRD PREVIEW AND ACCEPTANCE
+// ============================================
+
+let generatedPRD = null;
+
+function showPRDPreview(prdContent) {
+    generatedPRD = prdContent;
+    document.getElementById('prd-content').innerHTML = escapeHtml(prdContent);
+    document.getElementById('prd-preview').style.display = 'block';
+    document.getElementById('chat-actions').style.display = 'none';
+}
+
+function editPRD() {
+    // Allow user to edit - switch back to chat mode
+    document.getElementById('prd-preview').style.display = 'none';
+    document.getElementById('chat-actions').style.display = 'flex';
+    addChatMessage('I\'d like to make some changes to the PRD.', 'user');
+}
+
+async function acceptPRD() {
+    showLoading('Starting project development...');
+
+    try {
+        // First approve
+        await approveRequirements();
+
+        // Then navigate to Live Monitoring
+        switchView('monitoring');
+
+        // Update nav
+        document.querySelectorAll('.nav-item').forEach(item => {
+            item.classList.remove('active');
+            if (item.dataset.view === 'monitoring') {
+                item.classList.add('active');
+            }
+        });
+
+    } catch (e) {
+        hideLoading();
+        showModal('Error', 'Failed to start project. Please try again.');
+    }
+}
+
+// ============================================
+// INTERACTIVE MODE APPROVAL HANDLING
+// ============================================
+
+function showApprovalPanel(content, title) {
+    const panel = document.getElementById('approval-panel');
+    const contentEl = document.getElementById('approval-content');
+
+    panel.style.display = 'block';
+    contentEl.innerHTML = `<h4>${title}</h4><pre style="white-space: pre-wrap;">${content}</pre>`;
+}
+
+function hideApprovalPanel() {
+    document.getElementById('approval-panel').style.display = 'none';
+}
+
+async function approveAndContinue() {
+    showLoading('Processing...');
+    hideApprovalPanel();
+
+    try {
+        await apiPost(`/project/${currentProjectId}/approve-step`, {
+            approved: true
+        });
+        hideLoading();
+    } catch (e) {
+        hideLoading();
+        showModal('Error', 'Failed to process approval.');
+    }
+}
+
+async function requestChanges() {
+    const changes = prompt('Describe the changes you want:');
+    if (changes) {
+        showLoading('Processing...');
+        hideApprovalPanel();
+
+        try {
+            await apiPost(`/project/${currentProjectId}/approve-step`, {
+                approved: false,
+                changes: changes
+            });
+            hideLoading();
+        } catch (e) {
+            hideLoading();
+            showModal('Error', 'Failed to process change request.');
+        }
+    }
+}
+
+// ============================================
+// ENHANCED EVENT HANDLING FOR ALL PAGES
+// ============================================
+
+// Enhanced handleActivityEvent to update all pages
+const originalHandleActivityEvent = handleActivityEvent;
+handleActivityEvent = function (data) {
+    // Call original handler
+    originalHandleActivityEvent(data);
+
+    // Additional handling for real-time updates across pages
+    switch (data.type) {
+        case 'sprint_planned':
+        case 'sprint_started':
+        case 'sprint_completed':
+            loadSprints();
+            loadDashboardData();
+            break;
+        case 'backlog_updated':
+            loadBacklog();
+            break;
+        case 'task_moved':
+        case 'task_created':
+        case 'task_updated':
+            loadBoard();
+            loadDashboardData();
+            break;
+        case 'artifact_created':
+            // Refresh artifacts if on that view
+            if (document.getElementById('artifacts-view')?.classList.contains('active')) {
+                loadArtifacts();
+            }
+            break;
+        case 'project_completed':
+            // Show review modal in interactive mode
+            if (executionMode === 'interactive') {
+                setTimeout(() => showProjectReview(), 2000);
+            }
+            break;
+        case 'approval_required':
+            // Interactive mode: show approval panel
+            if (executionMode === 'interactive' && data.payload) {
+                showApprovalPanel(data.payload.content, data.payload.title || 'Approval Required');
+            }
+            break;
+    }
+};
+
+// Make functions globally available
+window.sendChatMessage = sendChatMessage;
+window.skipQuestionsAndApprove = skipQuestionsAndApprove;
+window.approveRequirements = approveRequirements;
+window.runCeremony = runCeremony;
+window.closeCeremonyOutput = closeCeremonyOutput;
+window.prioritizeBacklog = prioritizeBacklog;
+window.closeModal = closeModal;
+window.downloadProject = downloadProject;
+window.showProjectReview = showProjectReview;
+window.closeReviewModal = closeReviewModal;
+window.submitFeedback = submitFeedback;
+window.cancelFeedback = cancelFeedback;
+window.sendFeedback = sendFeedback;
+window.editPRD = editPRD;
+window.acceptPRD = acceptPRD;
+window.approveAndContinue = approveAndContinue;
+window.requestChanges = requestChanges;
+window.approveBacklog = function () { console.log('Approve backlog'); };
+window.approveSprint = function () { console.log('Approve sprint'); };
+
+// ============================================
+// FEEDBACK CHAT FOR EXISTING PROJECTS
+// ============================================
+
+let pendingFeedback = null;
+
+async function sendFeedbackChat() {
+    const input = document.getElementById('feedback-input');
+    const message = input.value.trim();
+
+    if (!message) return;
+
+    // Add user message to feedback chat
+    addFeedbackMessage(message, 'user');
+    input.value = '';
+
+    // Update status
+    const statusEl = document.getElementById('feedback-status');
+    if (statusEl) {
+        statusEl.textContent = 'Analyzing...';
+    }
+
+    console.log('Sending feedback request:', message);
+
+    try {
+        // Call the AI to analyze and classify the feedback
+        const response = await apiPost('/feedback/analyze', {
+            project_id: currentProjectId,
+            description: message
+        });
+
+        console.log('Feedback analysis response:', response);
+
+        if (response && response.classification) {
+            // Store the pending feedback
+            pendingFeedback = {
+                type: response.classification,
+                title: response.suggested_title || 'User Request',
+                description: message,
+                priority: response.priority || 'medium',
+                aiSummary: response.summary || message
+            };
+
+            // Show AI classification response
+            const icons = {
+                'bug': '🐛',
+                'feature': '✨',
+                'enhancement': '📈',
+                'change': '🔄'
+            };
+            const icon = icons[response.classification] || '📋';
+
+            addFeedbackMessage(`I've analyzed your request. This looks like a **${response.classification.toUpperCase()}**.\n\n` +
+                `**Summary:** ${response.summary || message}\n\n` +
+                `**Suggested Title:** ${response.suggested_title || 'User Request'}\n\n` +
+                `If this looks correct, click "Confirm & Create Task" to add it to the backlog.`, 'ai');
+
+            // Show the result UI
+            showFeedbackResult(response);
+
+            if (statusEl) {
+                statusEl.textContent = 'Classified';
+            }
+        } else {
+            addFeedbackMessage('I understood your request. Let me create a task for the team.', 'ai');
+
+            // Default to a change request if no classification
+            pendingFeedback = {
+                type: 'change',
+                title: 'User Request',
+                description: message,
+                priority: 'medium',
+                aiSummary: message
+            };
+
+            showFeedbackResult({ classification: 'change', summary: message });
+        }
+    } catch (error) {
+        console.error('Feedback analysis error:', error);
+        addFeedbackMessage('I\'ll create a task for this request. The team will review it.', 'ai');
+
+        // Still allow submission even if analysis fails
+        pendingFeedback = {
+            type: 'change',
+            title: 'User Request',
+            description: message,
+            priority: 'medium',
+            aiSummary: message
+        };
+
+        showFeedbackResult({ classification: 'change', summary: message });
+
+        if (statusEl) {
+            statusEl.textContent = 'Ready';
+        }
+    }
+}
+
+function addFeedbackMessage(text, sender) {
+    const container = document.getElementById('feedback-messages');
+    if (!container) return;
+
+    const isUser = sender === 'user';
+
+    // Format markdown-like text (basic)
+    const formattedText = text
+        .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+        .replace(/\n/g, '<br>');
+
+    const messageHtml = `
+        <div class="chat-message ${sender}">
+            <div class="message-avatar">${isUser ? '👤' : '🤖'}</div>
+            <div class="message-content">
+                <strong>${isUser ? 'You' : 'AI Assistant'}</strong>
+                <p>${formattedText}</p>
+            </div>
+        </div>
+    `;
+
+    container.insertAdjacentHTML('beforeend', messageHtml);
+    container.scrollTop = container.scrollHeight;
+}
+
+function showFeedbackResult(response) {
+    const resultEl = document.getElementById('feedback-result');
+    const classificationEl = document.getElementById('feedback-classification');
+
+    if (!resultEl || !classificationEl) return;
+
+    const icons = {
+        'bug': '🐛 Bug Report',
+        'feature': '✨ New Feature',
+        'enhancement': '📈 Enhancement',
+        'change': '🔄 Change Request'
+    };
+
+    classificationEl.innerHTML = `
+        <div class="classification-badge ${response.classification}">
+            ${icons[response.classification] || '📋 Request'}
+        </div>
+        <div class="classification-summary">
+            ${response.summary || pendingFeedback?.description || 'Your request has been analyzed.'}
+        </div>
+    `;
+
+    resultEl.style.display = 'block';
+}
+
+function editFeedbackRequest() {
+    // Hide result, show input
+    const resultEl = document.getElementById('feedback-result');
+    if (resultEl) resultEl.style.display = 'none';
+
+    // Put the description back in the input
+    const input = document.getElementById('feedback-input');
+    if (input && pendingFeedback) {
+        input.value = pendingFeedback.description;
+    }
+
+    pendingFeedback = null;
+}
+
+async function submitFeedbackRequest() {
+    if (!pendingFeedback) {
+        showModal('Error', 'No pending feedback to submit.');
+        return;
+    }
+
+    showLoading('Creating task...');
+
+    try {
+        // Add to backlog as a task/bug
+        const result = await apiPost(`/project/${currentProjectId}/backlog/task`, {
+            title: pendingFeedback.title,
+            description: pendingFeedback.description + '\n\n---\n*AI Analysis: ' + pendingFeedback.aiSummary + '*',
+            priority: pendingFeedback.priority,
+            type: pendingFeedback.type === 'bug' ? 'bug' : 'task'
+        });
+
+        hideLoading();
+
+        if (result) {
+            // Clear the feedback chat
+            const container = document.getElementById('feedback-messages');
+            if (container) {
+                container.innerHTML = `
+                    <div class="chat-message ai">
+                        <div class="message-avatar">🤖</div>
+                        <div class="message-content">
+                            <strong>AI Assistant</strong>
+                            <p>✅ Task created successfully! The team will work on it in the next sprint.</p>
+                        </div>
+                    </div>
+                `;
+            }
+
+            // Hide result
+            const resultEl = document.getElementById('feedback-result');
+            if (resultEl) resultEl.style.display = 'none';
+
+            // Update status
+            const statusEl = document.getElementById('feedback-status');
+            if (statusEl) statusEl.textContent = 'Task Created';
+
+            // Refresh backlog
+            loadBacklog();
+
+            showModal('Success', `${pendingFeedback.type === 'bug' ? 'Bug' : 'Task'} "${pendingFeedback.title}" has been added to the backlog.`);
+
+            pendingFeedback = null;
+        }
+    } catch (error) {
+        hideLoading();
+        console.error('Submit feedback error:', error);
+        showModal('Error', 'Failed to create task. Please try again.');
+    }
+}
+
+// Make feedback functions globally available
+window.sendFeedbackChat = sendFeedbackChat;
+window.editFeedbackRequest = editFeedbackRequest;
+window.submitFeedbackRequest = submitFeedbackRequest;

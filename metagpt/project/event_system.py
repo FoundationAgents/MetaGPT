@@ -146,7 +146,7 @@ class EventBus:
             except Exception:
                 self._global_websockets.discard(ws)
                 
-        logger.debug(f"Event published: {event.type} [{event.id}]")
+        logger.info(f"Event published: {event.type} [{event.id}] to {len(global_sockets)} global sockets, {len(self._websockets.get(event.project_id, []))} project sockets")
 
     async def _persist_event(self, event: Event):
         """Append event to detailed log file locally."""
