@@ -122,17 +122,76 @@ class Team(BaseModel):
     @serialize_decorator
     async def run(self, n_round=3, idea="", send_to="", auto_archive=True):
         """Run company until target round or no money"""
-        if idea:
-            self.run_project(idea=idea, send_to=send_to)
+        
+        # Start tracing if enabled
+        trace_collector = None
+        if self.env.context.config.trace.enabled:
+            from metagpt.trace import TraceCollector
+            
+            trace_collector = TraceCollector.get_instance(self.env.context.config.trace.level)
+            project_name = self.env.context.config.project_name or "unnamed_project"
+            trace_collector.start_project(project_name=project_name, idea=idea)
 
-        while n_round > 0:
-            if self.env.is_idle:
-                logger.debug("All roles are idle.")
-                break
-            n_round -= 1
-            self._check_balance()
-            await self.env.run()
+        # Initialize Meta-Org Agent if enabled
+        meta_org_agent = None
+        if self.env.context.config.meta_org.enabled:
+            from metagpt.meta_org.agent import MetaOrgAgent
+            from metagpt.meta_org.collector import SignalCollector
+            
+            # Use singleton collector
+            signal_collector = SignalCollector.get_instance(project_id=self.env.context.config.project_name or "default")
+            meta_org_agent = MetaOrgAgent(self, signal_collector)
+            logger.info("Meta-Org Agent initialized and active.")
+        
+        try:
+            if idea:
+                self.run_project(idea=idea, send_to=send_to)
 
-            logger.debug(f"max {n_round=} left.")
-        self.env.archive(auto_archive)
-        return self.env.history
+            original_round = n_round
+            while n_round > 0:
+                if self.env.is_idle:
+                    logger.debug("All roles are idle.")
+                    break
+                n_round -= 1
+                self._check_balance()
+                
+                try:
+                    await self.env.run()
+                except ValueError as e:
+                    # Handle HITL rejection
+                    if "rejected by human" in str(e):
+                        logger.warning(f"[HITL] Workflow stopped by human: {e}")
+                        break
+                    raise
+
+                # Meta-Org analysis cycle
+                if meta_org_agent and (original_round - n_round) % self.env.context.config.meta_org.interval_round == 0:
+                    logger.info("[MetaOrg] Starting periodic organization analysis...")
+                    try:
+                        await meta_org_agent.analyze_and_adapt()
+                    except Exception as e:
+                        logger.error(f"[MetaOrg] Analysis failed: {e}")
+
+                logger.debug(f"max {n_round=} left.")
+            
+            self.env.archive(auto_archive)
+            return self.env.history
+            
+        finally:
+            if meta_org_agent:
+                await meta_org_agent.postmortem()
+
+            # End tracing and save if enabled
+            if trace_collector and self.env.context.config.trace.enabled:
+                trace_collector.end_project()
+                
+                if self.env.context.config.trace.save_on_complete:
+                    try:
+                        from metagpt.trace import TraceReporter
+                        
+                        trace_path = trace_collector.save()
+                        report_path = TraceReporter.save_report(trace_collector.project_trace)
+                        logger.info(f"[TRACE] Trace saved: {trace_path}")
+                        logger.info(f"[TRACE] Report saved: {report_path}")
+                    except Exception as e:
+                        logger.warning(f"[TRACE] Failed to save trace: {e}")
