@@ -46,9 +46,9 @@ class Team(BaseModel):
         super(Team, self).__init__(**data)
         ctx = context or Context()
         if not self.env and not self.use_mgx:
-            self.env = Environment(context=ctx)
+            self.env = Environment(context=ctx, team_leader_name=data.get("team_leader_name", TEAMLEADER_NAME))
         elif not self.env and self.use_mgx:
-            self.env = MGXEnv(context=ctx)
+            self.env = MGXEnv(context=ctx, team_leader_name=data.get("team_leader_name", TEAMLEADER_NAME))
         else:
             self.env.context = ctx  # The `env` object is allocated by deserialization
         if "roles" in data:
