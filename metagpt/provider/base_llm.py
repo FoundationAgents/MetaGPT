@@ -30,6 +30,7 @@ from metagpt.provider.constant import MULTI_MODAL_MODELS
 from metagpt.utils.common import log_and_reraise
 from metagpt.utils.cost_manager import CostManager, Costs
 from metagpt.utils.token_counter import TOKEN_MAX
+from metagpt.utils.rate_limitor import RateLimitor, rate_limitor_registry
 
 
 class BaseLLM(ABC):
@@ -46,6 +47,7 @@ class BaseLLM(ABC):
     # Should always use model not config.model within this class
     model: Optional[str] = None
     pricing_plan: Optional[str] = None
+    current_rate_limitor: Optional[RateLimitor] = None
 
     _reasoning_content: Optional[str] = None  # content from reasoning mode
 
@@ -136,6 +138,7 @@ class BaseLLM(ABC):
                 prompt_tokens = int(usage.get("prompt_tokens", 0))
                 completion_tokens = int(usage.get("completion_tokens", 0))
                 self.cost_manager.update_cost(prompt_tokens, completion_tokens, model)
+                self.rate_limitor.cost_token(usage)
             except Exception as e:
                 logger.error(f"{self.__class__.__name__} updates costs failed! exp: {e}")
 
@@ -199,11 +202,13 @@ class BaseLLM(ABC):
             message.extend(msg)
         if stream is None:
             stream = self.config.stream
-
+        async with self.rate_limitor:
+            await self.rate_limitor.acquire(message)
+    
         # the image data is replaced with placeholders to avoid long output
         masked_message = [self.mask_base64_data(m) for m in message]
         logger.debug(masked_message)
-
+    
         compressed_message = self.compress_messages(message, compress_type=self.config.compress_type)
         rsp = await self.acompletion_text(compressed_message, stream=stream, timeout=self.get_timeout(timeout))
         # rsp = await self.acompletion_text(message, stream=stream, timeout=self.get_timeout(timeout))
@@ -325,6 +330,12 @@ class BaseLLM(ABC):
         """Set model and return self. For example, `with_model("gpt-3.5-turbo")`."""
         self.model = model
         return self
+    
+    @property
+    def rate_limitor(self) -> RateLimitor:
+        if not self.current_rate_limitor:
+            self.current_rate_limitor = rate_limitor_registry.register(None, self.config)
+        return self.current_rate_limitor
 
     def get_timeout(self, timeout: int) -> int:
         return timeout or self.config.timeout or LLM_API_TIMEOUT
