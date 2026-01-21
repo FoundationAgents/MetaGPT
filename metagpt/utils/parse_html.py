@@ -4,7 +4,6 @@ from __future__ import annotations
 from typing import Generator, Optional
 from urllib.parse import urljoin, urlparse
 
-import htmlmin
 from bs4 import BeautifulSoup
 from pydantic import BaseModel, PrivateAttr
 
@@ -73,4 +72,4 @@ def _get_soup(page: str):
 
 def simplify_html(html: str, url: str, keep_links: bool = False):
     html = WebPage(inner_text="", html=html, url=url).get_slim_soup(keep_links).decode()
-    return htmlmin.minify(html, remove_comments=True, remove_empty_space=True)
+    return html
