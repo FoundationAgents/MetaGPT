@@ -10,6 +10,7 @@ import fire
 from metagpt.actions import Action, UserRequirement
 from metagpt.logs import logger
 from metagpt.roles import Role
+from metagpt.roles.di.team_leader import TeamLeader
 from metagpt.schema import Message
 from metagpt.team import Team
 
@@ -129,6 +130,7 @@ async def main(
     team = Team()
     team.hire(
         [
+            TeamLeader(),
             SimpleCoder(),
             SimpleTester(),
             SimpleReviewer(is_human=add_human),
