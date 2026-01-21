@@ -5,6 +5,7 @@
 @File    : openai.py
 @Modified By: mashenquan, 2023/11/21. Fix bug: ReadTimeout.
 @Modified By: mashenquan, 2023/12/1. Fix bug: Unclosed connection caused by openai 0.x.
+@Modified By: dickymoore, 2025/09/13. gpt-5 support
 """
 from __future__ import annotations
 
@@ -138,7 +139,6 @@ class OpenAILLM(BaseLLM):
     def _cons_kwargs(self, messages: list[dict], timeout=USE_CONFIG_TIMEOUT, **extra_kwargs) -> dict:
         kwargs = {
             "messages": messages,
-            "max_tokens": self._get_max_tokens(messages),
             # "n": 1,  # Some services do not provide this parameter, such as mistral
             # "stop": None,  # default it's None and gpt4-v can't have this one
             "temperature": self.config.temperature,
@@ -146,9 +146,18 @@ class OpenAILLM(BaseLLM):
             "timeout": self.get_timeout(timeout),
         }
         if "o1-" in self.model:
-            # compatible to openai o1-series
+            # compatible to openai o1-series (do not send max tokens)
             kwargs["temperature"] = 1
-            kwargs.pop("max_tokens")
+        else:
+            max_tokens_value = self._get_max_tokens(messages)
+            if str(self.model).startswith("gpt-5"):
+                # OpenAI GPT-5 family expects max_completion_tokens
+                kwargs["max_completion_tokens"] = max_tokens_value
+                # GPT-5 only supports default temperature = 1
+                kwargs["temperature"] = 1
+            else:
+                # Other OpenAI-compatible models expect max_tokens
+                kwargs["max_tokens"] = max_tokens_value
         if extra_kwargs:
             kwargs.update(extra_kwargs)
         return kwargs

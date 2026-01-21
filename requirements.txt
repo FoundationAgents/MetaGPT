@@ -4,7 +4,7 @@ channels==4.0.0
 # Django==4.1.5
 # docx==0.2.4
 #faiss==1.5.3
-faiss_cpu==1.7.4
+faiss_cpu==1.12.0
 fire==0.4.0
 typer==0.9.0
 # godot==0.1.1

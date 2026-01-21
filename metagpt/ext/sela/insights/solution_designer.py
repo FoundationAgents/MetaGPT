@@ -137,7 +137,7 @@ class SolutionDesigner:
 
     async def generate_solutions(self, dataset_info, dataset_name, save_analysis_pool=True):
         llm = LLM()
-        if type(dataset_info) == dict:
+        if isinstance(dataset_info, dict):
             description_prompt = DATASET_DESCRIPTION_SELA_PROMPT.format(
                 dataset=dataset_info["description"],
                 metadata=self.metadata_builder(dataset_info["metadata"]),

@@ -42,7 +42,7 @@ def test_team_deserialize(context):
     assert new_company.env.get_role(pm.profile) is not None
 
     new_pm = new_company.env.get_role(pm.profile)
-    assert type(new_pm) == ProductManager
+    assert isinstance(new_pm, ProductManager)
     assert new_company.env.get_role(pm.profile) is not None
     assert new_company.env.get_role(arch.profile) is not None
 
@@ -89,7 +89,7 @@ async def test_team_recover(mocker, context):
     new_role_c = new_company.env.get_role(role_c.profile)
     assert new_role_c.rc.memory == role_c.rc.memory
     assert new_role_c.rc.env != role_c.rc.env
-    assert type(list(new_company.env.roles.values())[0].actions[0]) == ActionOK
+    assert isinstance(list(new_company.env.roles.values())[0].actions[0], ActionOK)
 
     new_company.run_project(idea)
     await new_company.run(n_round=4)

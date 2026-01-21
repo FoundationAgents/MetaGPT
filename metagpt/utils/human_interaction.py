@@ -28,7 +28,7 @@ class HumanInteraction(object):
 
     def check_input_type(self, input_str: str, req_type: Type) -> Tuple[bool, Any]:
         check_ret = True
-        if req_type == str:
+        if req_type is str:
             # required_type = str, just return True
             return check_ret, input_str
         try:

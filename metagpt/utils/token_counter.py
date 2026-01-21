@@ -10,10 +10,41 @@ ref3: https://github.com/Significant-Gravitas/Auto-GPT/blob/master/autogpt/llm/t
 ref4: https://github.com/hwchase17/langchain/blob/master/langchain/chat_models/openai.py
 ref5: https://ai.google.dev/models/gemini
 """
+from functools import lru_cache
+
 import anthropic
 import tiktoken
 
 from metagpt.logs import logger
+
+FALLBACK_MODEL_PREFIX_TO_ENCODING = {
+    "gpt-5": "cl100k_base",
+}
+
+_warned_missing_models: set[str] = set()
+
+
+@lru_cache(maxsize=None)
+def _encoding_for_model(model: str):
+    """Return a tiktoken encoding for the given model with graceful fallbacks."""
+    try:
+        return tiktoken.encoding_for_model(model)
+    except KeyError:
+        encoding_name = None
+        for prefix, fallback_encoding in FALLBACK_MODEL_PREFIX_TO_ENCODING.items():
+            if model.startswith(prefix):
+                encoding_name = fallback_encoding
+                break
+        encoding_name = encoding_name or "cl100k_base"
+        if model not in _warned_missing_models:
+            logger.debug(
+                "Model %s not found in tiktoken registry. Falling back to %s encoding.",
+                model,
+                encoding_name,
+            )
+            _warned_missing_models.add(model)
+        return tiktoken.get_encoding(encoding_name)
+
 
 TOKEN_COSTS = {
     "anthropic/claude-3.5-sonnet": {"prompt": 0.003, "completion": 0.015},
@@ -39,6 +70,8 @@ TOKEN_COSTS = {
     "gpt-4-vision-preview": {"prompt": 0.01, "completion": 0.03},  # TODO add extra image price calculator
     "gpt-4-1106-vision-preview": {"prompt": 0.01, "completion": 0.03},
     "gpt-4o": {"prompt": 0.005, "completion": 0.015},
+    # Placeholder pricing for gpt-5; update when official
+    "gpt-5": {"prompt": 0.005, "completion": 0.015},
     "gpt-4o-mini": {"prompt": 0.00015, "completion": 0.0006},
     "gpt-4o-mini-2024-07-18": {"prompt": 0.00015, "completion": 0.0006},
     "gpt-4o-2024-05-13": {"prompt": 0.005, "completion": 0.015},
@@ -78,6 +111,8 @@ TOKEN_COSTS = {
     "openai/gpt-4": {"prompt": 0.03, "completion": 0.06},  # start, for openrouter
     "openai/gpt-4-turbo": {"prompt": 0.01, "completion": 0.03},
     "openai/gpt-4o": {"prompt": 0.005, "completion": 0.015},
+    # Placeholder pricing for gpt-5 via OpenRouter-style prefix
+    "openai/gpt-5": {"prompt": 0.005, "completion": 0.015},
     "openai/gpt-4o-2024-05-13": {"prompt": 0.005, "completion": 0.015},
     "openai/gpt-4o-mini": {"prompt": 0.00015, "completion": 0.0006},
     "openai/gpt-4o-mini-2024-07-18": {"prompt": 0.00015, "completion": 0.0006},
@@ -250,6 +285,8 @@ TOKEN_MAX = {
     "o1-mini": 128000,
     "o1-mini-2024-09-12": 128000,
     "gpt-4o": 128000,
+    # Assume gpt-5 has at least 128k context; update if needed
+    "gpt-5": 128000,
     "gpt-4o-2024-05-13": 128000,
     "gpt-4o-2024-08-06": 128000,
     "gpt-4o-mini-2024-07-18": 128000,
@@ -298,6 +335,7 @@ TOKEN_MAX = {
     "openai/gpt-4": 8192,  # start, for openrouter
     "openai/gpt-4-turbo": 128000,
     "openai/gpt-4o": 128000,
+    "openai/gpt-5": 128000,
     "openai/gpt-4o-2024-05-13": 128000,
     "openai/gpt-4o-mini": 128000,
     "openai/gpt-4o-mini-2024-07-18": 128000,
@@ -432,11 +470,7 @@ def count_message_tokens(messages, model="gpt-3.5-turbo-0125"):
     if "claude" in model:
         num_tokens = count_claude_message_tokens(messages, model)
         return num_tokens
-    try:
-        encoding = tiktoken.encoding_for_model(model)
-    except KeyError:
-        logger.info(f"Warning: model {model} not found in tiktoken. Using cl100k_base encoding.")
-        encoding = tiktoken.get_encoding("cl100k_base")
+    encoding = _encoding_for_model(model)
     if model in {
         "gpt-3.5-turbo-0613",
         "gpt-3.5-turbo-16k-0613",
@@ -461,12 +495,16 @@ def count_message_tokens(messages, model="gpt-3.5-turbo-0125"):
         "gpt-4o-2024-08-06",
         "gpt-4o-mini",
         "gpt-4o-mini-2024-07-18",
+        "gpt-5",
         "o1-preview",
         "o1-preview-2024-09-12",
         "o1-mini",
         "o1-mini-2024-09-12",
     }:
         tokens_per_message = 3  # # every reply is primed with <|start|>assistant<|message|>
+        tokens_per_name = 1
+    elif model.startswith("gpt-5"):
+        tokens_per_message = 3
         tokens_per_name = 1
     elif model == "gpt-3.5-turbo-0301":
         tokens_per_message = 4  # every message follows <|start|>{role/name}\n{content}<|end|>\n
@@ -522,11 +560,7 @@ def count_output_tokens(string: str, model: str) -> int:
         messages = [{"role": "assistant", "content": string}]
         num_tokens = count_claude_message_tokens(messages, model)
         return num_tokens
-    try:
-        encoding = tiktoken.encoding_for_model(model)
-    except KeyError:
-        logger.info(f"Warning: model {model} not found in tiktoken. Using cl100k_base encoding.")
-        encoding = tiktoken.get_encoding("cl100k_base")
+    encoding = _encoding_for_model(model)
     return len(encoding.encode(string))
 
 

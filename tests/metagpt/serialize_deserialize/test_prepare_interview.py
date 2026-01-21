@@ -16,4 +16,4 @@ async def test_action_serdeser(context):
     new_action = PrepareInterview(**serialized_data, context=context)
 
     assert new_action.name == "PrepareInterview"
-    assert type(await new_action.run("python developer")) == ActionNode
+    assert isinstance(await new_action.run("python developer"), ActionNode)

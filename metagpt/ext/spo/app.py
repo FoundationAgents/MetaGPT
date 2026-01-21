@@ -116,17 +116,23 @@ def main():
         # LLM Settings
         st.subheader("LLM Settings")
         opt_model = st.selectbox(
-            "Optimization Model", ["claude-3-5-sonnet-20240620", "gpt-4o", "gpt-4o-mini", "deepseek-chat"], index=0
+            "Optimization Model",
+            ["claude-3-5-sonnet-20240620", "gpt-5", "gpt-4o", "gpt-4o-mini", "deepseek-chat"],
+            index=0,
         )
         opt_temp = st.slider("Optimization Temperature", 0.0, 1.0, 0.7)
 
         eval_model = st.selectbox(
-            "Evaluation Model", ["gpt-4o-mini", "claude-3-5-sonnet-20240620", "gpt-4o", "deepseek-chat"], index=0
+            "Evaluation Model",
+            ["gpt-5", "gpt-4o-mini", "claude-3-5-sonnet-20240620", "gpt-4o", "deepseek-chat"],
+            index=0,
         )
         eval_temp = st.slider("Evaluation Temperature", 0.0, 1.0, 0.3)
 
         exec_model = st.selectbox(
-            "Execution Model", ["gpt-4o-mini", "claude-3-5-sonnet-20240620", "gpt-4o", "deepseek-chat"], index=0
+            "Execution Model",
+            ["gpt-5", "gpt-4o-mini", "claude-3-5-sonnet-20240620", "gpt-4o", "deepseek-chat"],
+            index=0,
         )
         exec_temp = st.slider("Execution Temperature", 0.0, 1.0, 0.0)
 

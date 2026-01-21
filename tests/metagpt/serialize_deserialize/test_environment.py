@@ -53,8 +53,8 @@ def test_environment_serdeser(context):
 
     assert list(new_env.roles.values())[0].states == list(environment.roles.values())[0].states
     assert isinstance(list(environment.roles.values())[0].actions[0], ActionOK)
-    assert type(list(new_env.roles.values())[0].actions[0]) == ActionOK
-    assert type(list(new_env.roles.values())[0].actions[1]) == ActionRaise
+    assert isinstance(list(new_env.roles.values())[0].actions[0], ActionOK)
+    assert isinstance(list(new_env.roles.values())[0].actions[1], ActionRaise)
     assert list(new_env.roles.values())[0].rc.watch == role_c.rc.watch
 
 
@@ -86,7 +86,7 @@ def test_environment_serdeser_save(context):
     env_dict = read_json_file(env_path)
     new_env: Environment = Environment(**env_dict, context=context)
     assert len(new_env.roles) == 1
-    assert type(list(new_env.roles.values())[0].actions[0]) == ActionOK
+    assert isinstance(list(new_env.roles.values())[0].actions[0], ActionOK)
     assert list(new_env.roles.values())[0].rc.watch == role_c.rc.watch
 
 

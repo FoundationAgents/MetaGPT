@@ -49,6 +49,14 @@ def test_count_message_tokens_gpt_4():
     assert count_message_tokens(messages, model="gpt-4-0314") == 15
 
 
+def test_count_message_tokens_gpt_5():
+    messages = [
+        {"role": "user", "content": "Hello"},
+        {"role": "assistant", "content": "Hi there!"},
+    ]
+    assert count_message_tokens(messages, model="gpt-5") == 15
+
+
 def test_count_string_tokens():
     """Test that the string tokens are counted correctly."""
 
@@ -67,6 +75,13 @@ def test_count_string_tokens_gpt_4():
 
     string = "Hello, world!"
     assert count_output_tokens(string, model="gpt-4-0314") == 4
+
+
+def test_count_string_tokens_gpt_5():
+    """Ensure GPT-5 models fall back to a known encoding."""
+
+    string = "Hello, world!"
+    assert count_output_tokens(string, model="gpt-5") == 4
 
 
 if __name__ == "__main__":

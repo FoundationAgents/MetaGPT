@@ -315,10 +315,7 @@ class Role(BaseRole, SerializationMixin, ContextMixin, BaseModel):
             self.llm.cost_manager = self.context.cost_manager
             self.set_actions(self.actions)  # reset actions to update llm and prefix
 
-    @property
-    def name(self):
-        """Get the role name"""
-        return self._setting.name
+    # Removed property `name` that redefined the field and violated F811
 
     def _get_prefix(self):
         """Get the role prefix"""
