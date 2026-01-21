@@ -69,13 +69,15 @@ class SparkLLM(BaseLLM):
     async def acompletion(self, messages: list[dict], timeout=USE_CONFIG_TIMEOUT):
         return await self._achat_completion(messages, timeout)
 
-    async def _achat_completion_stream(self, messages: list[dict], timeout: int = USE_CONFIG_TIMEOUT) -> str:
+    async def _achat_completion_stream(self, messages: list[dict], timeout: int = USE_CONFIG_TIMEOUT, stream_callback = None) -> str:
         response = await self.acreate(messages, stream=True)
         collected_content = []
         usage = {}
         async for chunk in response:
             collected_content.append(chunk.content)
             log_llm_stream(chunk.content)
+            if stream_callback:
+                stream_callback(chunk.content)
             if hasattr(chunk, "additional_kwargs"):
                 usage = chunk.additional_kwargs.get("token_usage", {})
 

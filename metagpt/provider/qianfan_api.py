@@ -120,7 +120,7 @@ class QianFanLLM(BaseLLM):
     async def acompletion(self, messages: list[dict], timeout: int = USE_CONFIG_TIMEOUT) -> JsonBody:
         return await self._achat_completion(messages, timeout=self.get_timeout(timeout))
 
-    async def _achat_completion_stream(self, messages: list[dict], timeout: int = USE_CONFIG_TIMEOUT) -> str:
+    async def _achat_completion_stream(self, messages: list[dict], timeout: int = USE_CONFIG_TIMEOUT, stream_callback = None) -> str:
         resp = await self.aclient.ado(**self._const_kwargs(messages=messages, stream=True), request_timeout=timeout)
         collected_content = []
         usage = {}
@@ -128,6 +128,8 @@ class QianFanLLM(BaseLLM):
             content = chunk.body.get("result", "")
             usage = chunk.body.get("usage", {})
             log_llm_stream(content)
+            if stream_callback:
+                stream_callback(content)
             collected_content.append(content)
         log_llm_stream("\n")
 

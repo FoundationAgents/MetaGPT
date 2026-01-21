@@ -184,6 +184,7 @@ class BaseLLM(ABC):
         images: Optional[Union[str, list[str]]] = None,
         timeout=USE_CONFIG_TIMEOUT,
         stream=None,
+        stream_callback=None,
     ) -> str:
         if system_msgs:
             message = self._system_msgs(system_msgs)
@@ -205,7 +206,7 @@ class BaseLLM(ABC):
         logger.debug(masked_message)
 
         compressed_message = self.compress_messages(message, compress_type=self.config.compress_type)
-        rsp = await self.acompletion_text(compressed_message, stream=stream, timeout=self.get_timeout(timeout))
+        rsp = await self.acompletion_text(compressed_message, stream=stream, timeout=self.get_timeout(timeout), stream_callback=stream_callback)
         # rsp = await self.acompletion_text(message, stream=stream, timeout=self.get_timeout(timeout))
         return rsp
 
@@ -243,7 +244,7 @@ class BaseLLM(ABC):
         """
 
     @abstractmethod
-    async def _achat_completion_stream(self, messages: list[dict], timeout: int = USE_CONFIG_TIMEOUT) -> str:
+    async def _achat_completion_stream(self, messages: list[dict], timeout: int = USE_CONFIG_TIMEOUT, stream_callback = None) -> str:
         """_achat_completion_stream implemented by inherited class"""
 
     @retry(
@@ -254,11 +255,11 @@ class BaseLLM(ABC):
         retry_error_callback=log_and_reraise,
     )
     async def acompletion_text(
-        self, messages: list[dict], stream: bool = False, timeout: int = USE_CONFIG_TIMEOUT
+        self, messages: list[dict], stream: bool = False, timeout: int = USE_CONFIG_TIMEOUT, stream_callback=None
     ) -> str:
         """Asynchronous version of completion. Return str. Support stream-print"""
         if stream:
-            return await self._achat_completion_stream(messages, timeout=self.get_timeout(timeout))
+            return await self._achat_completion_stream(messages, timeout=self.get_timeout(timeout), stream_callback=stream_callback)
         resp = await self._achat_completion(messages, timeout=self.get_timeout(timeout))
         return self.get_choice_text(resp)
 

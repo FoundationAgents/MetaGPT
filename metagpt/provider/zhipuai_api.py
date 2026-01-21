@@ -69,7 +69,7 @@ class ZhiPuAILLM(BaseLLM):
     async def acompletion(self, messages: list[dict], timeout=USE_CONFIG_TIMEOUT) -> dict:
         return await self._achat_completion(messages, timeout=self.get_timeout(timeout))
 
-    async def _achat_completion_stream(self, messages: list[dict], timeout=USE_CONFIG_TIMEOUT) -> str:
+    async def _achat_completion_stream(self, messages: list[dict], timeout=USE_CONFIG_TIMEOUT, stream_callback = None) -> str:
         response = await self.llm.acreate_stream(**self._const_kwargs(messages, stream=True))
         collected_content = []
         usage = {}
@@ -81,6 +81,8 @@ class ZhiPuAILLM(BaseLLM):
                 content = self.get_choice_delta_text(chunk)
                 collected_content.append(content)
                 log_llm_stream(content)
+                if stream_callback:
+                    stream_callback(content)
 
         log_llm_stream("\n")
 

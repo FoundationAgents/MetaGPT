@@ -56,7 +56,7 @@ class OpenrouterReasoningLLM(BaseLLM):
     async def acompletion(self, messages: list[dict], timeout=USE_CONFIG_TIMEOUT) -> dict:
         return await self._achat_completion(messages, timeout=self.get_timeout(timeout))
 
-    async def _achat_completion_stream(self, messages: list[dict], timeout: int = USE_CONFIG_TIMEOUT) -> str:
+    async def _achat_completion_stream(self, messages: list[dict], timeout: int = USE_CONFIG_TIMEOUT, stream_callback = None) -> str:
         self.headers["Content-Type"] = "text/event-stream"  # update header to adapt the client
         payload = self._const_kwargs(messages, stream=True)
         resp, _, _ = await self.client.arequest(
@@ -75,6 +75,8 @@ class OpenrouterReasoningLLM(BaseLLM):
             elif delta["content"]:
                 collected_content.append(delta["content"])
                 log_llm_stream(delta["content"])
+                if stream_callback:
+                    stream_callback(delta["content"])
 
             usage = chunk.get("usage")
 

@@ -57,7 +57,7 @@ class AnthropicLLM(BaseLLM):
     async def acompletion(self, messages: list[dict], timeout: int = USE_CONFIG_TIMEOUT) -> Message:
         return await self._achat_completion(messages, timeout=self.get_timeout(timeout))
 
-    async def _achat_completion_stream(self, messages: list[dict], timeout: int = USE_CONFIG_TIMEOUT) -> str:
+    async def _achat_completion_stream(self, messages: list[dict], timeout: int = USE_CONFIG_TIMEOUT, stream_callback = None) -> str:
         stream = await self.aclient.messages.create(**self._const_kwargs(messages, stream=True))
         collected_content = []
         collected_reasoning_content = []
@@ -74,6 +74,8 @@ class AnthropicLLM(BaseLLM):
                 elif delta_type == "text_delta":
                     content = event.delta.text
                     log_llm_stream(content)
+                    if stream_callback:
+                        stream_callback(content)
                     collected_content.append(content)
             elif event_type == "message_delta":
                 usage.output_tokens = event.usage.output_tokens  # update final output_tokens

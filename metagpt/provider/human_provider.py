@@ -45,10 +45,10 @@ class HumanProvider(BaseLLM):
         """dummy implementation of abstract method in base"""
         return []
 
-    async def _achat_completion_stream(self, messages: list[dict], timeout: int = USE_CONFIG_TIMEOUT) -> str:
+    async def _achat_completion_stream(self, messages: list[dict], timeout: int = USE_CONFIG_TIMEOUT, stream_callback = None) -> str:
         pass
 
-    async def acompletion_text(self, messages: list[dict], stream=False, timeout=USE_CONFIG_TIMEOUT) -> str:
+    async def acompletion_text(self, messages: list[dict], stream=False, timeout=USE_CONFIG_TIMEOUT, stream_callback = None) -> str:
         """dummy implementation of abstract method in base"""
         return ""
 
