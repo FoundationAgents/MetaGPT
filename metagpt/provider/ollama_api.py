@@ -8,7 +8,7 @@ from typing import AsyncGenerator, Optional, Tuple
 
 from metagpt.configs.llm_config import LLMConfig, LLMType
 from metagpt.const import USE_CONFIG_TIMEOUT
-from metagpt.logs import log_llm_stream
+from metagpt.logs import log_llm_stream, logger
 from metagpt.provider.base_llm import BaseLLM
 from metagpt.provider.general_api_requestor import GeneralAPIRequestor, OpenAIResponse
 from metagpt.provider.llm_provider_registry import register_provider
@@ -38,10 +38,72 @@ class OllamaMessageBase:
         raise NotImplementedError
 
     def decode(self, response: OpenAIResponse) -> dict:
-        return json.loads(response.data.decode("utf-8"))
+        """修复 Ollama API 响应解析，支持多行 JSON 流式响应"""
+        try:
+            # 获取原始数据
+            data = response.data.decode("utf-8")
+            
+            # 移除可能的 BOM 标记
+            if data.startswith('\ufeff'):
+                data = data[1:]
+            
+            # 处理多行 JSON（流式响应）
+            lines = data.strip().split('\n')
+            json_objects = []
+            
+            for line in lines:
+                line = line.strip()
+                if not line:
+                    continue
+                    
+                # 跳过 SSE 格式的 "data: " 前缀
+                if line.startswith('data: '):
+                    line = line[6:]
+                
+                # 跳过结束标记
+                if line == '[DONE]':
+                    continue
+                    
+                try:
+                    # 尝试解析每一行 JSON
+                    json_obj = json.loads(line)
+                    json_objects.append(json_obj)
+                except json.JSONDecodeError:
+                    # 如果单行解析失败，可能是部分数据，跳过
+                    continue
+            
+            # 如果有多个 JSON 对象，返回最后一个（通常是完整的响应）
+            if json_objects:
+                return json_objects[-1]
+            else:
+                # 如果没有成功解析的 JSON，尝试解析整个数据
+                return json.loads(data)
+                
+        except json.JSONDecodeError as e:
+            # 如果所有解析都失败，返回错误信息
+            try:
+                data = response.data.decode("utf-8")
+                logger.warning(f"Ollama API 响应解析失败: {e}, 原始数据: {data[:200]}...")
+                return {"error": f"JSON 解析失败: {e}", "raw_data": data[:200]}
+            except Exception as e2:
+                logger.error(f"Ollama API 响应解析完全失败: {e2}")
+                return {"error": f"响应解析失败: {e2}"}
 
     def get_choice(self, to_choice_dict: dict) -> str:
-        raise NotImplementedError
+        # 优先处理异常响应
+        if "error" in to_choice_dict:
+            # 返回错误信息和部分原始数据
+            raw = to_choice_dict.get("raw_data", "")
+            return f"[Ollama Error] {to_choice_dict['error']} | Raw: {raw[:200]}"
+        # 正常响应
+        if "message" in to_choice_dict:
+            message = to_choice_dict["message"]
+            if message.get("role") == "assistant":
+                return message.get("content", "")
+            else:
+                return str(message)
+        # 兜底返回全部内容
+        return str(to_choice_dict)
 
     def _parse_input_msg(self, msg: dict) -> Tuple[Optional[str], Optional[str]]:
         if "type" in msg:
@@ -211,6 +273,7 @@ class OllamaLLM(BaseLLM):
 
     def __init_ollama(self, config: LLMConfig):
         assert config.base_url, "ollama base url is required!"
+        assert config.model, "ollama model is required!"
         self.model = config.model
         self.pricing_plan = self.model
         ollama_message = OllamaMessageMeta.get_message(self._llama_api_inuse)
@@ -250,11 +313,13 @@ class OllamaLLM(BaseLLM):
         if isinstance(resp, AsyncGenerator):
             return await self._processing_openai_response_async_generator(resp)
         elif isinstance(resp, OpenAIResponse):
-            return self._processing_openai_response(resp)
+            # 对于非流式响应，提取文本内容
+            resp_dict = self._processing_openai_response(resp)
+            return self.ollama_message.get_choice(resp_dict)
         else:
             raise ValueError
 
-    def _processing_openai_response(self, openai_resp: OpenAIResponse):
+    def _processing_openai_response(self, openai_resp: OpenAIResponse) -> dict:
         resp = self.ollama_message.decode(openai_resp)
         usage = self.get_usage(resp)
         self._update_costs(usage)
@@ -312,13 +377,19 @@ class OllamaEmbeddings(OllamaLLM):
             params=self.ollama_message.apply(messages=messages),
             request_timeout=self.get_timeout(timeout),
         )
-        return self.ollama_message.decode(resp)[self._llama_embedding_key]
+        if isinstance(resp, OpenAIResponse):
+            decoded_resp = self.ollama_message.decode(resp)
+            return decoded_resp.get(self._llama_embedding_key, {})
+        else:
+            raise ValueError("Expected OpenAIResponse")
 
     async def _achat_completion_stream(self, messages: list[dict], timeout: int = USE_CONFIG_TIMEOUT) -> str:
         return await self._achat_completion(messages, timeout=self.get_timeout(timeout))
 
-    def get_choice_text(self, rsp):
-        return rsp
+    def get_choice_text(self, rsp) -> str:
+        if isinstance(rsp, dict):
+            return str(rsp)
+        return str(rsp)
 
 
 @register_provider(LLMType.OLLAMA_EMBED)

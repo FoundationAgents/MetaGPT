@@ -1,0 +1,28 @@
+{
+    "folders": [
+        {"path": "."}
+    ],
+    "settings": {
+        "python.pythonPath": "${workspaceFolder}/.venv/bin/python",
+        "python.defaultInterpreterPath": "${workspaceFolder}/.venv/bin/python",
+        "python.analysis.extraPaths": [
+            "${workspaceFolder}/metagpt",
+            "${workspaceFolder}/examples"
+        ],
+        "files.exclude": {
+            "**/.git": true,
+            "**/.pytest_cache": true,
+            "**/.idea": true,
+            "**/metagpt.egg-info": true,
+            "**/logs": true
+        },
+        "python.linting.enabled": true,
+        "python.linting.pylintEnabled": true,
+        "python.linting.flake8Enabled": true,
+        "python.formatting.provider": "black",
+        "cursorpyright.analysis.extraPaths": [
+            "${workspaceFolder}/metagpt",
+            "${workspaceFolder}/examples"
+        ]
+    }
+}
