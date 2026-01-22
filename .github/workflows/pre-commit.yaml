@@ -14,10 +14,10 @@ jobs:
     environment: pre-commit
     steps:
     - name: Checkout Source Code
-      uses: actions/checkout@v2
+      uses: actions/checkout@v6
 
     - name: Setup Python
-      uses: actions/setup-python@v2
+      uses: actions/setup-python@v6
       with:
         python-version: '3.9.17'
         
