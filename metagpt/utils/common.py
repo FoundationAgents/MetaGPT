@@ -24,6 +24,7 @@ import mimetypes
 import os
 import platform
 import re
+import shutil
 import sys
 import time
 import traceback
@@ -56,12 +57,7 @@ def check_cmd_exists(command) -> int:
     :param command: 待检查的命令
     :return: 如果命令存在，返回0，如果不存在，返回非0
     """
-    if platform.system().lower() == "windows":
-        check_command = "where " + command
-    else:
-        check_command = "command -v " + command + ' >/dev/null 2>&1 || { echo >&2 "no mermaid"; exit 1; }'
-    result = os.system(check_command)
-    return result
+    return 0 if shutil.which(command) else 1
 
 
 def require_python_version(req_version: Tuple) -> bool:
