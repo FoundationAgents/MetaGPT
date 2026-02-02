@@ -71,6 +71,9 @@ class SearchEngine(BaseModel):
         elif self.engine == SearchEngineType.BING:
             module = "metagpt.tools.search_engine_bing"
             run_func = importlib.import_module(module).BingAPIWrapper(**kwargs).run
+        elif self.engine == SearchEngineType.BoCha:
+            module = "metagpt.tools.search_engine_bocha"
+            run_func = importlib.import_module(module).BoChaAPIWrapper(**kwargs).run
         else:
             raise NotImplementedError
         self.run_func = run_func

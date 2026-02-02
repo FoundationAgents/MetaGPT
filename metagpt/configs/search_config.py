@@ -20,6 +20,7 @@ class SearchEngineType(Enum):
     DUCK_DUCK_GO = "ddg"
     CUSTOM_ENGINE = "custom"
     BING = "bing"
+    BoCha = "bocha"
 
 
 class SearchConfig(YamlModel):
