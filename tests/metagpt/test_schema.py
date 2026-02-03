@@ -291,12 +291,16 @@ class TestPlan:
     def test_replace_task_with_dependents(self):
         plan = Plan(goal="")
         tasks = [
-            Task(task_id="1", instruction="First Task", finished=True),
-            Task(task_id="2", instruction="Second Task", dependent_task_ids=["1"], finished=True),
+            Task(task_id="1", instruction="First Task", assignee="Engineer", finished=True),
+            Task(task_id="2", instruction="Second Task", dependent_task_ids=["1"], assignee="Engineer", finished=True),
         ]
         plan.add_tasks(tasks)
-        new_task = Task(task_id="1", instruction="Updated First Task")
-        plan.replace_task(new_task)
+        plan.replace_task(
+            task_id="1",
+            new_dependent_task_ids=[],
+            new_instruction="Updated First Task",
+            new_assignee="Engineer"
+        )
         assert plan.task_map["1"].instruction == "Updated First Task"
         assert not plan.task_map["2"].is_finished  # Dependent task should be reset
         assert plan.task_map["2"].code == ""
@@ -304,45 +308,66 @@ class TestPlan:
 
     def test_replace_task_non_existing(self):
         plan = Plan(goal="")
-        task = Task(task_id="1", instruction="First Task")
+        task = Task(task_id="1", instruction="First Task", assignee="Engineer")
         plan.add_tasks([task])
-        new_task = Task(task_id="2", instruction="New Task")
         with pytest.raises(AssertionError):
-            plan.replace_task(new_task)  # Task with ID 2 does not exist in plan
+            # Task with ID 2 does not exist in plan
+            plan.replace_task(
+                task_id="2",
+                new_dependent_task_ids=[],
+                new_instruction="New Task",
+                new_assignee="Engineer"
+            )
         assert "1" in plan.task_map
         assert "2" not in plan.task_map
 
     def test_append_task_with_valid_dependencies(self):
         plan = Plan(goal="Test")
-        existing_task = [Task(task_id="1")]
+        existing_task = [Task(task_id="1", instruction="Task 1", assignee="Engineer")]
         plan.add_tasks(existing_task)
-        new_task = Task(task_id="2", dependent_task_ids=["1"])
-        plan.append_task(new_task)
+        plan.append_task(
+            task_id="2",
+            dependent_task_ids=["1"],
+            instruction="Task 2",
+            assignee="Engineer"
+        )
         assert plan.tasks[-1].task_id == "2"
-        assert plan.task_map["2"] == new_task
+        assert plan.task_map["2"].task_id == "2"
 
     def test_append_task_with_invalid_dependencies(self):
-        new_task = Task(task_id="2", dependent_task_ids=["3"])
         plan = Plan(goal="Test")
         with pytest.raises(AssertionError):
-            plan.append_task(new_task)
+            plan.append_task(
+                task_id="2",
+                dependent_task_ids=["3"],  # Invalid dependency
+                instruction="Task 2",
+                assignee="Engineer"
+            )
 
     def test_append_task_without_dependencies(self):
         plan = Plan(goal="Test")
-        existing_task = [Task(task_id="1")]
+        existing_task = [Task(task_id="1", instruction="Task 1", assignee="Engineer")]
         plan.add_tasks(existing_task)
 
-        new_task = Task(task_id="2")
-        plan.append_task(new_task)
+        plan.append_task(
+            task_id="2",
+            dependent_task_ids=[],
+            instruction="Task 2",
+            assignee="Engineer"
+        )
 
         assert len(plan.tasks) == 2
         assert plan.current_task_id == "1"
 
     def test_append_task_updates_current_task(self):
-        finished_task = Task(task_id="1", is_finished=True)
-        new_task = Task(task_id="2")
+        finished_task = Task(task_id="1", instruction="Task 1", assignee="Engineer", is_finished=True)
         plan = Plan(goal="Test", tasks=[finished_task])
-        plan.append_task(new_task)
+        plan.append_task(
+            task_id="2",
+            dependent_task_ids=[],
+            instruction="Task 2",
+            assignee="Engineer"
+        )
         assert plan.current_task_id == "2"
 
     def test_update_current_task(self):
@@ -353,6 +378,7 @@ class TestPlan:
         assert plan.current_task_id == "2"
 
 
+@pytest.mark.asyncio
 @pytest.mark.parametrize(
     ("content", "key_descriptions"),
     [
@@ -428,7 +454,7 @@ class TestSerializationMixin:
 
         mock_user_model.serialize(file_path)
 
-        mock_write_json_file.assert_called_once_with(file_path, mock_user_model.model_dump())
+        mock_write_json_file.assert_called_once_with(file_path, mock_user_model.model_dump(), use_fallback=True)
 
     def test_deserialize(self, mock_read_json_file):
         file_path = "test.json"
@@ -452,7 +478,7 @@ class TestSerializationMixin:
             "__module_class_name": "tests.metagpt.test_schema.TestUserModelWithExclude",
         }
 
-        mock_write_json_file.assert_called_once_with(file_path, expected_data)
+        mock_write_json_file.assert_called_once_with(file_path, expected_data, use_fallback=True)
 
     def test_get_serialization_path(self):
         expected_path = str(SERDESER_PATH / "TestUserModel.json")
