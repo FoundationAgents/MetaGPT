@@ -1,0 +1,24 @@
+name: Deploy to VPS
+
+on:
+  push:
+    branches:
+      - master
+
+jobs:
+  build-and-deploy:
+    runs-on: self-hosted
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Build, stop, and restart service
+        run: |
+          docker-compose build --pull
+          docker-compose up -d --force-recreate
+
+      - name: Prune old images
+        if: always()
+        run: |
+          docker image prune -af

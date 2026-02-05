@@ -1,0 +1,32 @@
+version: '3.8'
+
+services:
+  synapse:
+    image: matrixdotorg/synapse:latest
+    container_name: synapse
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:8008:8008" # 仅允许本地访问，由Nginx代理
+    volumes:
+      - ./data:/data
+    depends_on:
+      - postgres
+    environment:
+      - VIRTUAL_HOST=matrix.zhengui.cc.cd
+      - LETSENCRYPT_HOST=matrix.zhengui.cc.cd
+
+  postgres:
+    image: postgres:13-alpine
+    container_name: synapse-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: synapse
+      POSTGRES_PASSWORD: "YOUR_STRONG_DB_PASSWORD" # 请务必替换为一个强密码
+      POSTGRES_DB: synapse
+      POSTGRES_INITDB_ARGS: "--encoding=UTF-8 --lc-collate=C --lc-ctype=C"
+    volumes:
+      - ./postgres_data:/var/lib/postgresql/data
+
+volumes:
+  data:
+  postgres_data:
