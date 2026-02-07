@@ -165,7 +165,7 @@ async def get_element_center(node_info):
 
 
 def extract_step(response: str, action_splitter: str = "```") -> str:
-    # find the first occurence of action
+    # find the first occurrence of action
     pattern = rf"{action_splitter}((.|\n)*?){action_splitter}"
     match = re.search(pattern, response)
     if match:
