@@ -19,15 +19,18 @@ import functools
 import hashlib
 import importlib
 import inspect
+import ipaddress
 import json
 import mimetypes
 import os
 import platform
 import re
+import socket
 import sys
 import time
 import traceback
 import uuid
+from urllib.parse import urlparse
 from asyncio import iscoroutinefunction
 from datetime import datetime
 from functools import partial
@@ -856,11 +859,48 @@ def encode_image(image_path_or_pil: Union[Path, Image, str], encoding: str = "ut
     return base64.b64encode(bytes_data).decode(encoding)
 
 
+# Security: Blocked IP ranges to prevent SSRF attacks
+BLOCKED_IP_RANGES = [
+    ipaddress.ip_network('127.0.0.0/8'),      # Localhost
+    ipaddress.ip_network('10.0.0.0/8'),       # Private
+    ipaddress.ip_network('172.16.0.0/12'),    # Private
+    ipaddress.ip_network('192.168.0.0/16'),   # Private
+    ipaddress.ip_network('169.254.0.0/16'),   # Link-local/Metadata
+    ipaddress.ip_network('::1/128'),          # IPv6 localhost
+]
+
+
+def is_safe_url(url: str) -> bool:
+    """Validate URL to prevent SSRF attacks by checking for internal/private IPs."""
+    try:
+        parsed = urlparse(url)
+        if parsed.scheme not in ('http', 'https'):
+            return False
+        
+        hostname = parsed.hostname
+        if not hostname:
+            return False
+        
+        # Resolve hostname to IP address
+        ip = socket.gethostbyname(hostname)
+        ip_addr = ipaddress.ip_address(ip)
+        
+        # Check against blocked IP ranges
+        for blocked in BLOCKED_IP_RANGES:
+            if ip_addr in blocked:
+                return False
+        return True
+    except Exception:
+        return False
+
+
 def decode_image(img_url_or_b64: str) -> Image:
     """decode image from url or base64 into PIL.Image"""
     if img_url_or_b64.startswith("http"):
-        # image http(s) url
-        resp = requests.get(img_url_or_b64)
+        # image http(s) url - validate URL for security
+        if not is_safe_url(img_url_or_b64):
+            raise ValueError(f"URL not allowed for security reasons: {img_url_or_b64}")
+        resp = requests.get(img_url_or_b64, timeout=10)  # Add timeout as well
         img = Image.open(BytesIO(resp.content))
     else:
         # image b64_json
