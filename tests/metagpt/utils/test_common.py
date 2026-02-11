@@ -32,6 +32,7 @@ from metagpt.utils.common import (
     extract_and_encode_images,
     extract_image_paths,
     import_class_inst,
+    is_safe_url,
     parse_recipient,
     print_members,
     read_file_block,
@@ -233,6 +234,57 @@ def test_extract_image_paths():
 
 def test_extract_and_encode_images():
     assert not extract_and_encode_images("a non-existing.jpg")
+
+
+class TestSSRFSecurity:
+    """Test SSRF prevention in URL validation"""
+    
+    def test_is_safe_url_public_urls(self):
+        """Test that legitimate public URLs are allowed"""
+        safe_urls = [
+            "https://example.com/image.jpg",
+            "http://www.google.com/logo.png", 
+            "https://github.com/user/repo/image.gif",
+            "http://8.8.8.8/test.jpg",  # Public DNS
+        ]
+        for url in safe_urls:
+            assert is_safe_url(url), f"Public URL should be safe: {url}"
+
+    def test_is_safe_url_blocked_ips(self):
+        """Test that internal/private IPs are blocked"""
+        blocked_urls = [
+            "http://127.0.0.1:8080/image.jpg",     # Localhost
+            "http://localhost/test.png",           # Localhost hostname
+            "http://10.0.0.1/secret.gif",          # Private network
+            "http://192.168.1.1/admin.jpg",        # Private network
+            "http://172.16.0.1/internal.png",      # Private network
+            "http://169.254.169.254/metadata",     # Cloud metadata
+            "http://[::1]/test.jpg",               # IPv6 localhost
+        ]
+        for url in blocked_urls:
+            assert not is_safe_url(url), f"Internal/private URL should be blocked: {url}"
+
+    def test_is_safe_url_invalid_schemes(self):
+        """Test that non-HTTP(S) schemes are blocked"""
+        invalid_schemes = [
+            "ftp://example.com/file.jpg",
+            "file:///etc/passwd",
+            "javascript:alert(1)",
+            "data:image/png;base64,abc123",
+        ]
+        for url in invalid_schemes:
+            assert not is_safe_url(url), f"Invalid scheme should be blocked: {url}"
+
+    def test_is_safe_url_malformed_urls(self):
+        """Test that malformed URLs are blocked"""
+        malformed_urls = [
+            "not-a-url",
+            "http://",
+            "",
+            "https://",
+        ]
+        for url in malformed_urls:
+            assert not is_safe_url(url), f"Malformed URL should be blocked: {url}"
 
 
 if __name__ == "__main__":
