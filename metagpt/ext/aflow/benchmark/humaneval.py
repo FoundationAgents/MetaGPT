@@ -8,6 +8,7 @@ from tenacity import retry, retry_if_exception_type, stop_after_attempt, wait_fi
 from metagpt.ext.aflow.benchmark.benchmark import BaseBenchmark
 from metagpt.logs import logger
 from metagpt.utils.sanitize import sanitize
+from metagpt.utils.secure_exec import secure_execute_solution
 
 
 class HumanEvalBenchmark(BaseBenchmark):
@@ -44,11 +45,10 @@ class HumanEvalBenchmark(BaseBenchmark):
 
     def check_solution(self, solution, test, entry_point):
         solution = sanitize(code=solution, entrypoint=entry_point)
+        
         try:
-            global_dict = {
-                "math": __import__("math"),
-                "hashlib": __import__("hashlib"),
-                "re": __import__("re"),
+            # Create safe globals for typing imports and helper functions
+            extra_globals = {
                 "List": List,
                 "Dict": Dict,
                 "Tuple": Tuple,
@@ -74,27 +74,22 @@ class HumanEvalBenchmark(BaseBenchmark):
                     + solution
                 )
 
-            exec(solution, global_dict)
-
-            if entry_point not in global_dict:
-                raise ValueError(f"Function {entry_point} is not defined in the solution.")
-
-            exec(test, global_dict)
-
-            check = global_dict["check"]
-
-            result = self.run_with_timeout(check, (global_dict[entry_point],), 15)
-
-            if result is None:
-                result = (self.PASS, "The solution passed all test cases.")
-
-        except self.TimeoutError:
-            result = (
-                self.FAIL,
-                "Execution timed out. Please check if your solution contains infinite loops or overly time-consuming operations.",
+            # Use secure execution instead of unsafe exec()
+            status, message = secure_execute_solution(
+                solution=solution,
+                test=test,
+                entry_point=entry_point,
+                timeout=15,
+                extra_globals=extra_globals
             )
+            
+            if status == "PASS":
+                result = (self.PASS, message)
+            else:
+                result = (self.FAIL, message)
+
         except Exception as e:
-            error_message = f"Error: {str(e)}.\n Solution: {solution}.\n Test: {test}"
+            error_message = f"Security check failed: {str(e)}.\n Solution: {solution}.\n Test: {test}"
             result = (self.FAIL, error_message)
 
             with open("error.log", "a", encoding="utf-8") as log_file:

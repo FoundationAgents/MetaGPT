@@ -40,6 +40,7 @@ from metagpt.ext.aflow.scripts.utils import (
 )
 from metagpt.llm import LLM
 from metagpt.logs import logger
+from metagpt.utils.secure_exec import SecureCodeExecutor
 
 
 class Operator:
@@ -117,45 +118,23 @@ class ScEnsemble(Operator):
 
 
 def run_code(code):
+    """Securely execute code using SecureCodeExecutor."""
     try:
-        # Create a new global namespace
-        global_namespace = {}
-
-        disallowed_imports = [
-            "os",
-            "sys",
-            "subprocess",
-            "multiprocessing",
-            "matplotlib",
-            "seaborn",
-            "plotly",
-            "bokeh",
-            "ggplot",
-            "pylab",
-            "tkinter",
-            "PyQt5",
-            "wx",
-            "pyglet",
-        ]
-
-        # Check for prohibited imports
-        for lib in disallowed_imports:
-            if f"import {lib}" in code or f"from {lib}" in code:
-                logger.info("Detected prohibited import: %s", lib)
-                return "Error", f"Prohibited import: {lib} and graphing functionalities"
-
-        # Use exec to execute the code
-        exec(code, global_namespace)
-        # Assume the code defines a function named 'solve'
-        if "solve" in global_namespace and callable(global_namespace["solve"]):
-            result = global_namespace["solve"]()
+        executor = SecureCodeExecutor(timeout=30)
+        success, func, error_msg = executor.execute_code(code, "solve")
+        
+        if not success:
+            return "Error", error_msg
+        
+        try:
+            # Call the solve function
+            result = func()
             return "Success", str(result)
-        else:
-            return "Error", "Function 'solve' not found"
+        except Exception as e:
+            return "Error", f"Function execution error: {e}"
+            
     except Exception as e:
-        exc_type, exc_value, exc_traceback = sys.exc_info()
-        tb_str = traceback.format_exception(exc_type, exc_value, exc_traceback)
-        return "Error", f"Execution error: {str(e)}\n{''.join(tb_str)}"
+        return "Error", f"Security check failed: {e}"
 
 
 class Programmer(Operator):
@@ -219,31 +198,39 @@ class Test(Operator):
         super().__init__(llm, name)
 
     def exec_code(self, solution, entry_point):
+        """Securely execute solution code against test cases."""
         test_cases = extract_test_cases_from_jsonl(entry_point)
+        executor = SecureCodeExecutor(timeout=15)
 
         fail_cases = []
         for test_case in test_cases:
             test_code = test_case_2_test_function(solution, test_case, entry_point)
             try:
-                exec(test_code, globals())
-            except AssertionError as e:
-                exc_type, exc_value, exc_traceback = sys.exc_info()
-                tb_str = traceback.format_exception(exc_type, exc_value, exc_traceback)
-                with open("tester.txt", "a") as f:
-                    f.write("test_error of " + entry_point + "\n")
-                error_infomation = {
-                    "test_fail_case": {
-                        "test_case": test_case,
-                        "error_type": "AssertionError",
-                        "error_message": str(e),
-                        "traceback": tb_str,
+                # Use secure execution
+                success, func, error_msg = executor.execute_code(solution, entry_point)
+                if not success:
+                    return {"exec_fail_case": f"Security check failed: {error_msg}"}
+                
+                # Execute test securely
+                passed, test_msg = executor.execute_test(test_code, func)
+                if not passed:
+                    with open("tester.txt", "a") as f:
+                        f.write("test_error of " + entry_point + "\n")
+                    error_infomation = {
+                        "test_fail_case": {
+                            "test_case": test_case,
+                            "error_type": "AssertionError", 
+                            "error_message": test_msg,
+                            "traceback": [],
+                        }
                     }
-                }
-                fail_cases.append(error_infomation)
+                    fail_cases.append(error_infomation)
+                    
             except Exception as e:
                 with open("tester.txt", "a") as f:
                     f.write(entry_point + " " + str(e) + "\n")
                 return {"exec_fail_case": str(e)}
+                
         if fail_cases != []:
             return fail_cases
         else:
