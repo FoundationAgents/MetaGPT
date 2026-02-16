@@ -131,13 +131,21 @@ class ProjectRepo(FileRepository):
         return self._git_repo.new_file_repository(self._srcs_path)
 
     def code_files_exists(self) -> bool:
+        '''Check whether source code files exist safely'''
         src_workdir = get_project_srcs_path(self.git_repo.workdir)
-        if not src_workdir.exists():
+
+        # Safety check: ensure path exists and is directory
+        if not src_workdir.exists() or not src_workdir.is_dir():
             return False
-        code_files = self.with_src_path(path=src_workdir).srcs.all_files
-        if not code_files:
+
+        try:
+            repo_with_src = self.with_src_path(path=src_workdir)
+            code_files = repo_with_src.srcs.all_files
+        except Exception:
             return False
+
         return bool(code_files)
+
 
     def with_src_path(self, path: str | Path) -> ProjectRepo:
         path = Path(path)
