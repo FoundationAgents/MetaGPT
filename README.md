@@ -25,6 +25,11 @@
 
 ## News
 
+🚀 Jan. 13, 2026: 🎉 **MGX has officially rebranded to Atoms!**  
+[atoms.dev](https://atoms.dev/) is now live — the first AI team that builds real businesses end-to-end (research → build → launch → scale, fully autonomous).  
+**Don't just vibe code — vibe business!**  
+Official announcement: [https://x.com/MetaGPT_/status/2011063325413810415](https://x.com/MetaGPT_/status/2011063325413810415)
+
 🚀 Mar. 10, 2025: 🎉 [mgx.dev](https://mgx.dev/) is the #1 Product of the Week on @ProductHunt! 🏆
 
 🚀 Mar. &nbsp; 4, 2025: 🎉 [mgx.dev](https://mgx.dev/) is the #1 Product of the Day on @ProductHunt! 🏆
