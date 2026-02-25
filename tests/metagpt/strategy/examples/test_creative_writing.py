@@ -50,7 +50,7 @@ class TextGenEvaluator(BaseEvaluator):
                 print(vote)
                 if vote == int(node_id):
                     value = 1
-        except:
+        except Exception:
             value = 0
         return value
 

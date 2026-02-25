@@ -46,12 +46,12 @@ class MATHBenchmark(BaseBenchmark):
                 prediction = self.parse_digits(prediction)
                 reference = self.parse_digits(reference)
                 return isclose(prediction, reference, abs_tol=1e-3)
-        except:
+        except Exception:
             pass
 
         try:
             return self.symbolic_equal(prediction, reference)
-        except:
+        except Exception:
             pass
 
         return False
@@ -63,14 +63,14 @@ class MATHBenchmark(BaseBenchmark):
         num = regex.sub(",", "", str(num))
         try:
             return float(num)
-        except:
+        except Exception:
             if num.endswith("%"):
                 num = num[:-1]
                 if num.endswith("\\"):
                     num = num[:-1]
                 try:
                     return float(num) / 100
-                except:
+                except Exception:
                     pass
         return None
 
@@ -79,7 +79,7 @@ class MATHBenchmark(BaseBenchmark):
             for f in [parse_latex, parse_expr]:
                 try:
                     return f(s)
-                except:
+                except Exception:
                     pass
             return s
 
@@ -89,13 +89,13 @@ class MATHBenchmark(BaseBenchmark):
         try:
             if simplify(a - b) == 0:
                 return True
-        except:
+        except Exception:
             pass
 
         try:
             if isclose(N(a), N(b), abs_tol=1e-3):
                 return True
-        except:
+        except Exception:
             pass
         return False
 

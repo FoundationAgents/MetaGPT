@@ -119,7 +119,7 @@ class BrainMemory(BaseModel):
     def to_int(v, default_value):
         try:
             return int(v)
-        except:
+        except Exception:
             return default_value
 
     def pop_last_talk(self):
