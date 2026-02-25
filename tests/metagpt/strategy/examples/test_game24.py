@@ -39,7 +39,7 @@ class Game24Evaluator(BaseEvaluator):
         try:
             matches = re.findall(r"\b(impossible|sure|likely)\b", evaluation)
             value = self.value_map[matches[0]]
-        except:
+        except Exception:
             value = 0.001
         return value
 

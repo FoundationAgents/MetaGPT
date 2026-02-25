@@ -23,7 +23,7 @@ async def main():
             temp_prediction, temp_istrue = bench.eval(key, str(result))
             is_true.append(str(temp_istrue))
             predictions.append(str(temp_prediction))
-        except:
+        except Exception:
             is_true.append(str(bench.eval(key, "")))
             predictions.append(str(""))
     df = pd.DataFrame({"Label": labels, "Prediction": predictions, "T/F": is_true})

@@ -52,7 +52,7 @@ class TestAgentMemory:
         try:
             agent_memory.save(memory_save_chat_test_path)
             logger.info("成功存储")
-        except:
+        except Exception:
             pass
 
     def test_summary_function(self, agent_memory):

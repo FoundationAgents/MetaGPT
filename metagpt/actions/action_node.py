@@ -581,14 +581,14 @@ class ActionNode:
                         extracted_data[field_name] = eval(raw_value)
                         if not isinstance(extracted_data[field_name], list):
                             raise ValueError
-                    except:
+                    except Exception:
                         extracted_data[field_name] = []  # 默认空列表
                 elif field_type == dict:
                     try:
                         extracted_data[field_name] = eval(raw_value)
                         if not isinstance(extracted_data[field_name], dict):
                             raise ValueError
-                    except:
+                    except Exception:
                         extracted_data[field_name] = {}  # 默认空字典
 
         return extracted_data
