@@ -1,0 +1,10 @@
+llm:
+  api_type: avian
+  base_url: "https://api.avian.io/v1"
+  api_key: "YOUR_API_KEY"
+  model: "deepseek/deepseek-v3.2"
+  # Available models:
+  #   deepseek/deepseek-v3.2  - 164K context, $0.26/$0.38 per 1M tokens
+  #   moonshotai/kimi-k2.5    - 131K context, $0.45/$2.20 per 1M tokens
+  #   z-ai/glm-5              - 131K context, $0.30/$2.55 per 1M tokens
+  #   minimax/minimax-m2.5    - 1M context,   $0.30/$1.10 per 1M tokens
