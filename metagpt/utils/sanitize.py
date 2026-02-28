@@ -7,6 +7,7 @@
 
 import ast
 import traceback
+from collections import deque
 from enum import Enum
 from typing import Dict, Generator, List, Optional, Set, Tuple
 
@@ -108,10 +109,10 @@ def get_deps(nodes: List[Tuple[str, Node]]) -> Dict[str, Set[str]]:
 
 
 def get_function_dependency(entrypoint: str, call_graph: Dict[str, str]) -> Set[str]:
-    queue = [entrypoint]
+    queue: deque[str] = deque([entrypoint])
     visited = {entrypoint}
     while queue:
-        current = queue.pop(0)
+        current = queue.popleft()
         if current not in call_graph:
             continue
         for neighbour in call_graph[current]:
