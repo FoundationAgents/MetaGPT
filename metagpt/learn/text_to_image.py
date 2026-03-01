@@ -9,10 +9,13 @@
 import base64
 from typing import Optional
 
+import os
+
 from metagpt.config2 import Config
 from metagpt.const import BASE64_FORMAT
 from metagpt.llm import LLM
 from metagpt.tools.metagpt_text_to_image import oas3_metagpt_text_to_image
+from metagpt.tools.modelslab_text_to_image import oas3_modelslab_text_to_image
 from metagpt.tools.openai_text_to_image import oas3_openai_text_to_image
 from metagpt.utils.s3 import S3
 
@@ -29,8 +32,11 @@ async def text_to_image(text, size_type: str = "512x512", config: Optional[Confi
     image_declaration = "data:image/png;base64,"
 
     model_url = config.metagpt_tti_url
+    modelslab_api_key = os.environ.get("MODELSLAB_API_KEY", "")
     if model_url:
         binary_data = await oas3_metagpt_text_to_image(text, size_type, model_url)
+    elif modelslab_api_key:
+        binary_data = await oas3_modelslab_text_to_image(text, size_type, api_key=modelslab_api_key)
     elif config.get_openai_llm():
         llm = LLM(llm_config=config.get_openai_llm())
         binary_data = await oas3_openai_text_to_image(text, size_type, llm=llm)
