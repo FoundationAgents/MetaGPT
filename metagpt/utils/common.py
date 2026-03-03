@@ -22,7 +22,6 @@ import inspect
 import json
 import mimetypes
 import os
-import platform
 import re
 import shutil
 import sys
@@ -57,7 +56,10 @@ def check_cmd_exists(command) -> int:
     :param command: 待检查的命令
     :return: 如果命令存在，返回0，如果不存在，返回非0
     """
-    return 0 if shutil.which(command) else 1
+    if shutil.which(command):
+        return 0
+    sys.stderr.write("no mermaid\n")
+    return 1
 
 
 def require_python_version(req_version: Tuple) -> bool:
@@ -72,7 +74,7 @@ class OutputParser:
         # 首先根据"##"将文本分割成不同的block
         blocks = text.split(MARKDOWN_TITLE_PREFIX)
 
-        # 创建一个字典，用于存储每个block的标题和内容
+        # 创建一个字典，用于存储每個block的标题 và content
         block_dict = {}
 
         # 遍历所有的block
@@ -257,7 +259,7 @@ class CodeParser:
         # 首先根据"##"将文本分割成不同的block
         blocks = text.split("##")
 
-        # 创建一个字典，用于存储每个block的标题和内容
+        # 创建一个字典，用于存储每個block的标题 và content
         block_dict = {}
 
         # 遍历所有的block
