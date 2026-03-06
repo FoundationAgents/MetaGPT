@@ -1,6 +1,6 @@
 # Agent-Mesh Trust Layer for MetaGPT
 
-Inter-agent trust verification for MetaGPT multi-agent teams using [Agent-Mesh](https://github.com/imran-siddique/agent-mesh).
+Inter-agent trust verification for MetaGPT multi-agent teams using [Agent-Mesh](https://github.com/microsoft/agent-governance-toolkit).
 
 ## Overview
 
@@ -151,5 +151,5 @@ trusted_team = TrustedTeam(team=metagpt_team, policy=policy)
 
 ## Links
 
-- [Agent-Mesh GitHub](https://github.com/imran-siddique/agent-mesh)
+- [Agent-Mesh GitHub](https://github.com/microsoft/agent-governance-toolkit)
 - [MetaGPT Documentation](https://docs.deepwisdom.ai/)
