@@ -124,4 +124,4 @@ class Context(BaseModel):
                 self.kwargs.set(k, v)
         cost_manager = serialized_data.get("cost_manager")
         if cost_manager:
-            self.cost_manager.model_validate_json(cost_manager)
+            self.cost_manager = CostManager.model_validate_json(cost_manager)
