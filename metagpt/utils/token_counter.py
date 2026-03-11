@@ -494,13 +494,13 @@ def count_message_tokens(messages, model="gpt-3.5-turbo-0125"):
     for message in messages:
         num_tokens += tokens_per_message
         for key, value in message.items():
-            content = value
             if isinstance(value, list):
-                # for gpt-4v
+                # for gpt-4v: sum tokens from all text parts in multimodal content
                 for item in value:
                     if isinstance(item, dict) and item.get("type") in ["text"]:
-                        content = item.get("text", "")
-            num_tokens += len(encoding.encode(content))
+                        num_tokens += len(encoding.encode(item.get("text", "")))
+            else:
+                num_tokens += len(encoding.encode(value))
             if key == "name":
                 num_tokens += tokens_per_name
     num_tokens += 3  # every reply is primed with <|start|>assistant<|message|>
