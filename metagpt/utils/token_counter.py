@@ -117,6 +117,9 @@ TOKEN_COSTS = {
     "llama-4-Maverick-17B-128E-Instruct-FP8": {"prompt": 0.0, "completion": 0.0},
     "llama-3.3-8B-Instruct": {"prompt": 0.0, "completion": 0.0},
     "llama-3.3-70B-Instruct": {"prompt": 0.0, "completion": 0.0},  # end, for Llama API
+    "MiniMax-M1": {"prompt": 0.0014, "completion": 0.007},  # start, for MiniMax
+    "MiniMax-M2.5": {"prompt": 0.0014, "completion": 0.007},
+    "MiniMax-M2.5-highspeed": {"prompt": 0.0014, "completion": 0.007},  # end, for MiniMax
 }
 
 
@@ -350,6 +353,9 @@ TOKEN_MAX = {
     "qwen-7b-chat": 32000,
     "qwen-1.8b-longcontext-chat": 32000,
     "qwen-1.8b-chat": 8000,
+    "MiniMax-M1": 1000000,  # start, for MiniMax
+    "MiniMax-M2.5": 204000,
+    "MiniMax-M2.5-highspeed": 204000,  # end, for MiniMax
 }
 
 # For Amazon Bedrock US region

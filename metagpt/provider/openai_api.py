@@ -53,6 +53,7 @@ from metagpt.utils.token_counter import (
         LLMType.SILICONFLOW,
         LLMType.OPENROUTER,
         LLMType.LLAMA_API,
+        LLMType.MINIMAX,
     ]
 )
 class OpenAILLM(BaseLLM):
@@ -149,6 +150,9 @@ class OpenAILLM(BaseLLM):
             # compatible to openai o1-series
             kwargs["temperature"] = 1
             kwargs.pop("max_tokens")
+        if self.config.api_type == LLMType.MINIMAX and kwargs.get("temperature", 0) <= 0:
+            # MiniMax requires temperature in (0.0, 1.0]
+            kwargs["temperature"] = 0.01
         if extra_kwargs:
             kwargs.update(extra_kwargs)
         return kwargs
