@@ -362,6 +362,7 @@ class BaseLLM(ABC):
         # NOTE: Assume they do not exceed token limit
         system_msg_val = self._system_msg("")["role"]
         system_msgs = []
+        user_assistant_msgs = []  # Initialize to prevent UnboundLocalError when all messages are system messages
         for i, msg in enumerate(messages):
             if msg["role"] == system_msg_val:
                 system_msgs.append(msg)
