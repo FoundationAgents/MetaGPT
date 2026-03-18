@@ -127,7 +127,7 @@ models:
 #    # timeout: 600 # Optional. If set to 0, default value is 300.
 #    # Details: https://azure.microsoft.com/en-us/pricing/details/cognitive-services/openai-service/
 #    pricing_plan: "" # Optional. Use for Azure LLM when its model name is not the same as OpenAI's
-#  "MiniMax-M2.5":  # MiniMax (OpenAI-compatible)
+#  "MiniMax-M2.7":  # MiniMax (OpenAI-compatible) — default recommended model
 #    api_type: "minimax"
 #    base_url: "https://api.minimax.io/v1"
 #    api_key: "YOUR_MINIMAX_API_KEY"
