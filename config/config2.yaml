@@ -6,3 +6,18 @@ llm:
   model: "gpt-4-turbo"  # or gpt-3.5-turbo
   base_url: "https://api.openai.com/v1"  # or forward url / other llm url
   api_key: "YOUR_API_KEY"
+
+## Sandbox Configuration (Optional)
+## Enables isolated code execution via OpenSandbox.
+## Requires: pip install opensandbox opensandbox-code-interpreter
+# sandbox:
+#   enabled: true
+#   domain: "localhost:8080"
+#   api_key: "YOUR_SANDBOX_API_KEY"
+#   image: "opensandbox/code-interpreter:v1.0.2"
+#   timeout: 600
+#   resource:
+#     cpu: "1"
+#     memory: "2Gi"
+#   env:
+#     PYTHON_VERSION: "3.11"

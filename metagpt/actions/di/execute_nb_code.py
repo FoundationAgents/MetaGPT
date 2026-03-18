@@ -26,6 +26,7 @@ from rich.syntax import Syntax
 
 from metagpt.actions import Action
 from metagpt.logs import logger
+from metagpt.tools.libs.sandbox_executor import get_sandbox_executor
 from metagpt.utils.report import NotebookReporter
 
 INSTALL_KEEPLEN = 500
@@ -243,6 +244,30 @@ class ExecuteNbCode(Action):
         except Exception:
             return self.parse_outputs(self.nb.cells[-1].outputs)
 
+    def _sandbox_enabled(self) -> bool:
+        """Check if sandbox execution is enabled in config."""
+        try:
+            return self.config.sandbox.enabled
+        except (AttributeError, Exception):
+            return False
+
+    async def _run_code_in_sandbox(self, code: str) -> Tuple[bool, str]:
+        """Execute code in the OpenSandbox via CodeInterpreter."""
+        executor = await get_sandbox_executor(self.config.sandbox)
+        stdout, stderr = await executor.run_code(code, language="python")
+
+        if stderr:
+            output = stderr
+            output = remove_escape_and_color_codes(output)
+            output = output[-5000:]
+            return False, output
+        else:
+            output = stdout
+            output = remove_escape_and_color_codes(output)
+            output = remove_log_and_warning_lines(output)
+            output = output[:5000]
+            return True, output
+
     async def run(self, code: str, language: Literal["python", "markdown"] = "python") -> Tuple[str, bool]:
         """
         return the output of code execution, and a success indicator (bool) of code execution.
@@ -254,12 +279,17 @@ class ExecuteNbCode(Action):
                 # add code to the notebook
                 self.add_code_cell(code=code)
 
-                # build code executor
-                await self.build()
+                if self._sandbox_enabled():
+                    success, outputs = await self._run_code_in_sandbox(code)
+                    # Store output in notebook cell for consistency
+                    self.add_output_to_cell(self.nb.cells[-1], outputs)
+                else:
+                    # build code executor
+                    await self.build()
 
-                # run code
-                cell_index = len(self.nb.cells) - 1
-                success, outputs = await self.run_cell(self.nb.cells[-1], cell_index)
+                    # run code
+                    cell_index = len(self.nb.cells) - 1
+                    success, outputs = await self.run_cell(self.nb.cells[-1], cell_index)
 
                 if "!pip" in code:
                     success = False

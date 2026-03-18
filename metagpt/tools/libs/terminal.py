@@ -9,6 +9,7 @@ from typing import Optional
 from metagpt.config2 import Config
 from metagpt.const import DEFAULT_WORKSPACE_ROOT, SWE_SETUP_PATH
 from metagpt.logs import logger
+from metagpt.tools.libs.sandbox_executor import get_sandbox_executor
 from metagpt.tools.tool_registry import register_tool
 from metagpt.utils.report import END_MARKER_VALUE, TerminalReporter
 
@@ -64,6 +65,13 @@ class Terminal:
         output = await self.run_command(self.pwd_command)
         logger.info("The terminal is at:", output)
 
+    def _sandbox_enabled(self) -> bool:
+        """Check if sandbox execution is enabled in config."""
+        try:
+            return Config.default().sandbox.enabled
+        except (AttributeError, Exception):
+            return False
+
     async def run_command(self, cmd: str, daemon=False) -> str:
         """
         Executes a specified command in the terminal and streams the output back in real time.
@@ -78,20 +86,32 @@ class Terminal:
             str: The command's output or an empty string if `daemon` is True. Remember that
                  when `daemon` is True, use the `get_stdout_output` method to get the output.
         """
-        if self.process is None:
-            await self._start_process()
-
+        # Apply forbidden command filtering first
         output = ""
-        # Remove forbidden commands
         commands = re.split(r"\s*&&\s*", cmd)
         skip_cmd = "echo Skipped" if sys.platform.startswith("win") else "true"
         for cmd_name, reason in self.forbidden_commands.items():
-            # "true" is a pass command in linux terminal.
             for index, command in enumerate(commands):
                 if cmd_name in command:
                     output += f"Failed to execute {command}. {reason}\n"
                     commands[index] = skip_cmd
         cmd = " && ".join(commands)
+
+        # Route to sandbox if enabled
+        if self._sandbox_enabled() and not daemon:
+            try:
+                config = Config.default().sandbox
+                executor = await get_sandbox_executor(config)
+                stdout, stderr, _ = await executor.run_command(cmd)
+                result = stdout
+                if stderr:
+                    result = f"{result}\n{stderr}" if result else stderr
+                return output + result
+            except Exception as e:
+                logger.warning(f"Sandbox command execution failed, falling back to local: {e}")
+
+        if self.process is None:
+            await self._start_process()
         # Send the command
         self.process.stdin.write((cmd + self.command_terminator).encode())
 
