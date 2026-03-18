@@ -6,6 +6,8 @@ import subprocess
 from pathlib import Path
 from typing import Dict, List, Tuple, Union
 
+from metagpt.logs import logger
+
 
 async def shell_execute(
     command: Union[List[str], str], cwd: str | Path = None, env: Dict = None, timeout: int = 600
@@ -47,6 +49,22 @@ async def shell_execute(
     References:
         This function uses `subprocess.Popen` for executing shell commands asynchronously.
     """
+    # Route to sandbox if enabled
+    try:
+        from metagpt.config2 import Config
+
+        sandbox_config = Config.default().sandbox
+        if sandbox_config.enabled:
+            from metagpt.tools.libs.sandbox_executor import get_sandbox_executor
+
+            executor = await get_sandbox_executor(sandbox_config)
+            cmd_str = " ".join(command) if isinstance(command, list) else command
+            return await executor.run_command(
+                cmd_str, timeout=timeout, working_directory=str(cwd) if cwd else None
+            )
+    except Exception as e:
+        logger.warning(f"Sandbox shell execution failed, falling back to local: {e}")
+
     cwd = str(cwd) if cwd else None
     shell = True if isinstance(command, str) else False
     result = subprocess.run(command, cwd=cwd, capture_output=True, text=True, env=env, timeout=timeout, shell=shell)

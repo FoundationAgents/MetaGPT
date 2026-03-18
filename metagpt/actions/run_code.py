@@ -24,6 +24,7 @@ from pydantic import Field
 from metagpt.actions.action import Action
 from metagpt.logs import logger
 from metagpt.schema import RunCodeContext, RunCodeResult
+from metagpt.tools.libs.sandbox_executor import get_sandbox_executor
 from metagpt.utils.exceptions import handle_exception
 
 PROMPT_TEMPLATE = """
@@ -79,8 +80,21 @@ class RunCode(Action):
     name: str = "RunCode"
     i_context: RunCodeContext = Field(default_factory=RunCodeContext)
 
+    def _sandbox_enabled(self) -> bool:
+        """Check if sandbox execution is enabled in config."""
+        try:
+            return self.context.config.sandbox.enabled
+        except (AttributeError, Exception):
+            return False
+
     @classmethod
-    async def run_text(cls, code) -> Tuple[str, str]:
+    async def run_text(cls, code, sandbox_config=None) -> Tuple[str, str]:
+        if sandbox_config and sandbox_config.enabled:
+            try:
+                executor = await get_sandbox_executor(sandbox_config)
+                return await executor.run_code(code, language="python")
+            except Exception as e:
+                logger.warning(f"Sandbox execution failed, falling back to local: {e}")
         try:
             # We will document_store the result in this dictionary
             namespace = {}
@@ -92,6 +106,9 @@ class RunCode(Action):
     async def run_script(self, working_directory, additional_python_paths=[], command=[]) -> Tuple[str, str]:
         working_directory = str(working_directory)
         additional_python_paths = [str(path) for path in additional_python_paths]
+
+        if self._sandbox_enabled():
+            return await self._run_script_in_sandbox(working_directory, additional_python_paths, command)
 
         # Copy the current environment variables
         env = self.context.new_environ()
@@ -117,6 +134,32 @@ class RunCode(Action):
             stdout, stderr = process.communicate()
         return stdout.decode("utf-8"), stderr.decode("utf-8")
 
+    async def _run_script_in_sandbox(self, working_directory, additional_python_paths, command) -> Tuple[str, str]:
+        """Execute a script inside the OpenSandbox."""
+        executor = await get_sandbox_executor(self.context.config.sandbox)
+        sandbox_workdir = "/workspace"
+
+        # Upload source files and requirements to sandbox
+        work_path = Path(working_directory)
+        if work_path.exists():
+            for f in work_path.iterdir():
+                if f.is_file() and f.suffix in (".py", ".txt", ".json", ".yaml", ".yml"):
+                    await executor.upload_file(str(f), f"{sandbox_workdir}/{f.name}")
+
+        # Install dependencies inside sandbox
+        req_file = work_path / "requirements.txt"
+        if req_file.exists() and req_file.stat().st_size > 0:
+            await executor.run_command(
+                f"pip install -r {sandbox_workdir}/requirements.txt", working_directory=sandbox_workdir
+            )
+        await executor.run_command("pip install pytest", working_directory=sandbox_workdir)
+
+        # Build and run the command inside sandbox
+        cmd_str = " ".join(command)
+        logger.info(f"Running in sandbox: {cmd_str}")
+        stdout, stderr, _ = await executor.run_command(cmd_str, working_directory=sandbox_workdir)
+        return stdout, stderr
+
     async def run(self, *args, **kwargs) -> RunCodeResult:
         logger.info(f"Running {' '.join(self.i_context.command)}")
         if self.i_context.mode == "script":
@@ -126,7 +169,8 @@ class RunCode(Action):
                 additional_python_paths=self.i_context.additional_python_paths,
             )
         elif self.i_context.mode == "text":
-            outs, errs = await self.run_text(code=self.i_context.code)
+            sandbox_config = self.context.config.sandbox if self._sandbox_enabled() else None
+            outs, errs = await self.run_text(code=self.i_context.code, sandbox_config=sandbox_config)
 
         logger.info(f"{outs=}")
         logger.info(f"{errs=}")

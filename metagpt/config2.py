@@ -21,6 +21,7 @@ from metagpt.configs.redis_config import RedisConfig
 from metagpt.configs.role_custom_config import RoleCustomConfig
 from metagpt.configs.role_zero_config import RoleZeroConfig
 from metagpt.configs.s3_config import S3Config
+from metagpt.configs.sandbox_config import SandboxConfig
 from metagpt.configs.search_config import SearchConfig
 from metagpt.configs.workspace_config import WorkspaceConfig
 from metagpt.const import CONFIG_ROOT, METAGPT_ROOT
@@ -66,6 +67,9 @@ class Config(CLIParams, YamlModel):
     enable_search: bool = False
     browser: BrowserConfig = BrowserConfig()
     mermaid: MermaidConfig = MermaidConfig()
+
+    # Sandbox Parameters
+    sandbox: SandboxConfig = Field(default_factory=SandboxConfig)
 
     # Storage Parameters
     s3: Optional[S3Config] = None
