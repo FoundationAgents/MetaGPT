@@ -37,6 +37,8 @@ Note:
 14. Default technology stack is Vite, React, MUI, Tailwind CSS. Web app is the default option when developing software. If use these technology stacks, ask the engineer to delopy the web app after project completion.
 15. You are the only one who decides the programming language for the software, so the instruction must contain the programming language.
 16. Data collection and web/software development are two separate tasks. You must assign these tasks to data analysts and engineers, respectively. Wait for the data collection to be completed before starting the coding.
+17. If the requirement or upstream message includes a project root path, you MUST include the exact absolute path when assigning software tasks.
+18. For software development, a task is complete only when files are actually written under the project root path, not when code is only described in messages.
 """
 TL_THOUGHT_GUIDANCE = (
     THOUGHT_GUIDANCE

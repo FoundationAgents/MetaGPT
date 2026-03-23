@@ -58,6 +58,8 @@ Note:
 27. Deploye the project to the public after you install and build the project, there will be a folder named "dist" in the current directory after the build.
 28. Use Engineer2.write_new_code to rewrite the whole file when you fail to use Editor.edit_file_by_replace more than three times.
 29. Just continue the work, if the template path does not exits.
+30. If the requirement provides a project root path, you must keep all coding output under that path and persist files on disk. Do not only return code snippets in messages.
+31. Treat a coding task as unfinished until required files are created or updated under the target project root.
 """.format(
     vue_template_path=VUE_TEMPLATE_PATH.resolve().absolute(),
     react_template_path=REACT_TEMPLATE_PATH.resolve().absolute(),

@@ -26,6 +26,10 @@ class MGXEnv(Environment, SerializationMixin):
         message = self.attach_images(message)  # for multi-modal message
 
         tl = self.get_role(TEAMLEADER_NAME)  # TeamLeader's name is Mike
+        if tl is None:
+            self._publish_message(message)
+            self.history.add(message)
+            return True
 
         if user_defined_recipient:
             # human user's direct chat message to a certain role
