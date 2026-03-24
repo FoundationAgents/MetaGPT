@@ -6,9 +6,35 @@ from pathlib import Path
 
 import typer
 
-from metagpt.const import CONFIG_ROOT
+from metagpt.const import CONFIG_ROOT, TEAMLEADER_NAME
 
 app = typer.Typer(add_completion=False, pretty_exceptions_show_locals=False)
+
+
+def _build_workspace_constrained_requirement(idea: str, project_root: Path) -> str:
+    """Add runtime constraints to force file persistence under the workspace path."""
+    return (
+        f"{idea}\n\n"
+        "[Runtime Constraints]\n"
+        f"- Project root path (absolute): {project_root}\n"
+        "- All implementation outputs must be persisted as files under this project root.\n"
+        "- Do not only print code or plans in chat/console; write real files.\n"
+        "- Keep all actions inside this project root unless user explicitly asks otherwise.\n"
+    )
+
+
+def _collect_materialized_files(project_root: Path) -> list[Path]:
+    """Collect generated files, excluding git internals and bootstrap-only file."""
+    files: list[Path] = []
+    for file in project_root.rglob("*"):
+        if not file.is_file():
+            continue
+        if ".git" in file.parts:
+            continue
+        if file.name == ".gitignore":
+            continue
+        files.append(file)
+    return files
 
 
 def generate_repo(
@@ -36,11 +62,23 @@ def generate_repo(
         TeamLeader,
     )
     from metagpt.team import Team
+    from metagpt.utils.file_repository import FileRepository
+    from metagpt.utils.project_repo import ProjectRepo
 
     config.update_via_cli(project_path, project_name, inc, reqa_file, max_auto_summarize_code)
     ctx = Context(config=config)
+    repo = None
 
     if not recover_path:
+        if config.project_path:
+            project_root = Path(config.project_path).expanduser().resolve()
+        else:
+            name = config.project_name or FileRepository.new_filename()
+            project_root = (Path(config.workspace.path) / name).expanduser().resolve()
+        repo = ProjectRepo(project_root)
+        ctx.kwargs.project_path = str(repo.workdir)
+        runtime_idea = _build_workspace_constrained_requirement(idea=idea, project_root=repo.workdir)
+
         company = Team(context=ctx)
         company.hire(
             [
@@ -66,12 +104,24 @@ def generate_repo(
             raise FileNotFoundError(f"{recover_path} not exists or not endswith `team`")
 
         company = Team.deserialize(stg_path=stg_path, context=ctx)
-        idea = company.idea
+        runtime_idea = company.idea
 
     company.invest(investment)
-    asyncio.run(company.run(n_round=n_round, idea=idea))
+    asyncio.run(company.run(n_round=n_round, idea=runtime_idea, send_to=TEAMLEADER_NAME))
 
-    return ctx.kwargs.get("project_path")
+    project_path = ctx.kwargs.get("project_path")
+    if not project_path:
+        raise RuntimeError("Project path is missing after generation. The repository was not initialized.")
+    repo = repo or ProjectRepo(project_path)
+    if implement:
+        files = _collect_materialized_files(repo.workdir)
+        if not files:
+            raise RuntimeError(
+                f"Generation finished without persisted files under {repo.workdir}. "
+                "The workflow only produced console/chat output."
+            )
+
+    return repo
 
 
 @app.command("", help="Start a new project.")

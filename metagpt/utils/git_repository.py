@@ -19,13 +19,6 @@ from urllib.parse import quote
 
 from git.repo import Repo
 from git.repo.fun import is_git_dir
-from github import Auth, BadCredentialsException, Github
-from github.GithubObject import NotSet
-from github.Issue import Issue
-from github.Label import Label
-from github.Milestone import Milestone
-from github.NamedUser import NamedUser
-from github.PullRequest import PullRequest
 from gitignore_parser import parse_gitignore
 from pydantic import BaseModel
 from tenacity import retry, stop_after_attempt, wait_random_exponential
@@ -34,6 +27,35 @@ from metagpt.logs import logger
 from metagpt.tools.libs.shell import shell_execute
 from metagpt.utils.dependency_file import DependencyFile
 from metagpt.utils.file_repository import FileRepository
+
+try:
+    from github import Auth, BadCredentialsException, Github
+    from github.GithubObject import NotSet
+    from github.Issue import Issue
+    from github.Label import Label
+    from github.Milestone import Milestone
+    from github.NamedUser import NamedUser
+    from github.PullRequest import PullRequest
+
+    HAS_GITHUB = True
+except (ImportError, ModuleNotFoundError):
+    Auth = None
+    Github = None
+    NotSet = object()
+    Issue = Label = Milestone = NamedUser = PullRequest = object
+    HAS_GITHUB = False
+
+    class BadCredentialsException(Exception):
+        """Fallback exception when PyGithub is not installed."""
+
+        def __init__(self, *args, **kwargs):
+            message = kwargs.get("message") or (args[0] if args else "PyGithub is required")
+            super().__init__(message)
+
+
+def _require_github_dependency():
+    if not HAS_GITHUB:
+        raise ModuleNotFoundError("PyGithub is required for GitHub operations. Install with `pip install PyGithub`.")
 
 
 class ChangeType(Enum):
@@ -481,6 +503,7 @@ class GitRepository:
         Returns:
             PullRequest: The created pull request object.
         """
+        _require_github_dependency()
         title = title or NotSet
         body = body or NotSet
         maintainer_can_modify = maintainer_can_modify or NotSet
@@ -546,6 +569,7 @@ class GitRepository:
         Returns:
             Issue: The created issue object.
         """
+        _require_github_dependency()
         body = body or NotSet
         assignee = assignee or NotSet
         milestone = milestone or NotSet
@@ -588,6 +612,7 @@ class GitRepository:
         Returns:
             List[str]: A list of full names of the public repositories belonging to the user.
         """
+        _require_github_dependency()
         auth = auth or Auth.Token(access_token)
         git = Github(auth=auth)
         user = git.get_user()

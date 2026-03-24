@@ -69,6 +69,15 @@ from metagpt.utils.serialize import (
 )
 
 
+def _new_message_queue() -> Queue:
+    """Create an asyncio queue even when no event loop is set on the current thread."""
+    try:
+        asyncio.get_event_loop()
+    except RuntimeError:
+        asyncio.set_event_loop(asyncio.new_event_loop())
+    return Queue()
+
+
 class SerializationMixin(BaseSerialization):
     @handle_exception
     def serialize(self, file_path: str = None) -> str:
@@ -715,7 +724,7 @@ class MessageQueue(BaseModel):
 
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
-    _queue: Queue = PrivateAttr(default_factory=Queue)
+    _queue: Queue = PrivateAttr(default_factory=_new_message_queue)
 
     def pop(self) -> Message | None:
         """Pop one message from the queue."""
