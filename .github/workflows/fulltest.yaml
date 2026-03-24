@@ -10,6 +10,9 @@ on:
       - '*-release'
       - '*-debugger'
 
+permissions:
+  contents: read
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -20,7 +23,8 @@ jobs:
         python-version: ['3.9']
 
     steps:
-    - uses: actions/checkout@v4
+    - name: Checkout code
+      uses: actions/checkout@v4
       with:
         ref: ${{ github.event.pull_request.head.sha || github.sha }}
     - name: Set up Python ${{ matrix.python-version }}
@@ -61,9 +65,18 @@ jobs:
         export ALLOW_OPENAI_API_CALL=0
         mkdir -p config
         echo "${{ secrets.METAGPT_KEY_YAML }}" | base64 -d > config/key.yaml
-        mkdir -p ~/.metagpt && echo "${{ secrets.METAGPT_CONFIG2_YAML }}" | base64 -d > ~/.metagpt/config2.yaml
+
+          mkdir -p ~/.metagpt
+          echo "${{ secrets.METAGPT_CONFIG2_YAML }}" | base64 -d > ~/.metagpt/config2.yaml
+
         set +e
-        pytest tests/ --doctest-modules --cov=./metagpt/ --cov-report=xml:cov.xml --cov-report=html:htmlcov --durations=20 | tee unittest.txt
+          pytest tests/ \
+            --doctest-modules \
+            --cov=metagpt \
+            --cov-report=xml:cov.xml \
+            --cov-report=html:htmlcov \
+            --durations=20 \
+            2>&1 | tee unittest.txt
         test_exit=${PIPESTATUS[0]}
                   set -e
 
@@ -74,7 +87,7 @@ jobs:
       shell: bash
       run: |
         if [[ -f .coverage || -f cov.xml ]]; then
-            coverage report -m || true
+            python -m coverage report -m || true
           else
             echo "No coverage data generated, skip coverage report."
           fi
