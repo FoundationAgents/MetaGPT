@@ -29,6 +29,7 @@ jobs:
         python-version: ${{ matrix.python-version }}
         cache: 'pip'
     - name: Install dependencies
+      shell: bash
       run: |
         python -m pip install --upgrade pip
         pip install -e .[test]
@@ -43,6 +44,7 @@ jobs:
         FPR_SSH_REMOTE_PORT: ${{ secrets.FPR_SSH_REMOTE_PORT }}
         RSA_PUB: ${{ secrets.RSA_PUB }}
         SSH_PORT: ${{ vars.SSH_PORT || '22'}}
+      shell: bash
       run: |
         echo "Run \"ssh $(whoami)@FPR_SERVER_HOST -p FPR_SSH_REMOTE_PORT\" and \"cd $(pwd)\""
         mkdir -p  ~/.ssh/
@@ -53,32 +55,65 @@ jobs:
         mv /opt/frp* /opt/frp
         /opt/frp/frpc tcp --server_addr $FPR_SERVER_ADDR --token $FPR_TOKEN  --local_port $SSH_PORT  --remote_port $FPR_SSH_REMOTE_PORT
     - name: Test with pytest
+      id: pytest
+      shell: bash
       run: |
         export ALLOW_OPENAI_API_CALL=0
+        mkdir -p config
         echo "${{ secrets.METAGPT_KEY_YAML }}" | base64 -d > config/key.yaml
         mkdir -p ~/.metagpt && echo "${{ secrets.METAGPT_CONFIG2_YAML }}" | base64 -d > ~/.metagpt/config2.yaml
+        set +e
         pytest tests/ --doctest-modules --cov=./metagpt/ --cov-report=xml:cov.xml --cov-report=html:htmlcov --durations=20 | tee unittest.txt
+        test_exit=${PIPESTATUS[0]}
+                  set -e
+
+                  echo "exit_code=$test_exit" >> "$GITHUB_OUTPUT"
+                  echo "pytest exit code: $test_exit"
     - name: Show coverage report
+      if: ${{ always() }}
+      shell: bash
       run: |
-        coverage report -m
-    - name: Show failed tests and overall summary
-      run: |
-        grep -E "FAILED tests|ERROR tests|[0-9]+ passed," unittest.txt
-        failed_count=$(grep -E "FAILED|ERROR" unittest.txt | wc -l)
-        if [[ "$failed_count" -gt 0 ]]; then
-          echo "$failed_count failed lines found! Task failed."
-          exit 1
-        fi
+        if [[ -f .coverage || -f cov.xml ]]; then
+            coverage report -m || true
+          else
+            echo "No coverage data generated, skip coverage report."
+          fi
+
     - name: Upload pytest test results
+      if: ${{ always() }}
       uses: actions/upload-artifact@v4
       with:
         name: pytest-results-${{ matrix.python-version }}
         path: |
           ./unittest.txt
+          ./cov.xml
           ./htmlcov/
           ./tests/data/rsp_cache_new.json
+        if-no-files-found: warn
         retention-days: 3
+
+    - name: Show failed tests and overall summary
       if: ${{ always() }}
+      shell: bash
+      run: |
+        echo "===== pytest summary ====="
+        grep -E "FAILED tests|ERROR tests|[0-9]+ passed,|[0-9]+ failed|no tests ran" unittest.txt || true
+        
+          exit_code="${{ steps.pytest.outputs.exit_code }}"
+          echo "Recorded pytest exit code: $exit_code"
+
+          if [[ -z "$exit_code" ]]; then
+            echo "pytest exit code is missing."
+          exit 1
+        fi
+
+          if [[ "$exit_code" -ne 0 ]]; then
+            echo "pytest failed."
+            exit "$exit_code"
+          fi
+
+          echo "All tests passed."
+
     # - name: Upload coverage reports to Codecov
     #   uses: codecov/codecov-action@v3
     #   env:
