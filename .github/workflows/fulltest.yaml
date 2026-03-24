@@ -24,14 +24,20 @@ jobs:
 
     steps:
     - name: Checkout code
-      uses: actions/checkout@v4
+        uses: actions/checkout@v5
       with:
         ref: ${{ github.event.pull_request.head.sha || github.sha }}
+
     - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v4
+      uses: actions/setup-python@v6
       with:
         python-version: ${{ matrix.python-version }}
-        cache: 'pip'
+        cache: "pip"
+        cache-dependency-path: |
+          setup.py
+          requirements.txt
+          pytest.ini
+
     - name: Install dependencies
       shell: bash
       run: |
@@ -39,6 +45,14 @@ jobs:
         python -m pip install -e .[test]
         npm install -g @mermaid-js/mermaid-cli
         python -m playwright install --with-deps
+
+    - name: Show pytest environment
+        shell: bash
+        run: |
+          python --version
+          python -m pip show pytest pytest-cov pytest-asyncio pytest-mock || true
+          python -m pytest --version
+
     - name: Run reverse proxy script for ssh service
       if: contains(github.ref, '-debugger')
       continue-on-error: true
@@ -51,13 +65,20 @@ jobs:
       shell: bash
       run: |
         echo "Run \"ssh $(whoami)@FPR_SERVER_HOST -p FPR_SSH_REMOTE_PORT\" and \"cd $(pwd)\""
-        mkdir -p  ~/.ssh/
+        mkdir -p ~/.ssh
         echo $RSA_PUB >> ~/.ssh/authorized_keys
         chmod 600 ~/.ssh/authorized_keys
         wget https://github.com/fatedier/frp/releases/download/v0.32.1/frp_0.32.1_linux_amd64.tar.gz -O frp.tar.gz
         tar xvzf frp.tar.gz -C /opt
         mv /opt/frp* /opt/frp
         /opt/frp/frpc tcp --server_addr $FPR_SERVER_ADDR --token $FPR_TOKEN  --local_port $SSH_PORT  --remote_port $FPR_SSH_REMOTE_PORT
+      - name: Prepare test config
+        shell: bash
+        run: |
+          mkdir -p config ~/.metagpt
+          echo "${{ secrets.METAGPT_KEY_YAML }}" | base64 -d > config/key.yaml
+          echo "${{ secrets.METAGPT_CONFIG2_YAML }}" | base64 -d > ~/.metagpt/config2.yaml
+
     - name: Test with pytest
       id: pytest
       shell: bash
@@ -69,13 +90,7 @@ jobs:
         echo "${{ secrets.METAGPT_CONFIG2_YAML }}" | base64 -d > ~/.metagpt/config2.yaml
 
         set +e
-        pytest tests/ \
-            --doctest-modules \
-            --cov=metagpt \
-            --cov-report=xml:cov.xml \
-            --cov-report=html:htmlcov \
-            --durations=20 \
-            2>&1 | tee unittest.txt
+          python -m pytest -c pytest.ini 2>&1 | tee unittest.txt
         test_exit=${PIPESTATUS[0]}
         set -e
     
@@ -93,7 +108,7 @@ jobs:
 
     - name: Upload pytest test results
       if: ${{ always() }}
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v6
       with:
         name: pytest-results-${{ matrix.python-version }}
         path: |
@@ -124,7 +139,7 @@ jobs:
         fi
 
           if [[ "$exit_code" -eq 4 ]]; then
-            echo "pytest usage error detected. Showing the first 200 lines of unittest.txt:"
+            echo "pytest usage/config error detected. Showing the first 200 lines of unittest.txt:"
             sed -n '1,200p' unittest.txt || true
           fi
 
