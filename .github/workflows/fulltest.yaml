@@ -36,9 +36,9 @@ jobs:
       shell: bash
       run: |
         python -m pip install --upgrade pip
-        pip install -e .[test]
+        python -m pip install -e .[test]
         npm install -g @mermaid-js/mermaid-cli
-        playwright install --with-deps
+        python -m playwright install --with-deps
     - name: Run reverse proxy script for ssh service
       if: contains(github.ref, '-debugger')
       continue-on-error: true
@@ -65,12 +65,11 @@ jobs:
         export ALLOW_OPENAI_API_CALL=0
         mkdir -p config
         echo "${{ secrets.METAGPT_KEY_YAML }}" | base64 -d > config/key.yaml
-
-          mkdir -p ~/.metagpt
-          echo "${{ secrets.METAGPT_CONFIG2_YAML }}" | base64 -d > ~/.metagpt/config2.yaml
+        mkdir -p ~/.metagpt
+        echo "${{ secrets.METAGPT_CONFIG2_YAML }}" | base64 -d > ~/.metagpt/config2.yaml
 
         set +e
-          pytest tests/ \
+        pytest tests/ \
             --doctest-modules \
             --cov=metagpt \
             --cov-report=xml:cov.xml \
@@ -78,10 +77,10 @@ jobs:
             --durations=20 \
             2>&1 | tee unittest.txt
         test_exit=${PIPESTATUS[0]}
-                  set -e
-
-                  echo "exit_code=$test_exit" >> "$GITHUB_OUTPUT"
-                  echo "pytest exit code: $test_exit"
+        set -e
+    
+        echo "exit_code=$test_exit" >> "$GITHUB_OUTPUT"
+        echo "pytest exit code: $test_exit"
     - name: Show coverage report
       if: ${{ always() }}
       shell: bash
@@ -110,7 +109,11 @@ jobs:
       shell: bash
       run: |
         echo "===== pytest summary ====="
-        grep -E "FAILED tests|ERROR tests|[0-9]+ passed,|[0-9]+ failed|no tests ran" unittest.txt || true
+          if [[ -f unittest.txt ]]; then
+            grep -E "FAILED tests|ERROR tests|[0-9]+ passed,|[0-9]+ failed|no tests ran" unittest.txt || true
+          else
+            echo "unittest.txt not found."
+          fi
         
           exit_code="${{ steps.pytest.outputs.exit_code }}"
           echo "Recorded pytest exit code: $exit_code"
@@ -119,6 +122,11 @@ jobs:
             echo "pytest exit code is missing."
           exit 1
         fi
+
+          if [[ "$exit_code" -eq 4 ]]; then
+            echo "pytest usage error detected. Showing the first 200 lines of unittest.txt:"
+            sed -n '1,200p' unittest.txt || true
+          fi
 
           if [[ "$exit_code" -ne 0 ]]; then
             echo "pytest failed."
