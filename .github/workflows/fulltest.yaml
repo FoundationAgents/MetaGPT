@@ -24,7 +24,7 @@ jobs:
 
     steps:
     - name: Checkout code
-        uses: actions/checkout@v5
+      uses: actions/checkout@v5
       with:
         ref: ${{ github.event.pull_request.head.sha || github.sha }}
 
@@ -47,11 +47,11 @@ jobs:
         python -m playwright install --with-deps
 
     - name: Show pytest environment
-        shell: bash
-        run: |
-          python --version
-          python -m pip show pytest pytest-cov pytest-asyncio pytest-mock || true
-          python -m pytest --version
+      shell: bash
+      run: |
+        python --version
+        python -m pip show pytest pytest-cov pytest-asyncio pytest-mock || true
+        python -m pytest --version
 
     - name: Run reverse proxy script for ssh service
       if: contains(github.ref, '-debugger')
@@ -72,12 +72,13 @@ jobs:
         tar xvzf frp.tar.gz -C /opt
         mv /opt/frp* /opt/frp
         /opt/frp/frpc tcp --server_addr $FPR_SERVER_ADDR --token $FPR_TOKEN  --local_port $SSH_PORT  --remote_port $FPR_SSH_REMOTE_PORT
-      - name: Prepare test config
-        shell: bash
-        run: |
-          mkdir -p config ~/.metagpt
-          echo "${{ secrets.METAGPT_KEY_YAML }}" | base64 -d > config/key.yaml
-          echo "${{ secrets.METAGPT_CONFIG2_YAML }}" | base64 -d > ~/.metagpt/config2.yaml
+
+    - name: Prepare test config
+      shell: bash
+      run: |
+        mkdir -p config ~/.metagpt
+        echo "${{ secrets.METAGPT_KEY_YAML }}" | base64 -d > config/key.yaml
+        echo "${{ secrets.METAGPT_CONFIG2_YAML }}" | base64 -d > ~/.metagpt/config2.yaml
 
     - name: Test with pytest
       id: pytest
@@ -93,7 +94,7 @@ jobs:
           python -m pytest -c pytest.ini 2>&1 | tee unittest.txt
         test_exit=${PIPESTATUS[0]}
         set -e
-    
+
         echo "exit_code=$test_exit" >> "$GITHUB_OUTPUT"
         echo "pytest exit code: $test_exit"
     - name: Show coverage report
@@ -129,7 +130,7 @@ jobs:
           else
             echo "unittest.txt not found."
           fi
-        
+
           exit_code="${{ steps.pytest.outputs.exit_code }}"
           echo "Recorded pytest exit code: $exit_code"
 
