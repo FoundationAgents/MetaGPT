@@ -94,12 +94,20 @@ class OutputParser:
 
     @classmethod
     def parse_code(cls, text: str, lang: str = "") -> str:
-        pattern = rf"```{lang}.*?\s+(.*?)```"
-        match = re.search(pattern, text, re.DOTALL)
-        if match:
-            code = match.group(1)
-        else:
+        # Split by the opening tag and use rsplit to find the *last* closing
+        # ```, which avoids matching nested triple-backticks inside content
+        # (e.g., markdown that contains ```shell ... ``` blocks).
+        start_tag = f"```{lang}"
+        if start_tag not in text:
             raise Exception
+        after_start = text.split(start_tag, 1)[1]
+        if "```" not in after_start:
+            raise Exception
+        # rsplit by ``` to find the outermost closing fence
+        code = after_start.rsplit("```", 1)[0]
+        # Strip the leading optional language suffix and whitespace
+        # (e.g., after ```python there may be a newline)
+        code = code.split("\n", 1)[-1] if "\n" in code else code.lstrip()
         return code
 
     @classmethod
@@ -283,15 +291,24 @@ class CodeParser:
     def parse_code(cls, text: str, lang: str = "", block: Optional[str] = None) -> str:
         if block:
             text = cls.parse_block(block, text)
-        pattern = rf"```{lang}.*?\s+(.*?)\n```"
-        match = re.search(pattern, text, re.DOTALL)
-        if match:
-            code = match.group(1)
-        else:
-            logger.error(f"{pattern} not match following text:")
+        # Split by the opening tag and use rsplit to find the *last* closing
+        # ```, which avoids matching nested triple-backticks inside content
+        # (e.g., markdown that contains ```shell ... ``` blocks).
+        start_tag = f"```{lang}"
+        if start_tag not in text:
+            logger.error(f"```{lang} not found in following text:")
             logger.error(text)
-            # raise Exception
             return text  # just assume original text is code
+        after_start = text.split(start_tag, 1)[1]
+        if "```" not in after_start:
+            logger.error(f"Closing ``` not found after ```{lang} in following text:")
+            logger.error(text)
+            return text  # just assume original text is code
+        # rsplit by ``` to find the outermost closing fence
+        code = after_start.rsplit("```", 1)[0]
+        # Strip the leading optional language suffix and whitespace
+        # (e.g., after ```python there may be a newline)
+        code = code.split("\n", 1)[-1] if "\n" in code else code.lstrip()
         return code
 
     @classmethod
@@ -776,11 +793,21 @@ def list_files(root: str | Path) -> List[Path]:
 
 
 def parse_json_code_block(markdown_text: str) -> List[str]:
-    json_blocks = (
-        re.findall(r"```json(.*?)```", markdown_text, re.DOTALL) if "```json" in markdown_text else [markdown_text]
-    )
+    if "```json" not in markdown_text:
+        return [markdown_text.strip()]
 
-    return [v.strip() for v in json_blocks]
+    # Split by the opening ```json tag and process each segment.
+    # For each segment, use rsplit to find the *last* closing ``` so that
+    # nested triple-backticks inside JSON string values (e.g., markdown
+    # content containing ```shell ... ```) do not prematurely end the block.
+    blocks = []
+    parts = markdown_text.split("```json")
+    for part in parts[1:]:
+        if "```" in part:
+            content = part.rsplit("```", 1)[0]
+            blocks.append(content.strip())
+
+    return blocks if blocks else [markdown_text.strip()]
 
 
 def remove_white_spaces(v: str) -> str:
