@@ -19,7 +19,7 @@ class AnthropicLLM(BaseLLM):
 
     def __init_anthropic(self):
         self.model = self.config.model
-        self.aclient: AsyncAnthropic = AsyncAnthropic(api_key=self.config.api_key, base_url=self.config.base_url)
+        self.aclient: AsyncAnthropic = AsyncAnthropic(api_key=self.config.api_key, base_url=self.config.base_url, timeout=60.0, max_retries=3)
 
     def _const_kwargs(self, messages: list[dict], stream: bool = False) -> dict:
         kwargs = {
