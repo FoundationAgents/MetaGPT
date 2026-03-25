@@ -55,7 +55,7 @@ def get_embedding(text, model: str = "text-embedding-ada-002"):
     for idx in range(3):
         try:
             embedding = (
-                OpenAI(api_key=config.llm.api_key).embeddings.create(input=[text], model=model).data[0].embedding
+                OpenAI(api_key=config.llm.api_key, timeout=60.0, max_retries=3).embeddings.create(input=[text], model=model).data[0].embedding
             )
         except Exception as exp:
             logger.info(f"get_embedding failed, exp: {exp}, will retry.")
