@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 # @Desc   : The Android external environment to integrate with Android apps
+import shlex
 import subprocess
 import time
 from pathlib import Path
@@ -136,7 +137,9 @@ class AndroidExtEnv(ExtEnv):
 
     def execute_adb_with_cmd(self, adb_cmd: str) -> str:
         adb_cmd = adb_cmd.replace("\\", "/")
-        res = subprocess.run(adb_cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+        res = subprocess.run(
+            shlex.split(adb_cmd), shell=False, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True
+        )
         exec_res = ADB_EXEC_FAIL
         if not res.returncode:
             exec_res = res.stdout.strip()
