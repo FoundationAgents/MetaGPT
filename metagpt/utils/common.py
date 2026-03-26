@@ -292,6 +292,9 @@ class CodeParser:
             logger.error(text)
             # raise Exception
             return text  # just assume original text is code
+        # Strip LLM-injected filename header (e.g., "## quickSort.js") from code blocks.
+        # The LLM sometimes echoes the filename marker inside the code block instead of outside.
+        code = re.sub(r'^##\s+\S+\.\w+[ \t]*\n+', '', code)
         return code
 
     @classmethod
