@@ -158,6 +158,25 @@ def run_code(code):
         return "Error", f"Execution error: {str(e)}\n{''.join(tb_str)}"
 
 
+def _run_test_in_subprocess(test_code):
+    """Execute test code in an isolated namespace within a subprocess.
+
+    This function is the subprocess target for Test.exec_code(). It runs
+    the test code in a fresh dict namespace so that it cannot read or
+    modify the caller's globals, reducing the impact of malicious payloads
+    in external JSONL dataset files.
+    """
+    isolated_namespace = {}
+    try:
+        exec(test_code, isolated_namespace)
+        return "success", None
+    except AssertionError as e:
+        tb_str = traceback.format_exception(type(e), e, e.__traceback__)
+        return "assertion_error", {"error_message": str(e), "traceback": tb_str}
+    except Exception as e:
+        return "exec_error", str(e)
+
+
 class Programmer(Operator):
     def __init__(self, llm: LLM, name: str = "Programmer"):
         super().__init__(llm, name)
@@ -218,32 +237,39 @@ class Test(Operator):
     def __init__(self, llm: LLM, name: str = "Test"):
         super().__init__(llm, name)
 
-    def exec_code(self, solution, entry_point):
+    def exec_code(self, solution, entry_point, timeout=30):
         test_cases = extract_test_cases_from_jsonl(entry_point)
 
         fail_cases = []
         for test_case in test_cases:
             test_code = test_case_2_test_function(solution, test_case, entry_point)
-            try:
-                exec(test_code, globals())
-            except AssertionError as e:
-                exc_type, exc_value, exc_traceback = sys.exc_info()
-                tb_str = traceback.format_exception(exc_type, exc_value, exc_traceback)
-                with open("tester.txt", "a") as f:
-                    f.write("test_error of " + entry_point + "\n")
+
+            # Run each test case in a separate subprocess to prevent
+            # malicious JSONL payloads from affecting the main process.
+            with concurrent.futures.ProcessPoolExecutor(max_workers=1) as executor:
+                try:
+                    future = executor.submit(_run_test_in_subprocess, test_code)
+                    status, detail = future.result(timeout=timeout)
+                except concurrent.futures.TimeoutError:
+                    return {"exec_fail_case": "Test execution timed out"}
+                except Exception as e:
+                    return {"exec_fail_case": f"Subprocess error: {str(e)}"}
+
+            if status == "success":
+                continue
+            elif status == "assertion_error":
                 error_infomation = {
                     "test_fail_case": {
                         "test_case": test_case,
                         "error_type": "AssertionError",
-                        "error_message": str(e),
-                        "traceback": tb_str,
+                        "error_message": detail["error_message"],
+                        "traceback": detail["traceback"],
                     }
                 }
                 fail_cases.append(error_infomation)
-            except Exception as e:
-                with open("tester.txt", "a") as f:
-                    f.write(entry_point + " " + str(e) + "\n")
-                return {"exec_fail_case": str(e)}
+            elif status == "exec_error":
+                return {"exec_fail_case": detail}
+
         if fail_cases != []:
             return fail_cases
         else:
