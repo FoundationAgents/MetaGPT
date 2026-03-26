@@ -133,6 +133,20 @@ class TestCodeParser:
         print(result)
         assert "game.py" in result
 
+    def test_parse_code_strips_filename_header(self, parser):
+        """LLM sometimes echoes the filename marker inside the code block instead of outside it."""
+        text = "```python\n## sort.py\n\ndef sort(arr):\n    return sorted(arr)\n```"
+        result = parser.parse_code(block="", text=text, lang="python")
+        assert not result.startswith("##"), "filename header should be stripped from extracted code"
+        assert "def sort" in result
+
+    def test_parse_code_strips_filename_header_no_blank_line(self, parser):
+        """Filename header immediately followed by code with no blank line."""
+        text = "```javascript\n## quickSort.js\nfunction quickSort(arr) { return arr; }\n```"
+        result = parser.parse_code(block="", text=text, lang="javascript")
+        assert not result.startswith("##"), "filename header should be stripped"
+        assert "function quickSort" in result
+
 
 if __name__ == "__main__":
     t = TestCodeParser()
