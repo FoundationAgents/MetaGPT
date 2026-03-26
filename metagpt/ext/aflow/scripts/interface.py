@@ -14,8 +14,24 @@ from metagpt.ext.aflow.scripts.evaluator import DatasetType
 from metagpt.ext.aflow.scripts.optimizer_utils.data_utils import DataUtils
 from metagpt.logs import logger
 
+DEFAULT_OPTIMIZED_PATH = "metagpt/ext/aflow/scripts/optimized"
 
-def load_best_round(dataset: str, optimized_path: str = "metagpt/ext/aflow/scripts/optimized") -> int:
+
+def _resolve_graph_path(dataset: str, round: int, optimized_path: str) -> Path:
+    """Build and validate the optimized workflow path before dynamic loading."""
+    base_dir = Path(optimized_path).resolve()
+    graph_path = (base_dir / dataset / "workflows" / f"round_{round}" / "graph.py").resolve()
+
+    if not graph_path.is_relative_to(base_dir):
+        raise ValueError(f"Workflow path {graph_path} is outside the allowed base directory {base_dir}")
+
+    if graph_path.name != "graph.py":
+        raise ValueError(f"Unexpected workflow filename: {graph_path.name} (expected 'graph.py')")
+
+    return graph_path
+
+
+def load_best_round(dataset: str, optimized_path: str = DEFAULT_OPTIMIZED_PATH) -> int:
     """加载最佳表现的轮次"""
     data_utils = DataUtils(f"{optimized_path}/{dataset}")
 
@@ -42,7 +58,7 @@ async def aflow_inference(
     entry_point: Optional[str] = None,
     round: Optional[int] = None,
     llm_name: str = "gpt-4o-mini",
-    optimized_path: str = "metagpt/ext/aflow/scripts/optimized",
+    optimized_path: str = DEFAULT_OPTIMIZED_PATH,
 ) -> Tuple[str, float]:
     """AFLOW推理接口
 
@@ -63,7 +79,7 @@ async def aflow_inference(
     logger.info(f"Using round {round} for inference")
 
     # 构建工作流路径并加载
-    graph_path = Path(optimized_path) / dataset / "workflows" / f"round_{round}" / "graph.py"
+    graph_path = _resolve_graph_path(dataset, round, optimized_path)
     if not graph_path.exists():
         raise FileNotFoundError(f"Workflow file not found: {graph_path}")
 
