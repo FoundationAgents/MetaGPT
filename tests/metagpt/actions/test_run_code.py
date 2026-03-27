@@ -15,7 +15,7 @@ from metagpt.schema import RunCodeContext
 @pytest.mark.asyncio
 async def test_run_text():
     out, err = await RunCode.run_text("result = 1 + 1")
-    assert out == 2
+    assert out == "2"
     assert err == ""
 
     out, err = await RunCode.run_text("result = 1 / 0")
