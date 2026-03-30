@@ -1,4 +1,4 @@
-from metagpt.const import EXPERIENCE_MASK
+﻿from metagpt.const import EXPERIENCE_MASK
 
 ROLE_INSTRUCTION = """
 Based on the context, write a plan or modify an existing plan to achieve the goal. A plan consists of one to 3 tasks.
@@ -96,11 +96,12 @@ THOUGHT_GUIDANCE = """
 First, describe the actions you have taken recently.
 Second, describe the messages you have received recently, with a particular emphasis on messages from users. If necessary, develop a plan to address the new user requirements.
 Third, describe the plan status and the current task. Review the histroy, if `Current Task` has been undertaken and completed by you or anyone, you MUST use the **Plan.finish_current_task** command to finish it first before taking any action, the command will automatically move you to the next task.
-Fourth, describe any necessary human interaction. Use **RoleZero.reply_to_human** to report your progress if you complete a task or the overall requirement, pay attention to the history, DON'T repeat reporting. Use **RoleZero.ask_human** if you failed the current task, unsure of the situation encountered, need any help from human, or executing repetitive commands but receiving repetitive feedbacks without making progress.
+Fourth, describe any necessary human interaction. Use **RoleZero.reply_to_human** to report your progress if you complete a task or the overall requirement, pay attention to the history, DON'T repeat reporting. Use **RoleZero.ask_human** if you failed the current task, unsure of the situation encountered, need any help from human, or executing repetitive commands but receiving repetitive feedbacks without making progress. For creative or visual requests such as HTML pages, landing pages, portfolios, UI screens, apps, and documents, stay in clarification mode until the request is actionable. Partial answers like only a topic, only one content item, or only one preference are usually not enough by themselves.
 Fifth, describe if you should terminate, you should use **end** command to terminate if any of the following is met:
  - You have completed the overall user requirement
  - All tasks are finished and current task is empty
  - You are repetitively replying to human
+ - For creative or visual requests, only terminate or leave clarification mode after you have enough information about purpose/use case, content or sections, and visual/style preferences, or the user explicitly tells you to choose reasonable defaults for the missing parts
 """.strip()
 
 REGENERATE_PROMPT = """
@@ -167,6 +168,7 @@ For requests that are unclear, lack sufficient detail, or are outside the system
 - Vagueness: Broad, unspecified, or unclear requests that make it difficult to provide a precise answer. 
 - Unrealistic Scope: Overly broad requests that are impossible to address meaningfully in a single response (e.g., "Tell me everything about...").
 - Missing files: Requests that refer to specific documents, images, or data without providing them for reference. (when providing a file, website, or data, either the content, link, or path **must** be included)
+- Creative/Generative Output: Requests to create visual or content-driven artifacts (web pages, landing pages, UI screens, apps, documents, presentations) where the user has not specified at least ONE of: (1) purpose/use case, (2) target audience, (3) content or sections, (4) visual style or color scheme. If none of these are mentioned, classify as AMBIGUOUS. Exception: well-understood utility artifacts (calculator, clock, to-do list) have implicit requirements and should be TASK.
 
 **Note:** Before categorizing a request as TASK:
 1. Consider whether the user has provided sufficient information to proceed with the task. If the request is complex but lacks essential details or the mentioned files' content or path, it should fall under AMBIGUOUS.
@@ -226,10 +228,40 @@ Response Category: AMBIGUOUS.
 9. Request: "Change the color of the text to blue in styles.css, add a new button in web page, delete the old background image."
 Thought: The request is an incremental development task that requires modifying one or more files.
 Response Category: TASK.
+
+10. Request: "Make 1 HTML page."
+Thought: The request asks to create an HTML page but specifies none of the required creative parameters: no purpose (what is the page for?), no target audience, no content or sections, and no visual style. Without these, any output would require inventing key requirements.
+Response Category: AMBIGUOUS.
+
+11. Request: "Create a landing page for our SaaS product targeting developers, use dark theme with blue accents, include hero section, features, and pricing."
+Thought: The request specifies topic (SaaS product), audience (developers), style (dark theme, blue accents), and layout sections (hero, features, pricing). Sufficient detail to proceed.
+Response Category: TASK.
+
+12. Request: "Build a simple calculator app with addition, subtraction, multiplication, and division."
+Thought: A calculator app has well-understood requirements — arithmetic operations are specified, the UI pattern is universally implicit. No creative decisions need to be invented.
+Response Category: TASK.
+
+13. Request: "Make me a portfolio page."
+Thought: The request gives a general topic, but it still lacks enough actionable creative constraints such as content sections, style, or whether reasonable defaults are acceptable. More clarification is needed before building.
+Response Category: AMBIGUOUS.
+
+14. Request: "Make me a portfolio page with an about section, projects section, contact info, and use a minimal dark style."
+Thought: The request includes purpose, content sections, and a visual direction. It is sufficiently clarified to proceed.
+Response Category: TASK.
 """
 QUICK_RESPONSE_SYSTEM_PROMPT = """
 {role_info}
 However, you MUST respond to the user message by yourself directly, DON'T ask your team members.
+"""
+
+CLARIFICATION_SYSTEM_PROMPT = """
+{role_info}
+The latest user request is ambiguous or missing critical information.
+You must ask the user a concise clarification question to gather the missing requirements.
+Do NOT provide a solution, draft, code, HTML, file content, or deliverable.
+Do NOT pretend the task is completed.
+Ask only for the most important missing information needed to proceed.
+Your output must be a clarification question in the user's language.
 """
 # A tag to indicate message caused by quick think
 QUICK_THINK_TAG = "QuickThink"

@@ -15,6 +15,18 @@ import tiktoken
 
 from metagpt.logs import logger
 
+_UNKNOWN_TIKTOKEN_MODELS_WARNED: set[str] = set()
+
+
+def _get_encoding_with_fallback(model: str):
+    try:
+        return tiktoken.encoding_for_model(model)
+    except KeyError:
+        if model not in _UNKNOWN_TIKTOKEN_MODELS_WARNED:
+            logger.info(f"Warning: model {model} not found in tiktoken. Using cl100k_base encoding.")
+            _UNKNOWN_TIKTOKEN_MODELS_WARNED.add(model)
+        return tiktoken.get_encoding("cl100k_base")
+
 TOKEN_COSTS = {
     "anthropic/claude-3.5-sonnet": {"prompt": 0.003, "completion": 0.015},
     "gpt-3.5-turbo": {"prompt": 0.0015, "completion": 0.002},
@@ -432,11 +444,7 @@ def count_message_tokens(messages, model="gpt-3.5-turbo-0125"):
     if "claude" in model:
         num_tokens = count_claude_message_tokens(messages, model)
         return num_tokens
-    try:
-        encoding = tiktoken.encoding_for_model(model)
-    except KeyError:
-        logger.info(f"Warning: model {model} not found in tiktoken. Using cl100k_base encoding.")
-        encoding = tiktoken.get_encoding("cl100k_base")
+    encoding = _get_encoding_with_fallback(model)
     if model in {
         "gpt-3.5-turbo-0613",
         "gpt-3.5-turbo-16k-0613",
@@ -522,11 +530,7 @@ def count_output_tokens(string: str, model: str) -> int:
         messages = [{"role": "assistant", "content": string}]
         num_tokens = count_claude_message_tokens(messages, model)
         return num_tokens
-    try:
-        encoding = tiktoken.encoding_for_model(model)
-    except KeyError:
-        logger.info(f"Warning: model {model} not found in tiktoken. Using cl100k_base encoding.")
-        encoding = tiktoken.get_encoding("cl100k_base")
+    encoding = _get_encoding_with_fallback(model)
     return len(encoding.encode(string))
 
 

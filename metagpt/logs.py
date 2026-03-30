@@ -150,4 +150,8 @@ _get_human_input = input  # get human input from console by default
 
 def _llm_stream_log(msg):
     if _print_level in ["INFO"]:
-        print(msg, end="")
+        # Use sys.stdout.buffer to write UTF-8 encoded bytes directly
+        # This avoids UnicodeEncodeError when redirecting output to file on Windows
+        import sys
+        sys.stdout.buffer.write(msg.encode('utf-8', errors='replace'))
+        sys.stdout.flush()

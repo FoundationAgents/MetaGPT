@@ -205,7 +205,9 @@ class BaseLLM(ABC):
         logger.debug(masked_message)
 
         compressed_message = self.compress_messages(message, compress_type=self.config.compress_type)
-        rsp = await self.acompletion_text(compressed_message, stream=stream, timeout=self.get_timeout(timeout))
+        effective_timeout = self.get_timeout(timeout)
+        logger.debug(f"[TIMEOUT] aask called with timeout={timeout}, effective_timeout={effective_timeout}, model={self.model}")
+        rsp = await self.acompletion_text(compressed_message, stream=stream, timeout=effective_timeout)
         # rsp = await self.acompletion_text(message, stream=stream, timeout=self.get_timeout(timeout))
         return rsp
 
@@ -257,9 +259,11 @@ class BaseLLM(ABC):
         self, messages: list[dict], stream: bool = False, timeout: int = USE_CONFIG_TIMEOUT
     ) -> str:
         """Asynchronous version of completion. Return str. Support stream-print"""
+        effective_timeout = self.get_timeout(timeout)
+        logger.debug(f"[TIMEOUT] acompletion_text called with timeout={timeout}, effective_timeout={effective_timeout}, stream={stream}")
         if stream:
-            return await self._achat_completion_stream(messages, timeout=self.get_timeout(timeout))
-        resp = await self._achat_completion(messages, timeout=self.get_timeout(timeout))
+            return await self._achat_completion_stream(messages, timeout=effective_timeout)
+        resp = await self._achat_completion(messages, timeout=effective_timeout)
         return self.get_choice_text(resp)
 
     def get_choice_text(self, rsp: dict) -> str:

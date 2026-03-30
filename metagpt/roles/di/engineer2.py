@@ -132,7 +132,9 @@ class Engineer2(RoleZero):
         context = self.llm.format_msg(memory + [UserMessage(content=prompt)])
 
         async with EditorReporter(enable_llm_stream=True) as reporter:
-            await reporter.async_report({"type": "code", "filename": Path(path).name, "src_path": path}, "meta")
+            await reporter.async_report(
+                {"type": "code", "filename": Path(path).name, "src_path": path}, "meta"
+            )
             rsp = await self.llm.aask(context, system_msgs=[WRITE_CODE_SYSTEM_PROMPT])
             code = CodeParser.parse_code(text=rsp)
             await awrite(path, code)
@@ -166,6 +168,7 @@ class Engineer2(RoleZero):
         return command_output
 
     async def _end(self):
-        if not self.planner.plan.is_plan_finished():
-            self.planner.plan.finish_all_tasks()
+        current_task = self.planner.plan.current_task
+        if ( current_task and not current_task.is_finished and current_task.assignee in (self.name, self.profile) ):
+            current_task.is_finished = True
         return await super()._end()

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import inspect
 import json
 import re
@@ -11,6 +12,7 @@ from pydantic import Field, model_validator
 
 from metagpt.actions import Action, UserRequirement
 from metagpt.actions.di.run_command import RunCommand
+from metagpt.const import MESSAGE_ROUTE_TO_ALL
 from metagpt.actions.search_enhanced_qa import SearchEnhancedQA
 from metagpt.exp_pool import exp_cache
 from metagpt.exp_pool.context_builders import RoleZeroContextBuilder
@@ -20,6 +22,7 @@ from metagpt.memory.role_zero_memory import RoleZeroLongTermMemory
 from metagpt.prompts.di.role_zero import (
     CMD_PROMPT,
     DETECT_LANGUAGE_PROMPT,
+    CLARIFICATION_SYSTEM_PROMPT,
     QUICK_RESPONSE_SYSTEM_PROMPT,
     QUICK_THINK_EXAMPLES,
     QUICK_THINK_PROMPT,
@@ -59,8 +62,12 @@ class RoleZero(Role):
     name: str = "Zero"
     profile: str = "RoleZero"
     goal: str = ""
-    system_msg: Optional[list[str]] = None  # Use None to conform to the default value at llm.aask
-    system_prompt: str = SYSTEM_PROMPT  # Use None to conform to the default value at llm.aask
+    system_msg: Optional[list[str]] = (
+        None  # Use None to conform to the default value at llm.aask
+    )
+    system_prompt: str = (
+        SYSTEM_PROMPT  # Use None to conform to the default value at llm.aask
+    )
     cmd_prompt: str = CMD_PROMPT
     cmd_prompt_current_state: str = ""
     instruction: str = ROLE_INSTRUCTION
@@ -69,12 +76,20 @@ class RoleZero(Role):
     # React Mode
     react_mode: Literal["react"] = "react"
     max_react_loop: int = 50  # used for react mode
+    _should_stop: bool = False  # flag to break react loop after end command
 
     # Tools
-    tools: list[str] = []  # Use special symbol ["<all>"] to indicate use of all registered tools
+    tools: list[str] = (
+        []
+    )  # Use special symbol ["<all>"] to indicate use of all registered tools
     tool_recommender: Optional[ToolRecommender] = None
     tool_execution_map: Annotated[dict[str, Callable], Field(exclude=True)] = {}
-    special_tool_commands: list[str] = ["Plan.finish_current_task", "end", "Terminal.run_command", "RoleZero.ask_human"]
+    special_tool_commands: list[str] = [
+        "Plan.finish_current_task",
+        "end",
+        "Terminal.run_command",
+        "RoleZero.ask_human",
+    ]
     # List of exclusive tool commands.
     # If multiple instances of these commands appear, only the first occurrence will be retained.
     exclusive_tool_commands: list[str] = [
@@ -88,7 +103,9 @@ class RoleZero(Role):
     browser: Browser = Browser()
 
     # Experience
-    experience_retriever: Annotated[ExpRetriever, Field(exclude=True)] = DummyExpRetriever()
+    experience_retriever: Annotated[ExpRetriever, Field(exclude=True)] = (
+        DummyExpRetriever()
+    )
 
     # Others
     observe_all_msg_from_buffer: bool = True
@@ -96,7 +113,9 @@ class RoleZero(Role):
     commands: list[dict] = []  # commands to be executed
     memory_k: int = 200  # number of memories (messages) to use as historical context
     use_fixed_sop: bool = False
-    respond_language: str = ""  # Language for responding humans and publishing messages.
+    respond_language: str = (
+        ""  # Language for responding humans and publishing messages.
+    )
     use_summary: bool = True  # whether to summarize at the end
 
     @model_validator(mode="after")
@@ -105,13 +124,17 @@ class RoleZero(Role):
         assert self.react_mode == "react"
 
         # Roughly the same part as DataInterpreter.set_plan_and_tool
-        self._set_react_mode(react_mode=self.react_mode, max_react_loop=self.max_react_loop)
+        self._set_react_mode(
+            react_mode=self.react_mode, max_react_loop=self.max_react_loop
+        )
         if self.tools and not self.tool_recommender:
             self.tool_recommender = BM25ToolRecommender(tools=self.tools, force=True)
         self.set_actions([RunCommand])
 
         # HACK: Init Planner, control it through dynamic thinking; Consider formalizing as a react mode
-        self.planner = Planner(goal="", working_memory=self.rc.working_memory, auto_run=True)
+        self.planner = Planner(
+            goal="", working_memory=self.rc.working_memory, auto_run=True
+        )
 
         return self
 
@@ -207,7 +230,9 @@ class RoleZero(Role):
 
         if not self.planner.plan.goal:
             self.planner.plan.goal = self.get_memories()[-1].content
-            detect_language_prompt = DETECT_LANGUAGE_PROMPT.format(requirement=self.planner.plan.goal)
+            detect_language_prompt = DETECT_LANGUAGE_PROMPT.format(
+                requirement=self.planner.plan.goal
+            )
             self.respond_language = await self.llm.aask(detect_language_prompt)
         ### 1. Experience ###
         example = self._retrieve_experience()
@@ -251,7 +276,9 @@ class RoleZero(Role):
         )
         async with ThoughtReporter(enable_llm_stream=True) as reporter:
             await reporter.async_report({"type": "react"})
-            self.command_rsp = await self.llm_cached_aask(req=req, system_msgs=[system_prompt], state_data=state_data)
+            self.command_rsp = await self.llm_cached_aask(
+                req=req, system_msgs=[system_prompt], state_data=state_data
+            )
 
         rsp_hist = [mem.content for mem in self.rc.memory.get()]
         self.command_rsp = await check_duplicates(
@@ -264,8 +291,12 @@ class RoleZero(Role):
 
         return True
 
-    @exp_cache(context_builder=RoleZeroContextBuilder(), serializer=RoleZeroSerializer())
-    async def llm_cached_aask(self, *, req: list[dict], system_msgs: list[str], **kwargs) -> str:
+    @exp_cache(
+        context_builder=RoleZeroContextBuilder(), serializer=RoleZeroSerializer()
+    )
+    async def llm_cached_aask(
+        self, *, req: list[dict], system_msgs: list[str], **kwargs
+    ) -> str:
         """Use `exp_cache` to automatically manage experiences.
 
         The `RoleZeroContextBuilder` attempts to add experiences to `req`.
@@ -282,7 +313,9 @@ class RoleZero(Role):
             return await super()._act()
 
         commands, ok, self.command_rsp = await parse_commands(
-            command_rsp=self.command_rsp, llm=self.llm, exclusive_tool_commands=self.exclusive_tool_commands
+            command_rsp=self.command_rsp,
+            llm=self.llm,
+            exclusive_tool_commands=self.exclusive_tool_commands,
         )
         self.rc.memory.add(AIMessage(content=self.command_rsp))
         if not ok:
@@ -301,6 +334,9 @@ class RoleZero(Role):
         )
 
     async def _react(self) -> Message:
+        if self.use_fixed_sop:
+            return await super()._react()
+
         # NOTE: Diff 1: Each time landing here means news is observed, set todo to allow news processing in _think
         self._set_state(0)
 
@@ -310,8 +346,14 @@ class RoleZero(Role):
             return quick_rsp
 
         actions_taken = 0
-        rsp = AIMessage(content="No actions taken yet", cause_by=Action)  # will be overwritten after Role _act
+        self._should_stop = False  # reset stop flag for new react cycle
+        rsp = AIMessage(
+            content="No actions taken yet", cause_by=Action
+        )  # will be overwritten after Role _act
         while actions_taken < self.rc.max_react_loop:
+            # Check if should stop after end command
+            if self._should_stop:
+                break
             # NOTE: Diff 2: Keep observing within _react, news will go into memory, allowing adapting to new info
             await self._observe()
 
@@ -337,7 +379,9 @@ class RoleZero(Role):
 
     def format_quick_system_prompt(self) -> str:
         """Format the system prompt for quick thinking."""
-        return QUICK_THINK_SYSTEM_PROMPT.format(examples=QUICK_THINK_EXAMPLES, role_info=self._get_prefix())
+        return QUICK_THINK_SYSTEM_PROMPT.format(
+            examples=QUICK_THINK_EXAMPLES, role_info=self._get_prefix()
+        )
 
     async def _quick_think(self) -> Tuple[Message, str]:
         answer = ""
@@ -348,25 +392,65 @@ class RoleZero(Role):
 
         # routing
         memory = self.get_memories(k=self.memory_k)
-        context = self.llm.format_msg(memory + [UserMessage(content=QUICK_THINK_PROMPT)])
+        context = self.llm.format_msg(
+            memory + [UserMessage(content=QUICK_THINK_PROMPT)]
+        )
         async with ThoughtReporter() as reporter:
             await reporter.async_report({"type": "classify"})
-            intent_result = await self.llm.aask(context, system_msgs=[self.format_quick_system_prompt()])
+            intent_result = await self.llm.aask(
+                context, system_msgs=[self.format_quick_system_prompt()]
+            )
 
-        if "QUICK" in intent_result or "AMBIGUOUS" in intent_result:  # llm call with the original context
+        if "QUICK" in intent_result:
+            # Quick answer: reply directly and return
             async with ThoughtReporter(enable_llm_stream=True) as reporter:
                 await reporter.async_report({"type": "quick"})
                 answer = await self.llm.aask(
                     self.llm.format_msg(memory),
-                    system_msgs=[QUICK_RESPONSE_SYSTEM_PROMPT.format(role_info=self._get_prefix())],
+                    system_msgs=[
+                        QUICK_RESPONSE_SYSTEM_PROMPT.format(
+                            role_info=self._get_prefix()
+                        )
+                    ],
                 )
             # If the answer contains the substring '[Message] from A to B:', remove it.
             pattern = r"\[Message\] from .+? to .+?:\s*"
             answer = re.sub(pattern, "", answer, count=1)
             if "command_name" in answer:
-                # an actual TASK intent misclassified as QUICK, correct it here, FIXME: a better way is to classify it correctly in the first place
+                # an actual TASK intent misclassified as QUICK, correct it here
                 answer = ""
                 intent_result = "TASK"
+
+        elif "AMBIGUOUS" in intent_result:
+            # Ambiguous: ask human for clarification, then continue processing
+            async with ThoughtReporter(enable_llm_stream=True) as reporter:
+                await reporter.async_report({"type": "clarify"})
+                clarification = await self.llm.aask(
+                    self.llm.format_msg(memory),
+                    system_msgs=[
+                        CLARIFICATION_SYSTEM_PROMPT.format(
+                            role_info=self._get_prefix()
+                        )
+                    ],
+                )
+            pattern = r"\[Message\] from .+? to .+?:\s*"
+            clarification = re.sub(pattern, "", clarification, count=1).strip()
+            if any(marker in clarification.lower() for marker in ("```", "<html", "<!doctype", "command_name")):
+                clarification = "Could you clarify the missing requirements so I can proceed?"
+            # Use ask_human; MGXEnv.ask_human publishes the question to bus.
+            human_response = await self.ask_human(clarification)
+
+            # Local-only add is still needed even though MGXEnv also published to bus.
+            # Reason: _react does NOT return early here (quick_rsp=None → falsy).
+            # The while loop continues immediately, but the bus message hasn't propagated
+            # through Mike to this role's msg_buffer yet (_observe() won't see it this tick).
+            # So _think() needs the answer in local memory right now to reason correctly.
+            # The answer will also arrive via bus in a future _observe tick (acceptable noise).
+            self.rc.memory.add(UserMessage(content=human_response))
+
+            # Return None so _react continues with the think-act loop
+            return rsp_msg, intent_result
+
         elif "SEARCH" in intent_result:
             query = "\n".join(str(msg) for msg in memory)
             answer = await SearchEnhancedQA().run(query)
@@ -395,13 +479,18 @@ class RoleZero(Role):
             if cmd["command_name"] in self.tool_execution_map:
                 tool_obj = self.tool_execution_map[cmd["command_name"]]
                 try:
+                    tool_timeout = getattr(self, "tool_timeout", 180.0)
                     if inspect.iscoroutinefunction(tool_obj):
-                        tool_output = await tool_obj(**cmd["args"])
+                        tool_output = await asyncio.wait_for(tool_obj(**cmd["args"]), timeout=tool_timeout)
                     else:
                         tool_output = tool_obj(**cmd["args"])
                     if tool_output:
                         output += f": {str(tool_output)}"
                     outputs.append(output)
+                except (asyncio.TimeoutError, asyncio.CancelledError) as e:
+                    logger.warning(f"Tool {cmd['command_name']} timed out or cancelled: {e}")
+                    outputs.append(output + f": TIMEOUT - {e}")
+                    # Don't break — continue with next command
                 except Exception as e:
                     tb = traceback.format_exc()
                     logger.exception(str(e) + tb)
@@ -424,19 +513,21 @@ class RoleZero(Role):
         if cmd["command_name"] == "Plan.finish_current_task":
             if not self.planner.plan.is_plan_finished():
                 self.planner.plan.finish_current_task()
-            command_output = (
-                "Current task is finished. If you no longer need to take action, use the command ‘end’ to stop."
-            )
+            command_output = "Current task is finished. If you no longer need to take action, use the command ‘end’ to stop."
 
         elif cmd["command_name"] == "end":
             command_output = await self._end()
+            self._should_stop = True
         elif cmd["command_name"] == "RoleZero.ask_human":
             human_response = await self.ask_human(**cmd["args"])
             if human_response.strip().lower().endswith(("stop", "<stop>")):
                 human_response += "The user has asked me to stop because I have encountered a problem."
-                self.rc.memory.add(UserMessage(content=human_response, cause_by=RunCommand))
+                self.rc.memory.add(
+                    UserMessage(content=human_response, cause_by=RunCommand)
+                )
                 end_output = "\nCommand end executed:"
                 end_output += await self._end()
+                self._should_stop = True
                 return end_output
             return human_response
         # output from bash.run may be empty, add decorations to the output to ensure visibility.
@@ -475,17 +566,25 @@ class RoleZero(Role):
         self._set_state(-1)
         memory = self.rc.memory.get(self.memory_k)
         # Ensure reply to the human before the "end" command is executed. Hard code k=5 for checking.
-        if not any(["reply_to_human" in memory.content for memory in self.get_memories(k=5)]):
+        if not any(
+            ["reply_to_human" in memory.content for memory in self.get_memories(k=5)]
+        ):
             logger.info("manually reply to human")
-            reply_to_human_prompt = REPORT_TO_HUMAN_PROMPT.format(respond_language=self.respond_language)
+            reply_to_human_prompt = REPORT_TO_HUMAN_PROMPT.format(
+                respond_language=self.respond_language
+            )
             async with ThoughtReporter(enable_llm_stream=True) as reporter:
                 await reporter.async_report({"type": "quick"})
-                reply_content = await self.llm.aask(self.llm.format_msg(memory + [UserMessage(reply_to_human_prompt)]))
+                reply_content = await self.llm.aask(
+                    self.llm.format_msg(memory + [UserMessage(reply_to_human_prompt)])
+                )
             await self.reply_to_human(content=reply_content)
             self.rc.memory.add(AIMessage(content=reply_content, cause_by=RunCommand))
         outputs = ""
         # Summary of the Completed Task and Deliverables
         if self.use_summary:
             logger.info("end current run and summarize")
-            outputs = await self.llm.aask(self.llm.format_msg(memory + [UserMessage(SUMMARY_PROMPT)]))
+            outputs = await self.llm.aask(
+                self.llm.format_msg(memory + [UserMessage(SUMMARY_PROMPT)])
+            )
         return outputs

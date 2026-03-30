@@ -21,7 +21,9 @@ class MGXEnv(Environment, SerializationMixin):
         message = self.move_message_info_to_content(message)
         return super().publish_message(message, peekable)
 
-    def publish_message(self, message: Message, user_defined_recipient: str = "", publicer: str = "") -> bool:
+    def publish_message(
+        self, message: Message, user_defined_recipient: str = "", publicer: str = ""
+    ) -> bool:
         """let the team leader take over message publishing"""
         message = self.attach_images(message)  # for multi-modal message
 
@@ -63,12 +65,59 @@ class MGXEnv(Environment, SerializationMixin):
 
     async def ask_human(self, question: str, sent_from: Role = None) -> str:
         # NOTE: Can be overwritten in remote setting
+        from metagpt.logs import logger
+        from metagpt.schema import AIMessage, UserMessage
+        from metagpt.actions import Action
+
+        agent_name = getattr(sent_from, "name", "Agent")
+        logger.info(f"\n[Ask Human from {agent_name}]:\n{question}")
+
+        # Publish the question to the bus so the team knows what was asked
+        if sent_from:
+            question_msg = AIMessage(
+                content=f"Agent asked human: {question}",
+                sent_from=agent_name,
+                cause_by=Action,
+                send_to={MESSAGE_ROUTE_TO_ALL},
+            )
+            self.publish_message(question_msg)
+
         rsp = await get_human_input(question)
-        return "Human response: " + rsp
+
+        # Publish human response to bus so TeamLeader and all agents are aware
+        human_content = f"Human responded: {rsp}"
+        human_msg = UserMessage(
+            content=human_content,
+            sent_from="Human",
+            send_to={MESSAGE_ROUTE_TO_ALL},
+        )
+        self.publish_message(human_msg)
+
+        # Return the EXACT string so local memory (added by caller) matches bus format
+        return human_content
 
     async def reply_to_human(self, content: str, sent_from: Role = None) -> str:
         # NOTE: Can be overwritten in remote setting
-        return "SUCCESS, human has received your reply. Refrain from resending duplicate messages.  If you no longer need to take action, use the command ‘end’ to stop."
+        from metagpt.logs import logger
+
+        logger.info(
+            f"\n[Reply to Human from {getattr(sent_from, 'name', 'Agent')}]:\n{content}"
+        )
+
+        # Publish to bus so the team (and TeamLeader) knows what was told to the human
+        if sent_from:
+            from metagpt.actions import Action
+            from metagpt.schema import AIMessage
+
+            msg = AIMessage(
+                content=f"Sent reply to human: {content}",
+                sent_from=sent_from.name,
+                cause_by=Action,
+                send_to={MESSAGE_ROUTE_TO_ALL},
+            )
+            self.publish_message(msg)
+
+        return "SUCCESS, human has received your reply. Refrain from resending duplicate messages.  If you no longer need to take action, use the command 'end' to stop."
 
     def move_message_info_to_content(self, message: Message) -> Message:
         """Two things here:
@@ -78,13 +127,19 @@ class MGXEnv(Environment, SerializationMixin):
         converted_msg = message.model_copy(deep=True)
         if converted_msg.role not in ["system", "user", "assistant"]:
             converted_msg.role = "assistant"
-        sent_from = converted_msg.metadata[AGENT] if AGENT in converted_msg.metadata else converted_msg.sent_from
+        sent_from = (
+            converted_msg.metadata[AGENT]
+            if AGENT in converted_msg.metadata
+            else converted_msg.sent_from
+        )
         # When displaying send_to, change it to those who need to react and exclude those who only need to be aware, e.g.:
         # send_to={<all>} -> Mike; send_to={Alice} -> Alice; send_to={Alice, <all>} -> Alice.
         if converted_msg.send_to == {MESSAGE_ROUTE_TO_ALL}:
             send_to = TEAMLEADER_NAME
         else:
-            send_to = ", ".join({role for role in converted_msg.send_to if role != MESSAGE_ROUTE_TO_ALL})
+            send_to = ", ".join(
+                {role for role in converted_msg.send_to if role != MESSAGE_ROUTE_TO_ALL}
+            )
         converted_msg.content = f"[Message] from {sent_from or 'User'} to {send_to}: {converted_msg.content}"
         return converted_msg
 

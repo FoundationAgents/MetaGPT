@@ -16,6 +16,9 @@ from metagpt.utils.common import OutputParser
 from metagpt.utils.parse_html import WebPage
 from metagpt.utils.text import generate_prompt_chunk, reduce_message_length
 
+MAX_SUMMARIZE_CONTENT_CHARS = 50000
+MAX_SUMMARIZE_CONTENT_LINES = 2000
+
 LANG_PROMPT = "Please respond in {language}."
 
 RESEARCH_BASE_SYSTEM = """You are an AI critical thinker research assistant. Your sole purpose is to write well \
@@ -221,6 +224,7 @@ class WebBrowseAndSummarize(Action):
         system_text: str = RESEARCH_BASE_SYSTEM,
         use_concurrent_summarization: bool = False,
         per_page_timeout: Optional[float] = None,
+        summarize_timeout: Optional[float] = None,
     ) -> dict[str, str]:
         """Run the action to browse the web and provide summaries.
 
@@ -231,15 +235,23 @@ class WebBrowseAndSummarize(Action):
             system_text: The system text.
             use_concurrent_summarization: Whether to concurrently summarize the content of the webpage by LLM.
             per_page_timeout: The maximum time for fetching a single page in seconds.
+            summarize_timeout: The maximum time for LLM summarization in seconds.
 
         Returns:
             A dictionary containing the URLs as keys and their summaries as values.
         """
+        logger.info(f"[DEBUG] WebBrowseAndSummarize.run() START - urls={[url]+list(urls)}, per_page_timeout={per_page_timeout}, summarize_timeout={summarize_timeout}")
         contents = await self._fetch_web_contents(url, *urls, per_page_timeout=per_page_timeout)
+        logger.info(f"[DEBUG] _fetch_web_contents DONE - got {len(contents)} pages")
 
         all_urls = [url] + list(urls)
-        summarize_tasks = [self._summarize_content(content, query, system_text) for content in contents]
+        summarize_tasks = [
+            self._summarize_content(content, query, system_text, summarize_timeout=summarize_timeout)
+            for content in contents
+        ]
+        logger.info(f"[DEBUG] Starting _execute_summarize_tasks - {len(summarize_tasks)} tasks")
         summaries = await self._execute_summarize_tasks(summarize_tasks, use_concurrent_summarization)
+        logger.info(f"[DEBUG] _execute_summarize_tasks DONE")
         result = {url: summary for url, summary in zip(all_urls, summaries) if summary}
 
         return result
@@ -248,14 +260,32 @@ class WebBrowseAndSummarize(Action):
         self, url: str, *urls: str, per_page_timeout: Optional[float] = None
     ) -> list[WebPage]:
         """Fetch web contents from given URLs."""
-
+        logger.info(f"[DEBUG] _fetch_web_contents START - {1+len(urls)} urls, timeout={per_page_timeout}")
         contents = await self.web_browser_engine.run(url, *urls, per_page_timeout=per_page_timeout)
+        logger.info(f"[DEBUG] _fetch_web_contents - web_browser_engine.run() returned")
 
         return [contents] if not urls else contents
 
-    async def _summarize_content(self, page: WebPage, query: str, system_text: str) -> str:
-        """Summarize web content."""
+    async def _summarize_content(
+        self,
+        page: WebPage,
+        query: str,
+        system_text: str,
+        summarize_timeout: Optional[float] = None,
+    ) -> str:
+        """Summarize web content.
+
+        Args:
+            page: The web page to summarize.
+            query: The research question.
+            system_text: The system text.
+            summarize_timeout: Optional timeout for LLM summarization in seconds.
+
+        Returns:
+            Summary of the web page content.
+        """
         try:
+            logger.info(f"[DEBUG] _summarize_content START - url={page.url}, timeout={summarize_timeout}")
             prompt_template = WEB_BROWSE_AND_SUMMARIZE_PROMPT.format(query=query, content="{}")
 
             content = page.inner_text
@@ -264,10 +294,27 @@ class WebBrowseAndSummarize(Action):
                 logger.warning(f"Invalid content detected for URL {page.url}: {content[:10]}...")
                 return None
 
+            original_chars = len(content)
+            original_lines = content.count("\n") + 1
+            if original_lines > MAX_SUMMARIZE_CONTENT_LINES:
+                content = "\n".join(content.splitlines()[:MAX_SUMMARIZE_CONTENT_LINES])
+            if len(content) > MAX_SUMMARIZE_CONTENT_CHARS:
+                content = content[:MAX_SUMMARIZE_CONTENT_CHARS]
+            logger.info(
+                f"[DEBUG] _summarize_content PREPARED - url={page.url}, chars={len(content)}/{original_chars}, lines={content.count(chr(10)) + 1}/{original_lines}"
+            )
+
+            prompts = await asyncio.to_thread(
+                lambda: list(generate_prompt_chunk(content, prompt_template, self.llm.model, system_text, 4096))
+            )
+            logger.info(f"[DEBUG] _summarize_content CHUNKED - url={page.url}, chunk_count={len(prompts)}")
+
             chunk_summaries = []
-            for prompt in generate_prompt_chunk(content, prompt_template, self.llm.model, system_text, 4096):
+            for i, prompt in enumerate(prompts):
                 logger.debug(prompt)
-                summary = await self._aask(prompt, [system_text])
+                logger.info(f"[DEBUG] _aask call {i+1} for {page.url} with timeout={summarize_timeout}")
+                summary = await self._aask(prompt, [system_text], timeout=summarize_timeout)
+                logger.info(f"[DEBUG] _aask call {i+1} returned: {str(summary)[:50]}...")
                 if summary == "Not relevant.":
                     continue
                 chunk_summaries.append(summary)
@@ -280,7 +327,7 @@ class WebBrowseAndSummarize(Action):
 
             content = "\n".join(chunk_summaries)
             prompt = WEB_BROWSE_AND_SUMMARIZE_PROMPT.format(query=query, content=content)
-            summary = await self._aask(prompt, [system_text])
+            summary = await self._aask(prompt, [system_text], timeout=summarize_timeout)
             return summary
         except Exception as e:
             logger.error(f"Error summarizing content: {e}")

@@ -8,6 +8,7 @@
 
 from __future__ import annotations
 
+import asyncio
 from typing import Any, Optional, Union
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
@@ -15,6 +16,7 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 from metagpt.actions.action_node import ActionNode
 from metagpt.configs.models_config import ModelsConfig
 from metagpt.context_mixin import ContextMixin
+from metagpt.logs import logger
 from metagpt.provider.llm_provider_registry import create_llm_instance
 from metagpt.schema import (
     CodePlanAndChangeContext,
@@ -96,9 +98,32 @@ class Action(SerializationMixin, ContextMixin, BaseModel):
     def __repr__(self):
         return self.__str__()
 
-    async def _aask(self, prompt: str, system_msgs: Optional[list[str]] = None) -> str:
-        """Append default prefix"""
-        return await self.llm.aask(prompt, system_msgs)
+    async def _aask(
+        self,
+        prompt: str,
+        system_msgs: Optional[list[str]] = None,
+        timeout: Optional[float] = None,
+    ) -> str:
+        """Append default prefix
+
+        Args:
+            prompt: The prompt to send
+            system_msgs: Optional system messages
+            timeout: Optional timeout in seconds. If None, uses LLM config timeout.
+        """
+        # Use provided timeout or fall back to LLM config timeout
+        effective_timeout = timeout or self.llm.config.timeout
+        logger.debug(f"[TIMEOUT] _aask called with timeout={timeout}, effective_timeout={effective_timeout}")
+
+        # Wrap with asyncio.wait_for as a safety net in case the provider doesn't respect timeout
+        try:
+            return await asyncio.wait_for(
+                self.llm.aask(prompt, system_msgs, timeout=timeout),
+                timeout=effective_timeout
+            )
+        except asyncio.TimeoutError:
+            logger.error(f"[TIMEOUT] _aask timed out after {effective_timeout}s for prompt: {prompt[:100]}...")
+            raise
 
     async def _run_action_node(self, *args, **kwargs):
         """Run action node"""

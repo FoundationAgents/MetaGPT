@@ -81,8 +81,13 @@ async def run_env_command(role: Role, cmd: list[dict], role_memory: Memory = Non
     if cmd["command_name"] == Command.PUBLISH_MESSAGE.cmd_name:
         role.publish_message(Message(**cmd["args"]))
     if cmd["command_name"] == Command.ASK_HUMAN.cmd_name:
-        # TODO: Operation on role memory should not appear here, consider moving it into role
-        role.rc.working_memory.add(Message(content=cmd["args"]["question"], role="assistant"))
+        # Intentional dual-storage:
+        # - env.ask_human() publishes question + answer to bus (team-wide context, next _observe tick)
+        # - working_memory adds below are for the CURRENT thinking turn's LLM context (immediate)
+        # These serve different purposes; removing either breaks one of the two contexts.
+        role.rc.working_memory.add(
+            Message(content=cmd["args"]["question"], role="assistant")
+        )
         human_rsp = await role.rc.env.ask_human(sent_from=role, **cmd["args"])
         role.rc.working_memory.add(Message(content=human_rsp, role="user"))
     elif cmd["command_name"] == Command.REPLY_TO_HUMAN.cmd_name:
@@ -101,7 +106,9 @@ def run_plan_command(role: Role, cmd: list[dict]):
         if role.planner.plan.is_plan_finished():
             return
         if role.task_result:
-            role.planner.plan.current_task.update_task_result(task_result=role.task_result)
+            role.planner.plan.current_task.update_task_result(
+                task_result=role.task_result
+            )
         role.planner.plan.finish_current_task()
         role.rc.working_memory.clear()
 

@@ -6,6 +6,7 @@ from pydantic import Field
 
 from metagpt.actions.di.run_command import RunCommand
 from metagpt.const import TEAMLEADER_NAME
+from metagpt.logs import logger
 from metagpt.prompts.di.role_zero import QUICK_THINK_TAG
 from metagpt.prompts.di.team_leader import (
     FINISH_CURRENT_TASK_CMD,
@@ -57,6 +58,46 @@ class TeamLeader(RoleZero):
         team_info = self._get_team_info()
         return TL_INFO.format(role_info=role_info, team_info=team_info)
 
+    async def _act(self) -> Message:
+        """Override _act to strip 'end' and 'reply_to_human' from batches that contain publish_message."""
+        from metagpt.utils.role_zero_utils import parse_commands
+
+        commands, ok, self.command_rsp = await parse_commands(
+            command_rsp=self.command_rsp,
+            llm=self.llm,
+            exclusive_tool_commands=self.exclusive_tool_commands,
+        )
+        self.rc.memory.add(AIMessage(content=self.command_rsp))
+        if not ok:
+            error_msg = commands
+            self.rc.memory.add(UserMessage(content=error_msg, cause_by=RunCommand))
+            return error_msg
+
+        # Guard: if batch contains publish_message/publish_team_message, strip end + reply_to_human
+        has_publish = any(
+            cmd["command_name"] in ("TeamLeader.publish_message", "TeamLeader.publish_team_message")
+            for cmd in commands
+        )
+        if has_publish:
+            stripped = []
+            for cmd in commands:
+                if cmd["command_name"] in ("end", "RoleZero.reply_to_human"):
+                    logger.warning(f"TeamLeader: stripped '{cmd['command_name']}' from batch containing publish_message. Must wait for team member response.")
+                    continue
+                stripped.append(cmd)
+            commands = stripped
+
+        logger.info(f"Commands: \n{commands}")
+        outputs = await self._run_commands(commands)
+        logger.info(f"Commands outputs: \n{outputs}")
+        self.rc.memory.add(UserMessage(content=outputs, cause_by=RunCommand))
+
+        return AIMessage(
+            content=f"I have finished the task, please mark my task as finished. Outputs: {outputs}",
+            sent_from=self.name,
+            cause_by=RunCommand,
+        )
+
     async def _think(self) -> bool:
         self.instruction = TL_INSTRUCTION.format(team_info=self._get_team_info())
         return await super()._think()
@@ -88,3 +129,25 @@ class TeamLeader(RoleZero):
     def finish_current_task(self):
         self.planner.plan.finish_current_task()
         self.rc.memory.add(AIMessage(content=FINISH_CURRENT_TASK_CMD))
+
+    async def _run_special_command(self, cmd) -> str:
+        """Override: block 'end' command if plan has unfinished tasks."""
+        if cmd["command_name"] == "end":
+            if not self.planner.plan.tasks:
+                # No plan created yet — allow end for simple Q&A
+                return await super()._run_special_command(cmd)
+            if not self.planner.plan.is_plan_finished():
+                unfinished = [
+                    t.task_id for t in self.planner.plan.tasks if not t.is_finished
+                ]
+                logger.warning(
+                    f"TeamLeader blocked 'end': plan has unfinished tasks {unfinished}. "
+                    f"Waiting for team members to complete."
+                )
+                self._should_stop = False  # Ensure we don't stop
+                return (
+                    f"BLOCKED: Cannot end — plan has unfinished tasks: {unfinished}. "
+                    f"Wait for team members to finish, then use Plan.finish_current_task "
+                    f"for each completed task. Only use 'end' when all tasks are done."
+                )
+        return await super()._run_special_command(cmd)

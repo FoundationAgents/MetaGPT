@@ -6,9 +6,11 @@
 @File    : product_manager.py
 @Modified By: liushaojie, 2024/10/17.
 """
+
 from metagpt.actions import UserRequirement, WritePRD
 from metagpt.actions.prepare_documents import PrepareDocuments
 from metagpt.actions.search_enhanced_qa import SearchEnhancedQA
+from metagpt.logs import logger
 from metagpt.prompts.product_manager import PRODUCT_MANAGER_INSTRUCTION
 from metagpt.roles.di.role_zero import RoleZero
 from metagpt.roles.role import RoleReactMode
@@ -34,7 +36,12 @@ class ProductManager(RoleZero):
     goal: str = "Create a Product Requirement Document or market research/competitive product research."
     constraints: str = "utilize the same language as the user requirements for seamless communication"
     instruction: str = PRODUCT_MANAGER_INSTRUCTION
-    tools: list[str] = ["RoleZero", Browser.__name__, Editor.__name__, SearchEnhancedQA.__name__]
+    tools: list[str] = [
+        "RoleZero",
+        Browser.__name__,
+        Editor.__name__,
+        SearchEnhancedQA.__name__,
+    ]
 
     todo_action: str = any_to_name(WritePRD)
 
@@ -55,10 +62,29 @@ class ProductManager(RoleZero):
         if not self.use_fixed_sop:
             return await super()._think()
 
-        if GitRepository.is_git_dir(self.config.project_path) and not self.config.git_reinit:
-            self._set_state(1)
-        else:
-            self._set_state(0)
-            self.config.git_reinit = False
-            self.todo_action = any_to_name(WritePRD)
-        return bool(self.rc.todo)
+        # BY_ORDER mode logic: run actions sequentially and stop when done
+        # State progression: -1 (initial) -> 0 (PrepareDocuments) -> 1 (WritePRD) -> 2 (done)
+
+        # First call: determine starting state based on project existence
+        if self.rc.state == -1:
+            has_new_requirement = any(any_to_str(UserRequirement) == msg.cause_by for msg in self.rc.news)
+            if not has_new_requirement:
+                return False
+
+            if GitRepository.is_git_dir(self.config.project_path) and not self.config.git_reinit:
+                self._set_state(1)  # Skip PrepareDocuments, go straight to WritePRD
+            else:
+                self._set_state(0)  # Start with PrepareDocuments
+                self.config.git_reinit = False
+                self.todo_action = any_to_name(WritePRD)
+            return True
+
+        # Subsequent calls: auto-increment state (BY_ORDER pattern)
+        # Check if we've completed all actions before incrementing
+        next_state = self.rc.state + 1
+        if next_state >= len(self.actions):
+            # All actions completed, return False to stop the loop
+            return False
+
+        self._set_state(next_state)
+        return True

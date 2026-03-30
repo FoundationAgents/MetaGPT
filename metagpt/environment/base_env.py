@@ -158,8 +158,9 @@ class Environment(ExtEnv):
         Add a role in the current environment
         """
         self.roles[role.name] = role
-        role.set_env(self)
         role.context = self.context
+        self._apply_role_custom_config(role)
+        role.set_env(self)
 
     def add_roles(self, roles: Iterable[BaseRole]):
         """增加一批在当前环境的角色
@@ -170,7 +171,26 @@ class Environment(ExtEnv):
 
         for role in roles:  # setup system message with roles
             role.context = self.context
+            self._apply_role_custom_config(role)
             role.set_env(self)
+
+    def _apply_role_custom_config(self, role: BaseRole):
+        """Apply per-role LLM config from `config2.yaml` if present."""
+        role_configs = getattr(self.context.config, "roles", None) or []
+        role_key = getattr(role, "role_id", "") or role.__class__.__name__
+        matched_config = next(
+            (
+                role_config
+                for role_config in role_configs
+                if role_config.role in {role.__class__.__name__, role_key}
+            ),
+            None,
+        )
+        if not matched_config:
+            return
+
+        role.set_llm(None, override=True)
+        role.set_config(self.context.config.model_copy(update={"llm": matched_config.llm}, deep=True), override=True)
 
     def publish_message(self, message: Message, peekable: bool = True) -> bool:
         """
