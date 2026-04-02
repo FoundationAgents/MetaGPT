@@ -1,0 +1,87 @@
+# MetaGPT Software Team — role-based multi-agent development workflow in OSOP format
+osop_version: "1.0"
+id: metagpt-software-team
+name: MetaGPT Software Development Team
+description: A software development team modeled after MetaGPT's role-based agent architecture. Each agent plays a specific role in the software development lifecycle.
+tags: [metagpt, multi-agent, software-development, roles]
+
+nodes:
+  - id: product-manager
+    type: agent
+    subtype: coordinator
+    name: Product Manager
+    purpose: Analyze user requirements, create PRD (Product Requirements Document), and define user stories.
+    runtime:
+      config:
+        system_prompt: |
+          You are a Product Manager. Analyze requirements, write PRDs,
+          and break features into actionable user stories.
+
+  - id: architect
+    type: agent
+    subtype: worker
+    name: Software Architect
+    purpose: Design system architecture, define APIs, choose tech stack, and create technical specifications.
+    runtime:
+      config:
+        system_prompt: |
+          You are a Software Architect. Design clean, scalable architecture.
+          Create class diagrams, API specs, and data models.
+
+  - id: engineer
+    type: agent
+    subtype: worker
+    name: Software Engineer
+    purpose: Implement code based on architecture design and PRD specifications.
+    runtime:
+      config:
+        tools: [code_editor, terminal, git]
+
+  - id: qa-engineer
+    type: agent
+    subtype: worker
+    name: QA Engineer
+    purpose: Write and run tests, report bugs, verify fixes.
+    runtime:
+      config:
+        tools: [test_runner, code_editor]
+
+  - id: code-review
+    type: human
+    name: Code Review
+    description: Human reviewer approves the implementation before merge.
+
+  - id: deploy
+    type: cicd
+    name: Deploy
+    description: Build, test, and deploy the approved code.
+
+edges:
+  - from: product-manager
+    to: architect
+    mode: sequential
+    label: PRD → Architecture Design
+
+  - from: architect
+    to: engineer
+    mode: sequential
+    label: Tech Spec → Implementation
+
+  - from: engineer
+    to: qa-engineer
+    mode: sequential
+    label: Code → Testing
+
+  - from: qa-engineer
+    to: engineer
+    mode: fallback
+    label: Bugs found → Fix
+
+  - from: qa-engineer
+    to: code-review
+    mode: conditional
+    condition: all_tests_pass
+
+  - from: code-review
+    to: deploy
+    mode: sequential
