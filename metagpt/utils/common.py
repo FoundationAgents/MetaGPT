@@ -74,16 +74,16 @@ class OutputParser:
         # 首先根据"##"将文本分割成不同的block
         blocks = text.split(MARKDOWN_TITLE_PREFIX)
 
-        # 创建一个字典，用于存储每個block的标题 và content
+        # 创建一个字典，用于存储每个block的标题和内容
         block_dict = {}
 
         # 遍历所有的block
         for block in blocks:
-            # 如果block不为空，则继续处理
+            # Nếu block không trống, tiếp tục xử lý
             if block.strip() != "":
                 # 将block的标题和内容分开，并分别去掉前后的空白字符
                 block_title, block_content = block.split("\n", 1)
-                # LLM可能出错，在这里做一下修正
+                # LLM có thể sai, thực hiện sửa lỗi tại đây
                 if block_title[-1] == ":":
                     block_title = block_title[:-1]
                 block_dict[block_title.strip()] = block_content.strip()
@@ -141,11 +141,11 @@ class OutputParser:
         block_dict = cls.parse_blocks(data)
         parsed_data = {}
         for block, content in block_dict.items():
-            # 尝试去除code标记
+            # Thử loại bỏ code tag
             try:
                 content = cls.parse_code(text=content)
             except Exception:
-                # 尝试解析list
+                # Thử parse list
                 try:
                     content = cls.parse_file_list(text=content)
                 except Exception:
@@ -170,7 +170,7 @@ class OutputParser:
         block_dict = cls.parse_blocks(data)
         parsed_data = {}
         for block, content in block_dict.items():
-            # 尝试去除code标记
+            # Thử loại bỏ code tag
             try:
                 content = cls.parse_code(text=content)
             except Exception:
@@ -181,7 +181,7 @@ class OutputParser:
             else:
                 typing = typing_define
             if typing == List[str] or typing == List[Tuple[str, str]] or typing == List[List[str]]:
-                # 尝试解析list
+                # Thử parse list
                 try:
                     content = cls.parse_file_list(text=content)
                 except Exception:
@@ -259,12 +259,12 @@ class CodeParser:
         # 首先根据"##"将文本分割成不同的block
         blocks = text.split("##")
 
-        # 创建一个字典，用于存储每個block的标题 và content
+        # 创建一个字典，用于存储每个block的标题和内容
         block_dict = {}
 
         # 遍历所有的block
         for block in blocks:
-            # 如果block不为空，则继续处理
+            # Nếu block không trống, tiếp tục xử lý
             if block.strip() == "":
                 continue
             if "\n" not in block:
@@ -1237,5 +1237,5 @@ def download_model(file_url: str, target_folder: Path) -> Path:
                     f.write(chunk)
                 logger.info(f"权重文件已下载并保存至 {file_path}")
         except requests.exceptions.HTTPError as err:
-            logger.info(f"权重文件下载过程中发生错误: {err}")
+            logger.info(f"权重文件 download quá trình phát sinh lỗi: {err}")
     return file_path
