@@ -13,12 +13,12 @@ This directory contains a portable [OSOP](https://osop.ai) representation of Met
 ## Why OSOP?
 
 - **Portable** — the same `.osop.yaml` file works across any OSOP-compatible tool.
-- **Visual** — load into the [OSOP Editor](https://github.com/osopcloud/osop-editor) to get an interactive flowchart of the workflow.
+- **Visual** — load into the [OSOP Editor](https://github.com/Archie0125/osop-editor) to get an interactive flowchart of the workflow.
 - **Interoperable** — convert between OSOP, n8n, LangGraph, and other workflow formats.
 
 ## Links
 
-- [OSOP Specification](https://github.com/osopcloud/osop-spec)
-- [OSOP Editor (visual workflow editor)](https://github.com/osopcloud/osop-editor)
-- [OSOP Examples](https://github.com/osopcloud/osop-examples)
+- [OSOP Specification](https://github.com/Archie0125/osop-spec)
+- [OSOP Editor (visual workflow editor)](https://github.com/Archie0125/osop-editor)
+- [OSOP Examples](https://github.com/Archie0125/osop-examples)
 - [osop.ai](https://osop.ai)
