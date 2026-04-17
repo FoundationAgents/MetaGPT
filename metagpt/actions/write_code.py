@@ -27,7 +27,7 @@ from metagpt.actions.project_management_an import REFINED_TASK_LIST, TASK_LIST
 from metagpt.actions.write_code_plan_and_change_an import REFINED_TEMPLATE
 from metagpt.logs import logger
 from metagpt.schema import CodingContext, Document, RunCodeResult
-from metagpt.utils.common import CodeParser, get_markdown_code_block_type
+from metagpt.utils.common import CodeParser, get_markdown_code_block_type, get_project_srcs_path
 from metagpt.utils.project_repo import ProjectRepo
 from metagpt.utils.report import EditorReporter
 
@@ -117,6 +117,8 @@ class WriteCode(Action):
             logs = test_detail.stderr
 
         if self.config.inc or bug_feedback:
+            if self.repo and self.repo.src_relative_path is None:
+                self.repo.with_src_path(get_project_srcs_path(self.repo.workdir))
             code_context = await self.get_codes(
                 coding_context.task_doc, exclude=self.i_context.filename, project_repo=self.repo, use_inc=True
             )
