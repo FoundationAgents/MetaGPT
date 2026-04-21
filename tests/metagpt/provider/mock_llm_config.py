@@ -62,6 +62,12 @@ mock_llm_config_anthropic = LLMConfig(
     api_type="anthropic", api_key="xxx", base_url="https://api.anthropic.com", model="claude-3-opus-20240229"
 )
 
+mock_llm_config_litellm = LLMConfig(
+    api_type="litellm",
+    api_key="sk-test",
+    model="anthropic/claude-3-5-sonnet-20241022",
+)
+
 mock_llm_config_bedrock = LLMConfig(
     api_type="bedrock",
     model="gpt-100",
