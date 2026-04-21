@@ -24,6 +24,17 @@ class Memory(BaseModel):
     index: DefaultDict[str, list[SerializeAsAny[Message]]] = Field(default_factory=lambda: defaultdict(list))
     ignore_id: bool = False
 
+    def _filter_expired_messages(self, messages: list[Message]) -> list[Message]:
+        """Filter out expired messages from the given list.
+        
+        Args:
+            messages: List of messages to filter.
+            
+        Returns:
+            List of non-expired messages.
+        """
+        return [message for message in messages if not message.is_expired()]
+
     def add(self, message: Message):
         """Add a new message to storage, while updating the index"""
         if self.ignore_id:
@@ -40,11 +51,13 @@ class Memory(BaseModel):
 
     def get_by_role(self, role: str) -> list[Message]:
         """Return all messages of a specified role"""
-        return [message for message in self.storage if message.role == role]
+        messages = [message for message in self.storage if message.role == role]
+        return self._filter_expired_messages(messages)
 
     def get_by_content(self, content: str) -> list[Message]:
         """Return all messages containing a specified content"""
-        return [message for message in self.storage if content in message.content]
+        messages = [message for message in self.storage if content in message.content]
+        return self._filter_expired_messages(messages)
 
     def delete_newest(self) -> "Message":
         """delete the newest message from the storage"""
@@ -75,11 +88,13 @@ class Memory(BaseModel):
 
     def try_remember(self, keyword: str) -> list[Message]:
         """Try to recall all messages containing a specified keyword"""
-        return [message for message in self.storage if keyword in message.content]
+        messages = [message for message in self.storage if keyword in message.content]
+        return self._filter_expired_messages(messages)
 
     def get(self, k=0) -> list[Message]:
         """Return the most recent k memories, return all when k=0"""
-        return self.storage[-k:]
+        messages = self.storage[-k:]
+        return self._filter_expired_messages(messages)
 
     def find_news(self, observed: list[Message], k=0) -> list[Message]:
         """find news (previously unseen messages) from the most recent k memories, from all memories when k=0"""
@@ -94,7 +109,8 @@ class Memory(BaseModel):
     def get_by_action(self, action) -> list[Message]:
         """Return all messages triggered by a specified Action"""
         index = any_to_str(action)
-        return self.index[index]
+        messages = self.index[index]
+        return self._filter_expired_messages(messages)
 
     def get_by_actions(self, actions: Set) -> list[Message]:
         """Return all messages triggered by specified Actions"""
@@ -104,9 +120,12 @@ class Memory(BaseModel):
             if action not in self.index:
                 continue
             rsp += self.index[action]
-        return rsp
+        return self._filter_expired_messages(rsp)
 
     @handle_exception
     def get_by_position(self, position: int) -> Optional[Message]:
-        """Returns the message at the given position if valid, otherwise returns None"""
-        return self.storage[position]
+        """Returns the message at the given position if valid and not expired, otherwise returns None"""
+        message = self.storage[position]
+        if message and message.is_expired():
+            return None
+        return message
