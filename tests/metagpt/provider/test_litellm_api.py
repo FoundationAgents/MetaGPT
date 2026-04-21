@@ -2,6 +2,9 @@
 # -*- coding: utf-8 -*-
 # @Desc   : the unittest of LiteLLM provider
 
+import json
+from types import SimpleNamespace
+
 import pytest
 
 from metagpt.provider.litellm_api import LiteLLM
@@ -68,3 +71,60 @@ def test_cons_kwargs_forwards_custom_base_url():
     llm = LiteLLM(cfg)
     kwargs = llm._cons_kwargs(messages)
     assert kwargs["api_base"] == "https://my-proxy.example.com/v1"
+
+
+def _fake_tool_call_response(arguments: dict) -> SimpleNamespace:
+    """LiteLLM's ModelResponse mirrors OpenAI's ChatCompletion, so we can build a
+    duck-typed stand-in for tool_call responses using SimpleNamespace."""
+    function = SimpleNamespace(name="execute", arguments=json.dumps(arguments))
+    tool_call = SimpleNamespace(type="function", function=function, id="call_1")
+    message = SimpleNamespace(role="assistant", content=None, tool_calls=[tool_call])
+    choice = SimpleNamespace(message=message, finish_reason="tool_calls", index=0)
+    return SimpleNamespace(choices=[choice], usage=None)
+
+
+@pytest.mark.asyncio
+async def test_aask_code_forwards_tools_and_parses_arguments(mocker):
+    """LiteLLM's aask_code must (1) inject the default ``tools=[...]`` schema,
+    (2) forward it to ``litellm.acompletion``, (3) parse the returned tool_call
+    arguments into a dict. This is the path used by Engineer / QAEngineer /
+    DataAnalyst roles when LLM is configured with ``api_type: litellm``."""
+
+    captured = {}
+
+    async def _capturing_acompletion(**kwargs):
+        captured.update(kwargs)
+        return _fake_tool_call_response({"language": "python", "code": "print('hi')"})
+
+    mocker.patch("litellm.acompletion", _capturing_acompletion)
+
+    llm = LiteLLM(mock_llm_config_litellm)
+    result = await llm.aask_code([{"role": "user", "content": "Write a hello world"}])
+
+    # Default function schema was injected
+    assert "tools" in captured, "aask_code should inject a default tools schema"
+    assert captured["tools"][0]["type"] == "function"
+    assert captured["tools"][0]["function"]["name"] == "execute"
+
+    # Parsed arguments dict is returned
+    assert result == {"language": "python", "code": "print('hi')"}
+
+
+@pytest.mark.asyncio
+async def test_aask_code_respects_user_supplied_tools(mocker):
+    """When the caller passes their own ``tools=[...]``, the default schema must
+    not overwrite it."""
+
+    captured = {}
+
+    async def _capturing_acompletion(**kwargs):
+        captured.update(kwargs)
+        return _fake_tool_call_response({"lang": "go", "code": "fmt.Println(1)"})
+
+    mocker.patch("litellm.acompletion", _capturing_acompletion)
+
+    custom_tools = [{"type": "function", "function": {"name": "go_tool", "parameters": {}}}]
+    llm = LiteLLM(mock_llm_config_litellm)
+    await llm.aask_code([{"role": "user", "content": "print 1 in Go"}], tools=custom_tools)
+
+    assert captured["tools"] == custom_tools
