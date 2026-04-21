@@ -240,6 +240,8 @@ class Message(BaseModel):
     sent_from: str = Field(default="", validate_default=True)
     send_to: set[str] = Field(default={MESSAGE_ROUTE_TO_ALL}, validate_default=True)
     metadata: Dict[str, Any] = Field(default_factory=dict)  # metadata for `content` and `instruct_content`
+    ttl: int = Field(default=-1, validate_default=True)  # Time-To-Live in seconds, -1 means never expire
+    created_at: float = Field(default_factory=time.time)  # Creation time in seconds since epoch
 
     @field_validator("id", mode="before")
     @classmethod
@@ -414,6 +416,18 @@ class Message(BaseModel):
 
     def is_ai_message(self) -> bool:
         return self.role == "assistant"
+
+    def is_expired(self) -> bool:
+        """Check if the message has expired based on its TTL.
+        
+        Returns:
+            bool: True if the message has expired, False otherwise.
+                  Messages with ttl=-1 never expire.
+        """
+        if self.ttl == -1:
+            return False
+        current_time = time.time()
+        return current_time - self.created_at > self.ttl
 
 
 class UserMessage(Message):
