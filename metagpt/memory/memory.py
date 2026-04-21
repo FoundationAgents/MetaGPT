@@ -5,11 +5,13 @@
 @Author  : alexanderwu
 @File    : memory.py
 @Modified By: mashenquan, 2023-11-1. According to RFC 116: Updated the type of index key.
+@Modified By: 2026-04-21. Added TTL (Time-To-Live) support for messages with automatic cleanup.
 """
+import asyncio
 from collections import defaultdict
 from typing import DefaultDict, Iterable, Optional, Set
 
-from pydantic import BaseModel, Field, SerializeAsAny
+from pydantic import BaseModel, Field, PrivateAttr, SerializeAsAny
 
 from metagpt.const import IGNORED_MESSAGE_ID
 from metagpt.schema import Message
@@ -24,16 +26,23 @@ class Memory(BaseModel):
     index: DefaultDict[str, list[SerializeAsAny[Message]]] = Field(default_factory=lambda: defaultdict(list))
     ignore_id: bool = False
 
-    def _filter_expired_messages(self, messages: list[Message]) -> list[Message]:
-        """Filter out expired messages from the given list.
+    _cleanup_task: Optional[asyncio.Task] = PrivateAttr(default=None)
+    _is_running: bool = PrivateAttr(default=False)
+
+    def _cleanup_expired_messages(self) -> int:
+        """Remove all expired messages from storage and index.
         
-        Args:
-            messages: List of messages to filter.
-            
         Returns:
-            List of non-expired messages.
+            int: The number of expired messages that were removed.
         """
-        return [message for message in messages if not message.is_expired()]
+        expired_messages = [message for message in self.storage if message.is_expired()]
+        
+        for message in expired_messages:
+            self.storage.remove(message)
+            if message.cause_by and message in self.index[message.cause_by]:
+                self.index[message.cause_by].remove(message)
+        
+        return len(expired_messages)
 
     def add(self, message: Message):
         """Add a new message to storage, while updating the index"""
@@ -51,13 +60,13 @@ class Memory(BaseModel):
 
     def get_by_role(self, role: str) -> list[Message]:
         """Return all messages of a specified role"""
-        messages = [message for message in self.storage if message.role == role]
-        return self._filter_expired_messages(messages)
+        self._cleanup_expired_messages()
+        return [message for message in self.storage if message.role == role]
 
     def get_by_content(self, content: str) -> list[Message]:
         """Return all messages containing a specified content"""
-        messages = [message for message in self.storage if content in message.content]
-        return self._filter_expired_messages(messages)
+        self._cleanup_expired_messages()
+        return [message for message in self.storage if content in message.content]
 
     def delete_newest(self) -> "Message":
         """delete the newest message from the storage"""
@@ -84,17 +93,18 @@ class Memory(BaseModel):
 
     def count(self) -> int:
         """Return the number of messages in storage"""
+        self._cleanup_expired_messages()
         return len(self.storage)
 
     def try_remember(self, keyword: str) -> list[Message]:
         """Try to recall all messages containing a specified keyword"""
-        messages = [message for message in self.storage if keyword in message.content]
-        return self._filter_expired_messages(messages)
+        self._cleanup_expired_messages()
+        return [message for message in self.storage if keyword in message.content]
 
     def get(self, k=0) -> list[Message]:
         """Return the most recent k memories, return all when k=0"""
-        messages = self.storage[-k:]
-        return self._filter_expired_messages(messages)
+        self._cleanup_expired_messages()
+        return self.storage[-k:]
 
     def find_news(self, observed: list[Message], k=0) -> list[Message]:
         """find news (previously unseen messages) from the most recent k memories, from all memories when k=0"""
@@ -108,24 +118,75 @@ class Memory(BaseModel):
 
     def get_by_action(self, action) -> list[Message]:
         """Return all messages triggered by a specified Action"""
+        self._cleanup_expired_messages()
         index = any_to_str(action)
-        messages = self.index[index]
-        return self._filter_expired_messages(messages)
+        return self.index[index]
 
     def get_by_actions(self, actions: Set) -> list[Message]:
         """Return all messages triggered by specified Actions"""
+        self._cleanup_expired_messages()
         rsp = []
         indices = any_to_str_set(actions)
         for action in indices:
             if action not in self.index:
                 continue
             rsp += self.index[action]
-        return self._filter_expired_messages(rsp)
+        return rsp
 
     @handle_exception
     def get_by_position(self, position: int) -> Optional[Message]:
         """Returns the message at the given position if valid and not expired, otherwise returns None"""
-        message = self.storage[position]
-        if message and message.is_expired():
+        self._cleanup_expired_messages()
+        if position < 0 or position >= len(self.storage):
             return None
-        return message
+        return self.storage[position]
+
+    async def _periodic_cleanup(self, interval: int = 60):
+        """Asynchronous background task that periodically cleans up expired messages.
+        
+        Args:
+            interval: The time in seconds between each cleanup check.
+        """
+        while self._is_running:
+            try:
+                self._cleanup_expired_messages()
+                await asyncio.sleep(interval)
+            except asyncio.CancelledError:
+                break
+            except Exception as e:
+                import logging
+                logger = logging.getLogger(__name__)
+                logger.error(f"Error in periodic cleanup: {e}")
+                await asyncio.sleep(interval)
+
+    def start(self, cleanup_interval: int = 60):
+        """Start the background periodic cleanup task.
+        
+        Args:
+            cleanup_interval: The time in seconds between each cleanup check. Defaults to 60.
+        """
+        if self._is_running:
+            return
+        
+        self._is_running = True
+        
+        try:
+            loop = asyncio.get_running_loop()
+            self._cleanup_task = loop.create_task(self._periodic_cleanup(cleanup_interval))
+        except RuntimeError:
+            import threading
+            from metagpt.utils.async_helper import run_coroutine_in_new_loop
+            
+            def run_cleanup():
+                asyncio.run(self._periodic_cleanup(cleanup_interval))
+            
+            thread = threading.Thread(target=run_cleanup, daemon=True)
+            thread.start()
+
+    def stop(self):
+        """Stop the background periodic cleanup task gracefully."""
+        self._is_running = False
+        
+        if self._cleanup_task:
+            self._cleanup_task.cancel()
+            self._cleanup_task = None
