@@ -18,6 +18,7 @@ class TaskStatus(str, Enum):
     FAILED = "failed"
 
 
+
 class OptimizationResponse(BaseModel):
     task_id: str
     status: str
