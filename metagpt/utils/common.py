@@ -288,8 +288,8 @@ class CodeParser:
         if match:
             code = match.group(1)
         else:
-            logger.error(f"{pattern} not match following text:")
-            logger.error(text)
+            logger.warning(f"{pattern} not matched; fallback to raw text.")
+            logger.debug(text)
             # raise Exception
             return text  # just assume original text is code
         return code

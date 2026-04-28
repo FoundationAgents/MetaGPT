@@ -5,7 +5,7 @@ default_stages: [ commit ]
 # 2. pre-commit install
 # 3. pre-commit run --all-files  # make sure all files are clean
 repos:
-  - repo: git@github.com:pycqa/isort.git
+  - repo: https://github.com/pycqa/isort.git
     rev: 5.11.5
     hooks:
       - id: isort
@@ -15,14 +15,14 @@ repos:
             .*__init__\.py$
             )
 
-  - repo: git@github.com:astral-sh/ruff-pre-commit.git
+  - repo: https://github.com/astral-sh/ruff-pre-commit.git
     # Ruff version.
     rev: v0.0.284
     hooks:
       - id: ruff
         args: [ --fix ]
 
-  - repo: git@github.com:psf/black.git
+  - repo: https://github.com/psf/black.git
     rev: 23.3.0
     hooks:
       - id: black

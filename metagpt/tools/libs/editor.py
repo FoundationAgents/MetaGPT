@@ -113,8 +113,12 @@ class Editor(BaseModel):
     enable_auto_lint: bool = False
     working_dir: Path = DEFAULT_WORKSPACE_ROOT
 
-    def write(self, path: str, content: str):
-        """Write the whole content to a file. When used, make sure content arg contains the full content of the file."""
+    def write(self, path: str, content: str, description: str = "", **kwargs):
+        """Write full content to a file.
+
+        The `description` and extra kwargs are accepted for compatibility with
+        LLM-generated tool arguments and are ignored.
+        """
 
         path = self._try_fix_path(path)
 

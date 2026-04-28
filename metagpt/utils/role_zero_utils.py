@@ -16,12 +16,31 @@ from metagpt.prompts.di.role_zero import (
     SUMMARY_PROBLEM_WHEN_DUPLICATE,
 )
 from metagpt.schema import Message, UserMessage
-from metagpt.utils.common import CodeParser, extract_and_encode_images
+from metagpt.utils.common import extract_and_encode_images
 from metagpt.utils.repair_llm_raw_output import (
     RepairType,
     repair_escape_error,
     repair_llm_raw_output,
 )
+
+
+def _extract_first_json_payload(text: str) -> str:
+    """Extract the first decodable JSON object/array from mixed LLM output."""
+    source = (text or "").strip()
+    if not source:
+        return source
+
+    decoder = json.JSONDecoder()
+    for index, char in enumerate(source):
+        if char not in "[{":
+            continue
+        candidate = source[index:]
+        try:
+            _, end = decoder.raw_decode(candidate)
+            return candidate[:end]
+        except json.JSONDecodeError:
+            continue
+    return source
 
 
 async def parse_browser_actions(memory: list[Message], browser) -> list[Message]:
@@ -107,7 +126,7 @@ async def parse_commands(command_rsp: str, llm, exclusive_tool_commands: list[st
             - A boolean flag indicating success (True) or failure (False).
     """
     try:
-        commands = CodeParser.parse_code(block=None, lang="json", text=command_rsp)
+        commands = _extract_first_json_payload(command_rsp)
         if commands.endswith("]") and not commands.startswith("["):
             commands = "[" + commands
         commands = json.loads(repair_llm_raw_output(output=commands, req_keys=[None], repair_type=RepairType.JSON))
@@ -115,10 +134,10 @@ async def parse_commands(command_rsp: str, llm, exclusive_tool_commands: list[st
         logger.warning(f"Failed to parse JSON for: {command_rsp}. Trying to repair...")
         commands = await llm.aask(msg=JSON_REPAIR_PROMPT.format(json_data=command_rsp, json_decode_error=str(e)))
         try:
-            commands = json.loads(CodeParser.parse_code(block=None, lang="json", text=commands))
+            commands = json.loads(_extract_first_json_payload(commands))
         except json.JSONDecodeError:
             # repair escape error of code and math
-            commands = CodeParser.parse_code(block=None, lang="json", text=command_rsp)
+            commands = _extract_first_json_payload(command_rsp)
             new_command = repair_escape_error(commands)
             commands = json.loads(
                 repair_llm_raw_output(output=new_command, req_keys=[None], repair_type=RepairType.JSON)

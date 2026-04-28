@@ -140,6 +140,8 @@ async def is_text_file(filename: Union[str, Path]) -> Tuple[bool, str]:
         "video/mp4",
     }
     mime_type = await get_mime_type(Path(filename), force_read=True)
+    if not mime_type:
+        return False, ""
     v = "text/" in mime_type or mime_type in pass_set
     if v:
         return True, mime_type

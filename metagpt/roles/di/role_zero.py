@@ -30,7 +30,7 @@ from metagpt.prompts.di.role_zero import (
     SUMMARY_PROMPT,
     SYSTEM_PROMPT,
 )
-from metagpt.roles import Role
+from metagpt.roles.role import Role
 from metagpt.schema import AIMessage, Message, UserMessage
 from metagpt.strategy.experience_retriever import DummyExpRetriever, ExpRetriever
 from metagpt.strategy.planner import Planner
