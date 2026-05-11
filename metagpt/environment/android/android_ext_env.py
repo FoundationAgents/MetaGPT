@@ -136,7 +136,9 @@ class AndroidExtEnv(ExtEnv):
 
     def execute_adb_with_cmd(self, adb_cmd: str) -> str:
         adb_cmd = adb_cmd.replace("\\", "/")
-        res = subprocess.run(adb_cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+        # SECURITY FIX: Use shlex.split + shell=False to prevent command injection
+        import shlex
+        res = subprocess.run(shlex.split(adb_cmd), shell=False, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
         exec_res = ADB_EXEC_FAIL
         if not res.returncode:
             exec_res = res.stdout.strip()
