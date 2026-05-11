@@ -1,3 +1,4 @@
+import ast
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 # @Desc   : the implement of serialization and deserialization
@@ -53,7 +54,7 @@ def actionoutput_str_to_mapping(mapping: dict) -> dict:
         if value == "(<class 'str'>, Ellipsis)":
             new_mapping[key] = (str, ...)
         else:
-            new_mapping[key] = eval(value)  # `"'(list[str], Ellipsis)"` to `(list[str], ...)`
+            new_mapping[key] = ast.literal_eval(value)  # `"'(list[str], Ellipsis)"` to `(list[str], ...)`
     return new_mapping
 
 
