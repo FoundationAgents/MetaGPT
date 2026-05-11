@@ -725,10 +725,11 @@ class RepoParser(BaseModel):
         init_file = path / "__init__.py"
         if not init_file.exists():
             raise ValueError("Failed to import module __init__ with error:No module named __init__.")
-        command = f"pyreverse {str(path)} -o dot"
+        # SECURITY FIX: Use list command + shell=False to prevent command injection via malicious path
+        command = ["pyreverse", str(path), "-o", "dot"]
         output_dir = path / "__dot__"
         output_dir.mkdir(parents=True, exist_ok=True)
-        result = subprocess.run(command, shell=True, check=True, cwd=str(output_dir))
+        result = subprocess.run(command, shell=False, check=True, cwd=str(output_dir))
         if result.returncode != 0:
             raise ValueError(f"{result}")
         class_view_pathname = output_dir / "classes.dot"
