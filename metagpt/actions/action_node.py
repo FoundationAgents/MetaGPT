@@ -8,6 +8,7 @@
 NOTE: You should use typing.List instead of list to do type annotation. Because in the markdown extraction process,
   we can use typing to extract the type of the node, but we cannot use built-in list to extract.
 """
+import ast
 import json
 import re
 import typing
@@ -578,14 +579,14 @@ class ActionNode:
                     extracted_data[field_name] = raw_value.lower() in ("true", "yes", "1", "on", "True")
                 elif field_type == list:
                     try:
-                        extracted_data[field_name] = eval(raw_value)
+                        extracted_data[field_name] = ast.literal_eval(raw_value)
                         if not isinstance(extracted_data[field_name], list):
                             raise ValueError
                     except:
                         extracted_data[field_name] = []  # 默认空列表
                 elif field_type == dict:
                     try:
-                        extracted_data[field_name] = eval(raw_value)
+                        extracted_data[field_name] = ast.literal_eval(raw_value)
                         if not isinstance(extracted_data[field_name], dict):
                             raise ValueError
                     except:
