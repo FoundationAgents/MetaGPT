@@ -5,6 +5,7 @@
 from __future__ import annotations
 
 import asyncio
+import json
 from typing import Any, List, Optional
 
 from pydantic import BaseModel, ConfigDict, Field
@@ -63,7 +64,7 @@ class ThoughtSolverBase(BaseModel):
         )
         rsp = await self.llm.aask(msg=state_prompt + "\n" + OUTPUT_FORMAT)
         thoughts = CodeParser.parse_code(text=rsp)
-        thoughts = eval(thoughts)
+        thoughts = json.loads(thoughts)
         # fixme 避免不跟随，生成过多nodes
         # valid_thoughts = [_node for idx, _node in enumerate(thoughts) if idx < self.n_generate_sample]
         return self.thought_tree.update_node(thoughts, current_node=current_node)
