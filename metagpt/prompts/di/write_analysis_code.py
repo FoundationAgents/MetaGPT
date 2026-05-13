@@ -96,7 +96,7 @@ Check latest data info to guide subsequent tasks.
 
 # Task
 Check code in finished tasks, print key variables to guide your following actions.
-Specifically, if it is a data analysis or machine learning task, print the the latest column information using the following code, with DataFrame variable from 'Finished Tasks' in place of df:
+Specifically, if it is a data analysis or machine learning task, print the latest column information using the following code, with DataFrame variable from 'Finished Tasks' in place of df:
 ```python
 from metagpt.tools.libs.data_preprocess import get_column_info
 
