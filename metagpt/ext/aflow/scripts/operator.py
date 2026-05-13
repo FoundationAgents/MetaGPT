@@ -266,7 +266,7 @@ class Test(Operator):
                     problem=problem,
                     solution=solution,
                     exec_pass=f"executed unsuccessfully, error: \n {result}",
-                    test_fail="executed unsucessfully",
+                    test_fail="executed unsuccessfully",
                 )
                 response = await self._fill_node(ReflectionTestOp, prompt, mode="code_fill")
                 solution = response["reflection_and_solution"]
