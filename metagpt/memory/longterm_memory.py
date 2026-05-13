@@ -49,7 +49,7 @@ class LongTermMemory(Memory):
 
     async def find_news(self, observed: list[Message], k=0) -> list[Message]:
         """
-        find news (previously unseen messages) from the the most recent k memories, from all memories when k=0
+        find news (previously unseen messages) from the most recent k memories, from all memories when k=0
             1. find the short-term memory(stm) news
             2. furthermore, filter out similar messages based on ltm(long-term memory), get the final news
         """
