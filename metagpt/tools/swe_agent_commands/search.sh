@@ -29,7 +29,7 @@ search_dir_and_preview() {
     dir=$(realpath "$dir")
     local matches=$(find "$dir" -type f -path '*.py' -exec grep -nIH -- "$search_term" {} + | cut -d: -f1 | sort | uniq -c)
 <<COMMENT
-    metches exmaple: 3 xx/xx/test_file.py
+    matches example: 3 xx/xx/test_file.py
 COMMENT
 
     local matches_with_line=$(find "$dir" -type f -path '*.py' -exec grep -nIH -- "$search_term" {} + | sort | uniq -c)
