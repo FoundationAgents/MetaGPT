@@ -299,7 +299,7 @@ class BaseLLM(ABC):
                     }
                 ],
                 ...}
-        :return dict: return first function of choice, for exmaple,
+        :return dict: return first function of choice, for example,
             {'name': 'execute', 'arguments': '{\n  "language": "python",\n  "code": "print(\'Hello, World!\')"\n}'}
         """
         return rsp.get("choices")[0]["message"]["tool_calls"][0]["function"]
