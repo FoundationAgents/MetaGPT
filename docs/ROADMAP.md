@@ -16,7 +16,7 @@ Enable MetaGPT to self-evolve, accomplishing self-training, fine-tuning, optimiz
 1. Usability
    1. ~~Release v0.01 pip package to try to solve issues like npm installation (though not necessarily successfully)~~ (v0.3.0)
    2. ~~Support for overall save and recovery of software companies~~ (v0.6.0)
-   3. ~~Support human confirmation and modification during the process~~ (v0.3.0) New: Support human confirmation and modification with fewer constrainsts and a more user-friendly interface
+   3. ~~Support human confirmation and modification during the process~~ (v0.3.0) New: Support human confirmation and modification with fewer constraints and a more user-friendly interface
    4. Support process caching: Consider carefully whether to add server caching mechanism
    5. ~~Resolve occasional failure to follow instruction under current prompts, causing code parsing errors, through stricter system prompts~~ (v0.4.0, with function call)
    6. Write documentation, describing the current features and usage at all levels (ongoing, continuously adding contents to [documentation site](https://docs.deepwisdom.ai/main/en/guide/get_started/introduction.html))
