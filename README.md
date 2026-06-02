@@ -89,7 +89,7 @@ llm:
 ```yaml
 llm:
   api_type: "minimax"
-  model: "MiniMax-M2.7"  # or MiniMax-M2.5 / MiniMax-M2.5-highspeed
+  model: "MiniMax-M3"  # or MiniMax-M2.7 / MiniMax-M2.7-highspeed
   base_url: "https://api.minimax.io/v1"
   api_key: "YOUR_MINIMAX_API_KEY"
   temperature: 0.5  # MiniMax requires temperature in (0.0, 1.0]
