@@ -117,6 +117,10 @@ TOKEN_COSTS = {
     "llama-4-Maverick-17B-128E-Instruct-FP8": {"prompt": 0.0, "completion": 0.0},
     "llama-3.3-8B-Instruct": {"prompt": 0.0, "completion": 0.0},
     "llama-3.3-70B-Instruct": {"prompt": 0.0, "completion": 0.0},  # end, for Llama API
+    "deepseek/deepseek-v3.2": {"prompt": 0.00026, "completion": 0.00038},  # start, for Avian
+    "moonshotai/kimi-k2.5": {"prompt": 0.00045, "completion": 0.0022},
+    "z-ai/glm-5": {"prompt": 0.0003, "completion": 0.00255},
+    "minimax/minimax-m2.5": {"prompt": 0.0003, "completion": 0.0011},  # end, for Avian
 }
 
 
@@ -350,6 +354,10 @@ TOKEN_MAX = {
     "qwen-7b-chat": 32000,
     "qwen-1.8b-longcontext-chat": 32000,
     "qwen-1.8b-chat": 8000,
+    "deepseek/deepseek-v3.2": 164000,  # start, for Avian
+    "moonshotai/kimi-k2.5": 131000,
+    "z-ai/glm-5": 131000,
+    "minimax/minimax-m2.5": 1000000,  # end, for Avian
 }
 
 # For Amazon Bedrock US region

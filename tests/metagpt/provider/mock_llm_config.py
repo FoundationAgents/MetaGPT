@@ -72,3 +72,10 @@ mock_llm_config_bedrock = LLMConfig(
 )
 
 mock_llm_config_ark = LLMConfig(api_type="ark", api_key="eyxxx", base_url="xxx", model="ep-xxx")
+
+mock_llm_config_avian = LLMConfig(
+    api_type="avian",
+    api_key="avian-mock-key",
+    base_url="https://api.avian.io/v1",
+    model="deepseek/deepseek-v3.2",
+)
