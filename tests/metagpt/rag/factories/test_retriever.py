@@ -18,6 +18,8 @@ from metagpt.rag.schema import (
     ElasticsearchRetrieverConfig,
     ElasticsearchStoreConfig,
     FAISSRetrieverConfig,
+    ValkeyRetrieverConfig,
+    ValkeyStoreConfig,
 )
 
 
@@ -98,6 +100,16 @@ class TestRetrieverFactory:
         retriever = self.retriever_factory.get_retriever(configs=[mock_config], nodes=[], embed_model=mock_embedding)
 
         assert isinstance(retriever, ElasticsearchRetriever)
+
+    def test_get_retriever_with_valkey_config(self, mocker, mock_embedding):
+        from metagpt.rag.retrievers.valkey_retriever import ValkeyRetriever
+
+        mock_config = ValkeyRetrieverConfig(store_config=ValkeyStoreConfig())
+        mocker.patch("metagpt.rag.vector_stores.valkey.ValkeyVectorStore")
+
+        retriever = self.retriever_factory.get_retriever(configs=[mock_config], nodes=[], embed_model=mock_embedding)
+
+        assert isinstance(retriever, ValkeyRetriever)
 
     def test_create_default_retriever(self, mocker, mock_vector_store_index):
         mocker.patch.object(self.retriever_factory, "_extract_index", return_value=mock_vector_store_index)

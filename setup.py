@@ -44,6 +44,7 @@ extras_require = {
         "llama-index-postprocessor-colbert-rerank==0.1.1",
         "llama-index-postprocessor-flag-embedding-reranker==0.1.2",
         "docx2txt==0.8",
+        "valkey-glide>=2.1.0,<3.0.0",
     ],
 }
 
