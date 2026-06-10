@@ -113,14 +113,18 @@ class ValkeyStoreConfig(BaseModel):
 
     host: str = Field(default="localhost", description="Valkey server host.")
     port: int = Field(default=6379, description="Valkey server port.")
-    password: Optional[str] = Field(default=None, description="Valkey server password.")
+    password: Optional[str] = Field(default=None, description="Valkey server password.", repr=False)
     use_tls: bool = Field(default=False, description="Whether to use TLS for connection.")
     request_timeout: int = Field(default=5000, description="Request timeout in milliseconds.")
     index_name: str = Field(default="metagpt_rag", description="Name of the Valkey Search index.")
     prefix: str = Field(default="metagpt:rag:", description="Key prefix for stored documents.")
     vector_dimensions: int = Field(default=1536, description="Dimensionality of embedding vectors.")
-    distance_metric: str = Field(default="COSINE", description="Distance metric: COSINE, L2, or IP.")
-    vector_algorithm: str = Field(default="HNSW", description="Vector index algorithm: HNSW or FLAT.")
+    distance_metric: Literal["COSINE", "L2", "IP"] = Field(
+        default="COSINE", description="Distance metric: COSINE, L2, or IP."
+    )
+    vector_algorithm: Literal["HNSW", "FLAT"] = Field(
+        default="HNSW", description="Vector index algorithm: HNSW or FLAT."
+    )
     client_name: str = Field(default="metagpt_rag_client", description="Client name for Valkey connection.")
 
 

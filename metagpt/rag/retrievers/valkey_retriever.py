@@ -6,7 +6,7 @@ from llama_index.core.schema import BaseNode, NodeWithScore, QueryBundle, QueryT
 from llama_index.core.vector_stores.types import VectorStoreQuery
 
 from metagpt.rag.retrievers.base import RAGRetriever
-from metagpt.rag.vector_stores.valkey import ValkeyVectorStore, _run_async
+from metagpt.rag.vector_stores.valkey import ValkeyVectorStore
 
 
 class ValkeyRetriever(RAGRetriever):
@@ -34,35 +34,48 @@ class ValkeyRetriever(RAGRetriever):
         """Access the underlying vector store."""
         return self._vector_store
 
+    def _embed_query(self, query: QueryBundle) -> List[float]:
+        """Resolve the query embedding, preferring the async embed call when available."""
+        if query.embedding is not None:
+            return query.embedding
+        if self._embed_model is None:
+            raise ValueError("Query embedding is required. Provide an embed_model or set query.embedding.")
+        return self._embed_model.get_query_embedding(query.query_str)
+
+    async def _aembed_query(self, query: QueryBundle) -> List[float]:
+        """Async embedding resolution that does not block the event loop when the model supports it."""
+        if query.embedding is not None:
+            return query.embedding
+        if self._embed_model is None:
+            raise ValueError("Query embedding is required. Provide an embed_model or set query.embedding.")
+        if hasattr(self._embed_model, "aget_query_embedding"):
+            return await self._embed_model.aget_query_embedding(query.query_str)
+        return self._embed_model.get_query_embedding(query.query_str)
+
+    def _build_result(self, result) -> List[NodeWithScore]:
+        return [
+            NodeWithScore(node=node, score=similarity) for node, similarity in zip(result.nodes, result.similarities)
+        ]
+
     async def _aretrieve(self, query: QueryType) -> List[NodeWithScore]:
         """Async retrieve nodes matching the query."""
         if isinstance(query, str):
             query = QueryBundle(query_str=query)
 
-        # Get embedding for query
-        if query.embedding is None and self._embed_model is not None:
-            query_embedding = self._embed_model.get_query_embedding(query.query_str)
-        elif query.embedding is not None:
-            query_embedding = query.embedding
-        else:
-            raise ValueError("Query embedding is required. Provide an embed_model or set query.embedding.")
-
-        store_query = VectorStoreQuery(
-            query_embedding=query_embedding,
-            similarity_top_k=self._similarity_top_k,
-        )
-
-        result = await self._vector_store._async_query(store_query)
-
-        nodes_with_scores = []
-        for node, similarity, node_id in zip(result.nodes, result.similarities, result.ids):
-            nodes_with_scores.append(NodeWithScore(node=node, score=similarity))
-
-        return nodes_with_scores
+        query_embedding = await self._aembed_query(query)
+        store_query = VectorStoreQuery(query_embedding=query_embedding, similarity_top_k=self._similarity_top_k)
+        result = self._vector_store.query(store_query)
+        return self._build_result(result)
 
     def _retrieve(self, query: QueryType) -> List[NodeWithScore]:
         """Sync retrieve nodes matching the query."""
-        return _run_async(self._aretrieve(query))
+        if isinstance(query, str):
+            query = QueryBundle(query_str=query)
+
+        query_embedding = self._embed_query(query)
+        store_query = VectorStoreQuery(query_embedding=query_embedding, similarity_top_k=self._similarity_top_k)
+        result = self._vector_store.query(store_query)
+        return self._build_result(result)
 
     def add_nodes(self, nodes: List[BaseNode], **kwargs) -> None:
         """Add nodes to the underlying vector store."""
@@ -75,14 +88,9 @@ class ValkeyRetriever(RAGRetriever):
 
     def query_total_count(self) -> int:
         """Query total count of documents in the store."""
-        keys = _run_async(self._vector_store._scan_all_docs())
-        return len(keys)
+        return len(self._vector_store.scan_all_docs())
 
     def clear(self, **kwargs) -> None:
         """Clear all documents from the store and recreate the index."""
-        _run_async(self._async_clear())
-
-    async def _async_clear(self) -> None:
-        """Async implementation of clear."""
-        await self._vector_store.drop_index()
-        await self._vector_store._ensure_index()
+        self._vector_store.drop_index()
+        self._vector_store.ensure_index()

@@ -85,6 +85,7 @@ redis:
 #   prefix: "metagpt:rag:"
 #   vector_dimensions: 1536
 #   distance_metric: "COSINE"  # COSINE, L2, or IP
+#   vector_algorithm: "HNSW"   # HNSW or FLAT
 
 s3:
   access_key: "YOUR_ACCESS_KEY"

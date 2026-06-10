@@ -106,7 +106,7 @@ class RetrieverFactory(ConfigBasedFactory):
 
         return ElasticsearchRetriever(**config.model_dump())
 
-    def _create_valkey_retriever(self, config: ValkeyRetrieverConfig, **kwargs):
+    def _create_valkey_retriever(self, config: ValkeyRetrieverConfig, **kwargs) -> "ValkeyRetriever":
         from metagpt.rag.retrievers.valkey_retriever import ValkeyRetriever
         from metagpt.rag.vector_stores.valkey import ValkeyVectorStore
 
