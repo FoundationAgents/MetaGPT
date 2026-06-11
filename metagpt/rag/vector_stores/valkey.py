@@ -10,6 +10,27 @@ import json
 import struct
 from typing import Any, List, Literal, Optional
 
+from glide_sync import (
+    Batch,
+    DataType,
+    DistanceMetricType,
+    FtCreateOptions,
+    FtSearchOptions,
+    GlideClient,
+    GlideClientConfiguration,
+    NodeAddress,
+    ReturnField,
+    ServerCredentials,
+    TextField,
+    VectorAlgorithm,
+    VectorField,
+    VectorFieldAttributesFlat,
+    VectorFieldAttributesHnsw,
+    VectorType,
+    ft,
+    glide_json,
+    json_batch,
+)
 from llama_index.core.schema import BaseNode, MetadataMode, TextNode
 from llama_index.core.vector_stores.types import (
     BasePydanticVectorStore,
@@ -65,13 +86,6 @@ class ValkeyVectorStore(BasePydanticVectorStore):
 
     def _connect(self) -> None:
         """Create a synchronous GlideClient connection to Valkey."""
-        from glide_sync import (
-            GlideClient,
-            GlideClientConfiguration,
-            NodeAddress,
-            ServerCredentials,
-        )
-
         if self.password and not self.use_tls:
             logger.warning(
                 "Valkey password is configured but TLS is disabled — credentials will be sent in cleartext. "
@@ -100,8 +114,6 @@ class ValkeyVectorStore(BasePydanticVectorStore):
         Uses ft.list() rather than try/except + error-string matching, which is
         fragile against server-version message changes and can swallow unrelated errors.
         """
-        from glide_sync import ft
-
         existing = ft.list(self._client)
         names = {i.decode() if isinstance(i, (bytes, bytearray)) else str(i) for i in (existing or [])}
         return self.index_name in names
@@ -113,19 +125,6 @@ class ValkeyVectorStore(BasePydanticVectorStore):
         """
         if self._client is None:
             self._connect()
-
-        from glide_sync import (
-            DataType,
-            DistanceMetricType,
-            FtCreateOptions,
-            TextField,
-            VectorAlgorithm,
-            VectorField,
-            VectorFieldAttributesFlat,
-            VectorFieldAttributesHnsw,
-            VectorType,
-            ft,
-        )
 
         if self._index_exists():
             logger.debug("Index %s already exists, skipping creation", self.index_name)
@@ -184,8 +183,6 @@ class ValkeyVectorStore(BasePydanticVectorStore):
         raised error reports how many documents were durably written, so callers
         can retry without re-inserting duplicates.
         """
-        from glide_sync import Batch, json_batch
-
         if self._client is None:
             self._connect()
             self.ensure_index()
@@ -235,8 +232,6 @@ class ValkeyVectorStore(BasePydanticVectorStore):
         source may be chunked into many nodes. This deletes every stored key
         whose ``ref_doc_id`` (or ``doc_id``) matches, so no orphaned chunks remain.
         """
-        from glide_sync import glide_json
-
         if self._client is None:
             self._connect()
 
@@ -265,8 +260,6 @@ class ValkeyVectorStore(BasePydanticVectorStore):
 
     def query(self, query: VectorStoreQuery, **kwargs: Any) -> VectorStoreQueryResult:
         """Query the vector store with a KNN vector search."""
-        from glide_sync import FtSearchOptions, ReturnField, ft
-
         if self._client is None:
             self._connect()
             self.ensure_index()
@@ -406,8 +399,6 @@ class ValkeyVectorStore(BasePydanticVectorStore):
         """Drop the search index and clean up all associated keys."""
         if self._client is None:
             self._connect()
-
-        from glide_sync import ft
 
         if self._index_exists():
             ft.dropindex(self._client, self.index_name)

@@ -1,12 +1,20 @@
-"""Unit tests for ValkeyVectorStore with a mocked synchronous valkey-glide client."""
+"""Unit tests for ValkeyVectorStore with a mocked synchronous valkey-glide client.
 
+``glide_sync`` symbols are imported at the top of ``metagpt.rag.vector_stores.valkey``,
+so tests patch those names directly on the module namespace (not ``sys.modules``).
+"""
+
+from contextlib import contextmanager
 from unittest.mock import MagicMock, patch
 
 import pytest
 from llama_index.core.schema import TextNode
 from llama_index.core.vector_stores.types import VectorStoreQuery
 
+from metagpt.rag.vector_stores import valkey as valkey_mod
 from metagpt.rag.vector_stores.valkey import ValkeyVectorStore
+
+_MODULE = "metagpt.rag.vector_stores.valkey"
 
 
 @pytest.fixture
@@ -32,9 +40,14 @@ def mock_client():
     return client
 
 
-def _glide_sync_mock(**overrides):
-    """Build a MagicMock standing in for the glide_sync module."""
-    base = dict(
+@contextmanager
+def patch_glide(**attrs):
+    """Patch the glide_sync symbols used by the valkey module.
+
+    Any name not supplied defaults to a fresh MagicMock. Enum-like symbols get
+    sensible string members so map lookups in the module resolve.
+    """
+    defaults = dict(
         GlideClient=MagicMock(),
         GlideClientConfiguration=MagicMock(),
         NodeAddress=MagicMock(),
@@ -55,8 +68,12 @@ def _glide_sync_mock(**overrides):
         VectorFieldAttributesHnsw=MagicMock(),
         VectorType=MagicMock(FLOAT32="FLOAT32"),
     )
-    base.update(overrides)
-    return MagicMock(**base)
+    defaults.update(attrs)
+    # Only patch names that actually exist on the module to avoid typos slipping through.
+    for name in defaults:
+        assert hasattr(valkey_mod, name), f"{name} is not imported in {_MODULE}"
+    with patch.multiple(_MODULE, **defaults):
+        yield defaults
 
 
 class TestValkeyVectorStoreConnection:
@@ -66,10 +83,7 @@ class TestValkeyVectorStoreConnection:
         glide_client_cls.create = MagicMock(return_value=mock_glide_client)
         config_cls = MagicMock()
 
-        with patch.dict(
-            "sys.modules",
-            {"glide_sync": _glide_sync_mock(GlideClient=glide_client_cls, GlideClientConfiguration=config_cls)},
-        ):
+        with patch_glide(GlideClient=glide_client_cls, GlideClientConfiguration=config_cls):
             store._connect()
 
         assert store._client is mock_glide_client
@@ -78,10 +92,7 @@ class TestValkeyVectorStoreConnection:
     def test_connect_with_tls(self):
         store = ValkeyVectorStore(host="remote.host", port=6380, use_tls=True)
         config_cls = MagicMock()
-        with patch.dict(
-            "sys.modules",
-            {"glide_sync": _glide_sync_mock(GlideClientConfiguration=config_cls)},
-        ):
+        with patch_glide(GlideClientConfiguration=config_cls):
             store._connect()
         assert config_cls.call_args[1]["use_tls"] is True
 
@@ -89,18 +100,15 @@ class TestValkeyVectorStoreConnection:
         store = ValkeyVectorStore(host="localhost", port=6379, password="secret123", use_tls=True)
         config_cls = MagicMock()
         creds_cls = MagicMock()
-        with patch.dict(
-            "sys.modules",
-            {"glide_sync": _glide_sync_mock(GlideClientConfiguration=config_cls, ServerCredentials=creds_cls)},
-        ):
+        with patch_glide(GlideClientConfiguration=config_cls, ServerCredentials=creds_cls):
             store._connect()
         creds_cls.assert_called_once_with(password="secret123")
         assert "credentials" in config_cls.call_args[1]
 
-    def test_connect_password_without_tls_warns(self, caplog):
+    def test_connect_password_without_tls_warns(self):
         store = ValkeyVectorStore(host="localhost", port=6379, password="secret123", use_tls=False)
-        with patch.dict("sys.modules", {"glide_sync": _glide_sync_mock()}):
-            with patch("metagpt.rag.vector_stores.valkey.logger") as mock_logger:
+        with patch_glide():
+            with patch(f"{_MODULE}.logger") as mock_logger:
                 store._connect()
         assert mock_logger.warning.called
         assert "cleartext" in mock_logger.warning.call_args[0][0]
@@ -108,20 +116,14 @@ class TestValkeyVectorStoreConnection:
     def test_request_timeout_configurable(self):
         store = ValkeyVectorStore(request_timeout=10000)
         config_cls = MagicMock()
-        with patch.dict(
-            "sys.modules",
-            {"glide_sync": _glide_sync_mock(GlideClientConfiguration=config_cls)},
-        ):
+        with patch_glide(GlideClientConfiguration=config_cls):
             store._connect()
         assert config_cls.call_args[1]["request_timeout"] == 10000
 
     def test_client_name_set(self):
         store = ValkeyVectorStore(client_name="metagpt_rag_client")
         config_cls = MagicMock()
-        with patch.dict(
-            "sys.modules",
-            {"glide_sync": _glide_sync_mock(GlideClientConfiguration=config_cls)},
-        ):
+        with patch_glide(GlideClientConfiguration=config_cls):
             store._connect()
         assert config_cls.call_args[1]["client_name"] == "metagpt_rag_client"
 
@@ -144,7 +146,7 @@ class TestValkeyVectorStoreIndex:
         ft.list = MagicMock(return_value=[])  # index not present
         ft.create = MagicMock()
 
-        with patch.dict("sys.modules", {"glide_sync": _glide_sync_mock(ft=ft)}):
+        with patch_glide(ft=ft):
             store.ensure_index()
 
         ft.create.assert_called_once()
@@ -156,7 +158,7 @@ class TestValkeyVectorStoreIndex:
         ft.list = MagicMock(return_value=[b"test_index"])
         ft.create = MagicMock()
 
-        with patch.dict("sys.modules", {"glide_sync": _glide_sync_mock(ft=ft)}):
+        with patch_glide(ft=ft):
             store.ensure_index()
 
         ft.create.assert_not_called()
@@ -165,7 +167,7 @@ class TestValkeyVectorStoreIndex:
         # _client is None -> ensure_index must call _connect first (temporal-coupling guard).
         ft = MagicMock()
         ft.list = MagicMock(return_value=[b"test_index"])
-        with patch.dict("sys.modules", {"glide_sync": _glide_sync_mock(ft=ft)}):
+        with patch_glide(ft=ft):
             with patch.object(ValkeyVectorStore, "_connect", autospec=True) as mock_connect:
 
                 def _set_client(self):
@@ -187,10 +189,7 @@ class TestValkeyVectorStoreOperations:
             TextNode(text="foo bar", embedding=[0.5, 0.6, 0.7, 0.8], id_="doc2"),
         ]
 
-        with patch.dict(
-            "sys.modules",
-            {"glide_sync": _glide_sync_mock(json_batch=json_batch, Batch=batch_cls)},
-        ):
+        with patch_glide(json_batch=json_batch, Batch=batch_cls):
             ids = store.add(nodes)
 
         assert ids == ["doc1", "doc2"]
@@ -206,10 +205,7 @@ class TestValkeyVectorStoreOperations:
 
         nodes = [TextNode(text="hello", embedding=[0.1, 0.2, 0.3, 0.4], id_="doc1")]
 
-        with patch.dict(
-            "sys.modules",
-            {"glide_sync": _glide_sync_mock(json_batch=json_batch, Batch=batch_cls)},
-        ):
+        with patch_glide(json_batch=json_batch, Batch=batch_cls):
             with pytest.raises(RuntimeError, match="0 document"):
                 store.add(nodes)
 
@@ -229,7 +225,7 @@ class TestValkeyVectorStoreOperations:
         ft = MagicMock()
         ft.search = MagicMock(return_value=results)
 
-        with patch.dict("sys.modules", {"glide_sync": _glide_sync_mock(ft=ft)}):
+        with patch_glide(ft=ft):
             query = VectorStoreQuery(query_embedding=[0.1, 0.2, 0.3, 0.4], similarity_top_k=5)
             result = store.query(query)
 
@@ -245,7 +241,7 @@ class TestValkeyVectorStoreOperations:
         ft = MagicMock()
         ft.search = MagicMock(return_value=[0])
 
-        with patch.dict("sys.modules", {"glide_sync": _glide_sync_mock(ft=ft)}):
+        with patch_glide(ft=ft):
             query = VectorStoreQuery(query_embedding=[0.1, 0.2, 0.3, 0.4], similarity_top_k=5)
             result = store.query(query)
 
@@ -254,7 +250,7 @@ class TestValkeyVectorStoreOperations:
 
     def test_query_dimension_mismatch_raises(self, store, mock_client):
         store._client = mock_client
-        with patch.dict("sys.modules", {"glide_sync": _glide_sync_mock()}):
+        with patch_glide():
             query = VectorStoreQuery(query_embedding=[0.1, 0.2], similarity_top_k=5)
             with pytest.raises(ValueError, match="does not match"):
                 store.query(query)
@@ -274,8 +270,8 @@ class TestValkeyVectorStoreOperations:
         ]
         ft = MagicMock()
         ft.search = MagicMock(return_value=results)
-        with patch.dict("sys.modules", {"glide_sync": _glide_sync_mock(ft=ft)}):
-            with patch("metagpt.rag.vector_stores.valkey.logger") as mock_logger:
+        with patch_glide(ft=ft):
+            with patch(f"{_MODULE}.logger") as mock_logger:
                 query = VectorStoreQuery(query_embedding=[0.1, 0.2, 0.3, 0.4], similarity_top_k=1)
                 result = store.query(query)
         assert result.nodes[0].metadata == {}
@@ -302,7 +298,7 @@ class TestValkeyVectorStoreOperations:
 
         glide_json.get.side_effect = fake_get
 
-        with patch.dict("sys.modules", {"glide_sync": _glide_sync_mock(glide_json=glide_json)}):
+        with patch_glide(glide_json=glide_json):
             store.delete("src1")
 
         deleted_keys = mock_client.delete.call_args[0][0]
@@ -313,7 +309,7 @@ class TestValkeyVectorStoreOperations:
         glide_json = MagicMock()
         mock_client.scan.side_effect = lambda cursor, match=None, count=None: (b"0", [])
 
-        with patch.dict("sys.modules", {"glide_sync": _glide_sync_mock(glide_json=glide_json)}):
+        with patch_glide(glide_json=glide_json):
             store.delete("orphan")
 
         mock_client.delete.assert_called_once_with(["test:rag:orphan"])
@@ -326,7 +322,7 @@ class TestValkeyVectorStoreOperations:
         # SCAN: one batch then cursor 0
         mock_client.scan.side_effect = [(b"0", [b"test:rag:doc1", b"test:rag:doc2"])]
 
-        with patch.dict("sys.modules", {"glide_sync": _glide_sync_mock(ft=ft)}):
+        with patch_glide(ft=ft):
             store.drop_index()
 
         ft.dropindex.assert_called_once()
@@ -339,7 +335,7 @@ class TestValkeyVectorStoreOperations:
         ft.dropindex = MagicMock()
         mock_client.scan.side_effect = [(b"0", [b"test:rag:orphan1"])]
 
-        with patch.dict("sys.modules", {"glide_sync": _glide_sync_mock(ft=ft)}):
+        with patch_glide(ft=ft):
             store.drop_index()
 
         ft.dropindex.assert_not_called()
@@ -357,8 +353,6 @@ class TestValkeyVectorStoreOperations:
 
     def test_scan_max_iterations_safety(self, store, mock_client):
         """Verify SCAN loop is bounded by _MAX_SCAN_ITERATIONS and never spins forever."""
-        from metagpt.rag.vector_stores import valkey as valkey_mod
-
         # Always non-zero cursor + one key -> would loop forever without the guard.
         mock_client.scan.return_value = (b"1", [b"test:rag:doc"])
         store._client = mock_client
