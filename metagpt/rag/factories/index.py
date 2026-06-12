@@ -17,6 +17,7 @@ from metagpt.rag.schema import (
     ElasticsearchIndexConfig,
     ElasticsearchKeywordIndexConfig,
     FAISSIndexConfig,
+    ValkeyIndexConfig,
 )
 
 
@@ -28,6 +29,7 @@ class RAGIndexFactory(ConfigBasedFactory):
             BM25IndexConfig: self._create_bm25,
             ElasticsearchIndexConfig: self._create_es,
             ElasticsearchKeywordIndexConfig: self._create_es,
+            ValkeyIndexConfig: self._create_valkey,
         }
         super().__init__(creators)
 
@@ -74,6 +76,12 @@ class RAGIndexFactory(ConfigBasedFactory):
             vector_store=vector_store,
             embed_model=embed_model,
         )
+
+    def _create_valkey(self, config: ValkeyIndexConfig, **kwargs) -> VectorStoreIndex:
+        from metagpt.rag.vector_stores.valkey import ValkeyVectorStore
+
+        vector_store = ValkeyVectorStore(**config.store_config.model_dump())
+        return self._index_from_vector_store(vector_store=vector_store, config=config, **kwargs)
 
     def _extract_embed_model(self, config, **kwargs) -> BaseEmbedding:
         return self._val_from_config_or_kwargs("embed_model", config, **kwargs)

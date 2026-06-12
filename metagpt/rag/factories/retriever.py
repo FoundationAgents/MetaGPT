@@ -28,6 +28,7 @@ from metagpt.rag.schema import (
     ElasticsearchKeywordRetrieverConfig,
     ElasticsearchRetrieverConfig,
     FAISSRetrieverConfig,
+    ValkeyRetrieverConfig,
 )
 
 
@@ -57,6 +58,7 @@ class RetrieverFactory(ConfigBasedFactory):
             ChromaRetrieverConfig: self._create_chroma_retriever,
             ElasticsearchRetrieverConfig: self._create_es_retriever,
             ElasticsearchKeywordRetrieverConfig: self._create_es_retriever,
+            ValkeyRetrieverConfig: self._create_valkey_retriever,
         }
         super().__init__(creators)
 
@@ -103,6 +105,18 @@ class RetrieverFactory(ConfigBasedFactory):
         config.index = self._build_es_index(config, **kwargs)
 
         return ElasticsearchRetriever(**config.model_dump())
+
+    def _create_valkey_retriever(self, config: ValkeyRetrieverConfig, **kwargs) -> "ValkeyRetriever":
+        from metagpt.rag.retrievers.valkey_retriever import ValkeyRetriever
+        from metagpt.rag.vector_stores.valkey import ValkeyVectorStore
+
+        vector_store = ValkeyVectorStore(**config.store_config.model_dump())
+        return ValkeyRetriever(
+            vector_store=vector_store,
+            similarity_top_k=config.similarity_top_k,
+            nodes=self._extract_nodes(config, **kwargs),
+            embed_model=self._extract_embed_model(config, **kwargs),
+        )
 
     def _extract_index(self, config: BaseRetrieverConfig = None, **kwargs) -> VectorStoreIndex:
         return self._val_from_config_or_kwargs("index", config, **kwargs)

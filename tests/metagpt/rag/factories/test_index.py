@@ -8,6 +8,8 @@ from metagpt.rag.schema import (
     ElasticsearchIndexConfig,
     ElasticsearchStoreConfig,
     FAISSIndexConfig,
+    ValkeyIndexConfig,
+    ValkeyStoreConfig,
 )
 
 
@@ -87,3 +89,14 @@ class TestRAGIndexFactory:
 
         # Assert
         mock_es_store.assert_called_once()
+
+    def test_create_valkey_index(self, mocker, mock_from_vector_store, mock_embedding):
+        # Mock
+        mocker.patch("metagpt.rag.vector_stores.valkey.ValkeyVectorStore")
+        valkey_config = ValkeyIndexConfig(store_config=ValkeyStoreConfig())
+
+        # Exec
+        self.index_factory.get_index(valkey_config, embed_model=mock_embedding)
+
+        # Assert
+        mock_from_vector_store.assert_called_once()

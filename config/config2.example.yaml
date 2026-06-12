@@ -74,6 +74,19 @@ redis:
   password: "YOUR_PASSWORD"
   db: "0"
 
+# Valkey Vector Store (for RAG backend)
+# valkey:
+#   host: "localhost"
+#   port: 6379
+#   password: ""
+#   use_tls: false
+#   request_timeout: 5000
+#   index_name: "metagpt_rag"
+#   prefix: "metagpt:rag:"
+#   vector_dimensions: 1536
+#   distance_metric: "COSINE"  # COSINE, L2, or IP
+#   vector_algorithm: "HNSW"   # HNSW or FLAT
+
 s3:
   access_key: "YOUR_ACCESS_KEY"
   secret_key: "YOUR_SECRET_KEY"
