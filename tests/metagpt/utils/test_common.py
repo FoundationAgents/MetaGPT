@@ -121,6 +121,25 @@ class TestGetProjectRoot:
             else:
                 assert result != 0
 
+    def test_check_cmd_exists_rejects_shell_injection(self, tmp_path):
+        """Regression test for issue #2037: command-injection via shell metacharacters.
+
+        check_cmd_exists must not invoke a shell on the input. Payloads containing
+        shell metacharacters must (a) return non-zero and (b) not execute the
+        smuggled command.
+        """
+        marker = tmp_path / "INJECTED"
+        payloads = [
+            "",
+            f"ls; touch {marker}",
+            f"ls && touch {marker}",
+            f"ls $(touch {marker})",
+            f"ls | tee {marker}",
+        ]
+        for payload in payloads:
+            assert check_cmd_exists(payload) != 0, f"payload should be rejected: {payload!r}"
+            assert not marker.exists(), f"shell injection executed for payload: {payload!r}"
+
     @pytest.mark.parametrize(("filename", "want"), [("1.md", "File list"), ("2.md", "Language"), ("3.md", "# TODOs")])
     @pytest.mark.asyncio
     async def test_parse_data_exception(self, filename, want):

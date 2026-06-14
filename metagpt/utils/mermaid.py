@@ -80,8 +80,8 @@ async def mermaid_to_file(
                 ]
             else:
                 commands = [config.mermaid.path, "-i", str(tmp), "-o", output_file, "-w", str(width), "-H", str(height)]
-            process = await asyncio.create_subprocess_shell(
-                " ".join(commands), stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE
+            process = await asyncio.create_subprocess_exec(
+                *commands, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE
             )
 
             stdout, stderr = await process.communicate()

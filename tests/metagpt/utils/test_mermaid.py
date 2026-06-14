@@ -6,6 +6,10 @@
 @File    : test_mermaid.py
 """
 
+import os
+import sys
+from types import SimpleNamespace
+
 import pytest
 
 from metagpt.const import DEFAULT_WORKSPACE_ROOT
@@ -36,6 +40,40 @@ async def test_mermaid(engine, suffixes, context, mermaid_mocker):
         for ext in exts:
             assert save_to.with_suffix(ext).exists()
             save_to.with_suffix(ext).unlink(missing_ok=True)
+
+
+@pytest.mark.asyncio
+@pytest.mark.skipif(sys.platform.startswith("win"), reason="shell script fake mmdc is POSIX-only")
+async def test_mermaid_to_file_rejects_path_injection(tmp_path):
+    """Regression test for issue #2037: command-injection via config.mermaid.path.
+
+    Drives mermaid_to_file with a malicious path containing shell metacharacters
+    and asserts the smuggled command does NOT execute. Uses a fake mmdc binary
+    so the test does not depend on the real Mermaid CLI being installed.
+    """
+    fake_mmdc = tmp_path / "mmdc"
+    fake_mmdc.write_text("#!/usr/bin/env bash\nexit 0\n")
+    os.chmod(fake_mmdc, 0o755)
+
+    marker = tmp_path / "INJECTED"
+    malicious_path = f"{fake_mmdc}; touch {marker} #"
+
+    config = SimpleNamespace(
+        mermaid=SimpleNamespace(path=malicious_path, puppeteer_config="", engine="nodejs")
+    )
+
+    rc = await mermaid_to_file(
+        engine="nodejs",
+        mermaid_code="graph TD; A-->B;",
+        output_file_without_suffix=str(tmp_path / "out"),
+        config=config,
+        suffixes=["svg"],
+    )
+
+    # Either check_cmd_exists rejects the path (-1) or subprocess_exec raises
+    # FileNotFoundError. In both cases the marker file must not exist.
+    assert not marker.exists(), "shell injection executed — path was passed through a shell"
+    assert rc != 0, "malicious path should not produce a successful rendering"
 
 
 if __name__ == "__main__":
