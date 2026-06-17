@@ -4,6 +4,7 @@
 # @Desc    :
 from __future__ import annotations
 
+import ast
 import asyncio
 from typing import Any, List, Optional
 
@@ -63,7 +64,14 @@ class ThoughtSolverBase(BaseModel):
         )
         rsp = await self.llm.aask(msg=state_prompt + "\n" + OUTPUT_FORMAT)
         thoughts = CodeParser.parse_code(text=rsp)
-        thoughts = eval(thoughts)
+        # The model is asked (see OUTPUT_FORMAT) to return a plain list literal of thought nodes.
+        # Parse it with ast.literal_eval so that only literal data structures are accepted; this
+        # prevents arbitrary code execution if the model output contains non-literal Python.
+        try:
+            thoughts = ast.literal_eval(thoughts)
+        except (ValueError, SyntaxError) as e:
+            logger.warning(f"Failed to parse thoughts as a literal structure, ignoring generated thoughts: {e}")
+            thoughts = []
         # fixme 避免不跟随，生成过多nodes
         # valid_thoughts = [_node for idx, _node in enumerate(thoughts) if idx < self.n_generate_sample]
         return self.thought_tree.update_node(thoughts, current_node=current_node)
