@@ -349,10 +349,9 @@ def extract_state_value_from_output(content: str) -> str:
     """
     content = content.strip()  # deal the output cases like " 0", "0\n" and so on.
     pattern = (
-        r"(?<!-)[0-9]"  # TODO find the number using a more proper method not just extract from content using pattern
+        r"-?\d+"  # extract the first (possibly multi-digit or negative) integer from the output
     )
     matches = re.findall(pattern, content, re.DOTALL)
-    matches = list(set(matches))
     state = matches[0] if len(matches) > 0 else "-1"
     return state
 
