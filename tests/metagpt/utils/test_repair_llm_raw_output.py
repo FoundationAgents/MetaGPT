@@ -386,3 +386,15 @@ def test_extract_content_from_output():
     assert output.startswith('{\n"Implementation approach"') and output.endswith(
         '"Anything UNCLEAR": "The requirement is clear to me."\n}'
     )
+
+
+def test_extract_state_value_from_output():
+    from metagpt.utils.repair_llm_raw_output import extract_state_value_from_output
+
+    # single-digit states and the "-1" no-op state are returned as-is
+    assert extract_state_value_from_output("0") == "0"
+    assert extract_state_value_from_output(" 3\n") == "3"
+    assert extract_state_value_from_output("-1") == "-1"
+    # multi-digit state indices (>= 10) must be kept whole, not split into digits
+    assert extract_state_value_from_output("10") == "10"
+    assert extract_state_value_from_output("The next state is 12.") == "12"
