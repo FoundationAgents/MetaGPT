@@ -81,13 +81,40 @@ class RunCode(Action):
 
     @classmethod
     async def run_text(cls, code) -> Tuple[str, str]:
+        """Execute code in a subprocess for sandbox isolation.
+
+        SECURITY: Code is written to a temporary file and executed via
+        subprocess instead of exec() to prevent arbitrary code execution
+        in the MetaGPT process.
+        """
+        import tempfile
+        import os as _os
         try:
-            # We will document_store the result in this dictionary
-            namespace = {}
-            exec(code, namespace)
+            # Write code to a temporary file for subprocess execution
+            with tempfile.NamedTemporaryFile(
+                mode="w", suffix=".py", delete=False, encoding="utf-8"
+            ) as tmp:
+                tmp.write(code)
+                tmp.flush()
+                tmp_path = tmp.name
+
+            # Execute in isolated subprocess with timeout
+            proc = subprocess.run(
+                [sys.executable, tmp_path],
+                capture_output=True,
+                text=True,
+                timeout=30,
+            )
+            return proc.stdout, proc.stderr
+        except subprocess.TimeoutExpired:
+            return "", "Execution timed out after 30 seconds"
         except Exception as e:
             return "", str(e)
-        return namespace.get("result", ""), ""
+        finally:
+            try:
+                _os.unlink(tmp_path)
+            except Exception:
+                pass
 
     async def run_script(self, working_directory, additional_python_paths=[], command=[]) -> Tuple[str, str]:
         working_directory = str(working_directory)
