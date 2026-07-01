@@ -16,6 +16,7 @@ from metagpt.tools.libs import (
     browser,
     deployer,
     git,
+    invinoveritas_review,
 )
 from metagpt.tools.libs.env import get_env, set_get_env_entry, default_get_env, get_env_description, get_env_default
 
@@ -31,6 +32,7 @@ _ = (
     browser,
     deployer,
     git,
+    invinoveritas_review,
     get_env,
     get_env_default,
     get_env_description,
