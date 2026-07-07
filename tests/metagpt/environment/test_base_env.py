@@ -15,6 +15,8 @@ from metagpt.environment.base_env import (
     mark_as_readable,
     mark_as_writeable,
 )
+from metagpt.roles.role import Role
+from metagpt.schema import Message
 
 
 class ForTestEnv(Environment):
@@ -69,3 +71,27 @@ async def test_ext_env():
 
     assert await env.read_from_api("read_api_no_param") == 15
     assert await env.read_from_api(EnvAPIAbstract(api_name="read_api", kwargs={"a": 5, "b": 5})) == 10
+
+
+def test_publish_message_returns_true_when_recipient_found():
+    env = Environment()
+    role = Role(name="Alice", profile="greeter")
+    env.add_role(role)
+
+    msg = Message(content="please process this", sent_from="Producer", send_to={"Alice"})
+
+    assert env.publish_message(msg) is True
+    assert not role.rc.msg_buffer.empty()
+    assert env.history.storage[-1] == msg
+
+
+def test_publish_message_returns_false_when_recipient_missing():
+    env = Environment()
+    role = Role(name="Alice", profile="greeter")
+    env.add_role(role)
+
+    msg = Message(content="please process this", sent_from="Producer", send_to={"NonexistentRole"})
+
+    assert env.publish_message(msg) is False
+    assert role.rc.msg_buffer.empty()
+    assert env.history.storage[-1] == msg

@@ -192,7 +192,7 @@ class Environment(ExtEnv):
             logger.warning(f"Message no recipients: {message.dump()}")
         self.history.add(message)  # For debug
 
-        return True
+        return found
 
     async def run(self, k=1):
         """处理一次所有信息的运行
