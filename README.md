@@ -139,6 +139,17 @@ https://github.com/user-attachments/assets/888cb169-78c3-4a42-9d62-9d90ed3928c9
   - [Receipt Assistant](https://docs.deepwisdom.ai/main/en/guide/use_cases/agent/receipt_assistant.html)
 - ❓ [FAQs](https://docs.deepwisdom.ai/main/en/guide/faq.html)
 
+## Integrations
+
+MetaGPT works well with other workflow automation tools. One powerful integration is [llm-box](https://github.com/alib8b8/llama-box), a terminal-first workflow automation engine with MCP server mode:
+
+- Generate and execute YAML workflows from plain English descriptions
+- 20+ built-in nodes including LLM calls, file operations, API requests
+- 15+ LLM providers (Ollama, DeepSeek, OpenAI-compatible)
+- Supports stdio and HTTP MCP modes
+
+You can call llm-box workflows from your MetaGPT agents using HTTP requests or integrate it as an MCP server for enhanced automation capabilities.
+
 ## Support
 
 ### Discord Join US
