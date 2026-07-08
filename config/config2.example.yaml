@@ -56,9 +56,12 @@ repair_llm_output: true  # when the output is not a valid json, try to repair it
 proxy: "YOUR_PROXY"  # for tools like requests, playwright, selenium, etc.
 
 search:
-  api_type: "google"
+  api_type: "google"  # serpapi / serper / google / ddg / bing / tavily
   api_key: "YOUR_API_KEY"
   cse_id: "YOUR_CSE_ID"
+  # Example for Tavily (https://app.tavily.com/ for an API key):
+  # api_type: "tavily"
+  # api_key: "tvly-YOUR_API_KEY"
 
 browser:
   engine: "playwright"  # playwright/selenium

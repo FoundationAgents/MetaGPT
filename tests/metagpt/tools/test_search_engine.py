@@ -37,6 +37,8 @@ class MockSearchEnine:
         (SearchEngineType.SERPER_GOOGLE, None, 6, False),
         (SearchEngineType.DUCK_DUCK_GO, None, 8, True),
         (SearchEngineType.DUCK_DUCK_GO, None, 6, False),
+        (SearchEngineType.TAVILY, None, 8, True),
+        (SearchEngineType.TAVILY, None, 6, False),
         (SearchEngineType.BING, None, 6, False),
         (SearchEngineType.CUSTOM_ENGINE, MockSearchEnine().run, 8, False),
         (SearchEngineType.CUSTOM_ENGINE, MockSearchEnine().run, 6, False),
@@ -59,6 +61,8 @@ async def test_search_engine(
         search_engine_config["cse_id"] = "mock-google-cse"
     elif search_engine_type is SearchEngineType.SERPER_GOOGLE:
         search_engine_config["api_key"] = "mock-serper-key"
+    elif search_engine_type is SearchEngineType.TAVILY:
+        search_engine_config["api_key"] = "mock-tavily-key"
 
     async def test(search_engine):
         rsp = await search_engine.run("metagpt", max_results, as_string)
