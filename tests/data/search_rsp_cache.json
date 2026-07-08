@@ -991,5 +991,53 @@
                 }
             ]
         }
-    ]
+    ],
+    "aiohttp-post-https://api.tavily.com/search-{\"headers\": {\"Authorization\": \"Bearer mock-tavily-key\", \"Content-Type\": \"application/json\"}, \"json\": {\"max_results\": 8, \"query\": \"metagpt\", \"search_depth\": \"basic\", \"topic\": \"general\"}}": {
+        "query": "metagpt",
+        "results": [
+            {
+                "title": "MetaGPT: The Multi-Agent Framework",
+                "url": "https://github.com/FoundationAgents/MetaGPT",
+                "content": "MetaGPT takes a one-line requirement as input and outputs user stories, competitive analysis, requirements, data structures, APIs and documents.",
+                "score": 0.95
+            },
+            {
+                "title": "MetaGPT: Meta Programming for A Multi-Agent Collaborative Framework",
+                "url": "https://arxiv.org/abs/2308.00352",
+                "content": "We introduce MetaGPT, a meta-programming framework incorporating efficient human workflows into LLM-based multi-agent collaborations.",
+                "score": 0.92
+            },
+            {
+                "title": "MetaGPT Documentation",
+                "url": "https://docs.deepwisdom.ai/main/en/",
+                "content": "MetaGPT assigns different roles to GPTs to form a collaborative software entity for complex tasks.",
+                "score": 0.88
+            }
+        ],
+        "response_time": "0.42"
+    },
+    "aiohttp-post-https://api.tavily.com/search-{\"headers\": {\"Authorization\": \"Bearer mock-tavily-key\", \"Content-Type\": \"application/json\"}, \"json\": {\"max_results\": 6, \"query\": \"metagpt\", \"search_depth\": \"basic\", \"topic\": \"general\"}}": {
+        "query": "metagpt",
+        "results": [
+            {
+                "title": "MetaGPT: The Multi-Agent Framework",
+                "url": "https://github.com/FoundationAgents/MetaGPT",
+                "content": "MetaGPT takes a one-line requirement as input and outputs user stories, competitive analysis, requirements, data structures, APIs and documents.",
+                "score": 0.95
+            },
+            {
+                "title": "MetaGPT: Meta Programming for A Multi-Agent Collaborative Framework",
+                "url": "https://arxiv.org/abs/2308.00352",
+                "content": "We introduce MetaGPT, a meta-programming framework incorporating efficient human workflows into LLM-based multi-agent collaborations.",
+                "score": 0.92
+            },
+            {
+                "title": "MetaGPT Documentation",
+                "url": "https://docs.deepwisdom.ai/main/en/",
+                "content": "MetaGPT assigns different roles to GPTs to form a collaborative software entity for complex tasks.",
+                "score": 0.88
+            }
+        ],
+        "response_time": "0.42"
+    }
 }
