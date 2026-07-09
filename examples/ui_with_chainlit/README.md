@@ -19,6 +19,8 @@ chainlit run app.py
 
 - Now go to: http://localhost:8000
 
+- Default login: `admin` / `admin` (configurable via `CHAINLIT_USERNAME` and `CHAINLIT_PASSWORD` environment variables).
+
 - Select,
   - `Create a 2048 game`
   - `Write a cli Blackjack Game`

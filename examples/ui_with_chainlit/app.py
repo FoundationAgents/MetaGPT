@@ -1,6 +1,7 @@
 from pathlib import Path
 
 import chainlit as cl
+import os
 from init_setup import ChainlitEnv
 
 from metagpt.roles import (
@@ -11,6 +12,21 @@ from metagpt.roles import (
     QaEngineer,
 )
 from metagpt.team import Team
+
+
+# https://docs.chainlit.io/concepts/authentication
+@cl.password_auth_callback
+def auth_callback(username: str, password: str) -> cl.User | None:
+    """Validate credentials from environment variables.
+
+    Reads CHAINLIT_USERNAME and CHAINLIT_PASSWORD from the environment.
+    Falls back to a simple demo credential if neither is set.
+    """
+    expected_user = os.environ.get("CHAINLIT_USERNAME", "admin")
+    expected_pass = os.environ.get("CHAINLIT_PASSWORD", "admin")
+    if username == expected_user and password == expected_pass:
+        return cl.User(identifier=username)
+    return None
 
 
 # https://docs.chainlit.io/concepts/starters
