@@ -851,6 +851,8 @@ def encode_image(image_path_or_pil: Union[Path, Image, str], encoding: str = "ut
             image_path_or_pil = Path(image_path_or_pil)
         if not image_path_or_pil.exists():
             raise FileNotFoundError(f"{image_path_or_pil} not exists")
+        if not image_path_or_pil.is_file():
+            raise ValueError(f"{image_path_or_pil} is not a regular file")
         with open(str(image_path_or_pil), "rb") as image_file:
             bytes_data = image_file.read()
     return base64.b64encode(bytes_data).decode(encoding)
