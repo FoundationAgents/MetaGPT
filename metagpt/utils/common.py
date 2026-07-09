@@ -1163,6 +1163,46 @@ def log_time(method):
     return timeit_wrapper_async if iscoroutinefunction(method) else timeit_wrapper
 
 
+def _validate_url_safety(url: str) -> None:
+    """Validate that url is safe from SSRF vectors.
+
+    Raises ValueError if the URL uses a disallowed scheme, resolves to a
+    private/loopback IP, or contains a hostname that looks like localhost.
+    """
+    from urllib.parse import urlparse
+
+    parsed = urlparse(url)
+    # Scheme whitelist — only http / https are allowed.
+    if parsed.scheme not in ("http", "https"):
+        raise ValueError(f"URL scheme '{parsed.scheme}' is not allowed for endpoint checks")
+
+    host = parsed.hostname
+    if not host:
+        raise ValueError("URL has no hostname")
+
+    # Quick string checks before DNS resolution.
+    lower = host.lower()
+    if lower in ("localhost", "localhost.localdomain", "127.0.0.1", "::1", "0.0.0.0"):
+        raise ValueError(f"Loopback host '{host}' is not allowed")
+
+    # Resolve hostname and check IP ranges.
+    import ipaddress, socket
+
+    try:
+        addrs = socket.getaddrinfo(host, 80, family=socket.AF_UNSPEC, type=socket.SOCK_STREAM)
+    except (socket.gaierror, OSError):
+        raise ValueError(f"Cannot resolve hostname '{host}'")
+
+    for family, *_rest, sockaddr in addrs:
+        ip_str = sockaddr[0]
+        try:
+            addr = ipaddress.ip_address(ip_str)
+        except ValueError:
+            continue
+        if addr.is_private or addr.is_loopback or addr.is_link_local:
+            raise ValueError(f"Resolved IP '{ip_str}' (from '{host}') is not allowed")
+
+
 async def check_http_endpoint(url: str, timeout: int = 3) -> bool:
     """
     Checks the status of an HTTP endpoint.
@@ -1174,6 +1214,7 @@ async def check_http_endpoint(url: str, timeout: int = 3) -> bool:
     Returns:
         bool: True if the endpoint is online and responding with a 200 status code, False otherwise.
     """
+    _validate_url_safety(url)
     async with aiohttp.ClientSession() as session:
         try:
             async with session.get(url, timeout=timeout) as response:
