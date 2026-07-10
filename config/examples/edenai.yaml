@@ -1,0 +1,5 @@
+llm:
+  api_type: edenai
+  base_url: "https://api.edenai.run/v3"
+  api_key: "YOUR_API_KEY"
+  model: anthropic/claude-sonnet-4-5
