@@ -1094,12 +1094,25 @@ class Editor(BaseModel):
         return "\n".join(res_list)
 
     def _try_fix_path(self, path: Union[Path, str]) -> Path:
-        """Tries to fix the path if it is not absolute."""
+        """Tries to fix the path if it is not absolute, and confines it to the workspace."""
         if not isinstance(path, Path):
             path = Path(path)
         if not path.is_absolute():
             path = self.working_dir / path
-        return path
+        # Confine resolved path to the workspace to prevent path traversal.
+        # Without this, a model (or a prompt-injected agent) can read/write
+        # arbitrary files via absolute paths like /etc/passwd or /root/.bashrc.
+        resolved = path.resolve()
+        workspace_resolved = self.working_dir.resolve()
+        try:
+            resolved.relative_to(workspace_resolved)
+        except ValueError:
+            raise ValueError(
+                f"Path '{path}' resolves to '{resolved}', which is outside the "
+                f"workspace '{workspace_resolved}'. Editor access is confined to "
+                f"the workspace for security."
+            )
+        return resolved
 
     @staticmethod
     async def similarity_search(query: str, path: Union[str, Path]) -> List[str]:
