@@ -103,7 +103,7 @@ SUPPORT_STREAM_MODELS = {
 
 
 def messages_to_prompt_llama2(messages: list[dict]) -> str:
-    BOS = ("<s>",)
+    BOS = "<s>"
     B_INST, E_INST = "[INST]", "[/INST]"
     B_SYS, E_SYS = "<<SYS>>\n", "\n<</SYS>>\n\n"
 
