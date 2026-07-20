@@ -152,12 +152,39 @@ class Terminal:
             # Read the output until the unique marker is found.
             # We read bytes directly from stdout instead of text because when reading text,
             # '\r' is changed to '\n', resulting in excessive output.
+            # Keep an incomplete trailing fragment in `tmp` until we see a
+            # newline (or EOF). Do NOT use `*lines, tmp = splitlines(True)` —
+            # when the buffer is a single newline-terminated line, that unpack
+            # moves the only line into `tmp` and never yields it, so the
+            # end-of-command marker is never observed and run_command hangs
+            # forever on Linux/WSL2 (#2110).
             tmp = b""
             while True:
-                output = tmp + await self.process.stdout.read(1)
-                if not output:
-                    continue
-                *lines, tmp = output.splitlines(True)
+                chunk = await self.process.stdout.read(1)
+                if not chunk:
+                    # EOF: process any residual bytes still in the buffer.
+                    if not tmp:
+                        continue
+                    lines, tmp = [tmp], b""
+                else:
+                    output = tmp + chunk
+                    if output.endswith(b"
+") or output.endswith(b""):
+                        lines, tmp = [output], b""
+                    else:
+                        # Incomplete line — wait for more bytes.
+                        # If the buffer contains multiple lines, flush complete ones.
+                        parts = output.splitlines(True)
+                        if len(parts) > 1:
+                            *lines, tmp = parts
+                        else:
+                            # Single incomplete fragment (no trailing newline yet).
+                            if parts and (parts[0].endswith(b"
+") or parts[0].endswith(b"")):
+                                lines, tmp = parts, b""
+                            else:
+                                tmp = output
+                                continue
                 for line in lines:
                     line = line.decode(errors="ignore")
                     ix = line.rfind(END_MARKER_VALUE)
