@@ -8,7 +8,8 @@
 [ <a href="../README.md">En</a> |
 <b>中</b> |
 <a href="README_FR.md">Fr</a> |
-<a href="README_JA.md">日</a> ]
+<a href="README_JA.md">日</a> |
+<a href="README_FA.md">فا</a> ]
 <b>使 GPTs 组成软件公司，协作处理更复杂的任务</b>
 </p>
 
