@@ -9,7 +9,8 @@
 [ <b>En</b> |
 <a href="docs/README_CN.md">中</a> |
 <a href="docs/README_FR.md">Fr</a> |
-<a href="docs/README_JA.md">日</a> ]
+<a href="docs/README_JA.md">日</a> |
+<a href="docs/README_FA.md">فا</a> ]
 <b>Assign different roles to GPTs to form a collaborative entity for complex tasks.</b>
 </p>
 

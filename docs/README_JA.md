@@ -8,7 +8,8 @@
 [ <a href="../README.md">En</a> |
 <a href="README_CN.md">中</a> |
 <a href="README_FR.md">Fr</a> |
-<b>日</b> ]
+<b>日</b> |
+<a href="README_FA.md">فا</a> ]
 <b>GPT にさまざまな役割を割り当てることで、複雑なタスクのための共同ソフトウェアエンティティを形成します。</b>
 </p>
 
