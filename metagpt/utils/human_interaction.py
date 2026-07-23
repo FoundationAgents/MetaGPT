@@ -7,6 +7,7 @@ from typing import Any, Tuple, Type
 
 from pydantic import BaseModel
 
+from metagpt.locale import init_locale, t
 from metagpt.logs import logger
 from metagpt.utils.common import import_class
 
@@ -14,8 +15,11 @@ from metagpt.utils.common import import_class
 class HumanInteraction(object):
     stop_list = ("q", "quit", "exit")
 
+    def __init__(self):
+        init_locale()
+
     def multilines_input(self, prompt: str = "Enter: ") -> str:
-        logger.warning("Enter your content, use Ctrl-D or Ctrl-Z ( windows ) to save it.")
+        logger.warning(t("multilines_input_hint"))
         logger.info(f"{prompt}\n")
         lines = []
         while True:
@@ -54,12 +58,12 @@ class HumanInteraction(object):
             if check_ret:
                 break
             else:
-                logger.error(f"Input content can't meet required_type: {req_type}, please Re-Enter.")
+                logger.error(t("input_type_error", req_type=req_type))
         return structure_content
 
     def input_num_until_valid(self, num_max: int) -> int:
         while True:
-            input_num = input("Enter the num of the interaction key: ")
+            input_num = input(t("input_num_prompt"))
             input_num = input_num.strip()
             if input_num in self.stop_list:
                 return input_num
@@ -78,27 +82,30 @@ class HumanInteraction(object):
         instruct_content_dict = instruct_content.model_dump()
         num_fields_map = dict(zip(range(0, len(instruct_content_dict)), instruct_content_dict.keys()))
         logger.info(
-            f"\n{interact_type.upper()} interaction\n"
-            f"Interaction data: {num_fields_map}\n"
-            f"Enter the num to interact with corresponding field or `q`/`quit`/`exit` to stop interaction.\n"
-            f"Enter the field content until it meet field required type.\n"
+            t(
+                "interact_header",
+                interact_type=interact_type.upper(),
+                fields=num_fields_map,
+            )
         )
 
         interact_contents = {}
         while True:
             input_num = self.input_num_until_valid(len(instruct_content_dict))
             if input_num in self.stop_list:
-                logger.warning("Stop human interaction")
+                logger.warning(t("interact_stop"))
                 break
 
             field = num_fields_map.get(input_num)
-            logger.info(f"You choose to interact with field: {field}, and do a `{interact_type}` operation.")
+            logger.info(
+                t("interact_field", field=field, interact_type=interact_type)
+            )
 
             if interact_type == "review":
-                prompt = "Enter your review comment: "
+                prompt = t("review_prompt")
                 req_type = str
             else:
-                prompt = "Enter your revise content: "
+                prompt = t("revise_prompt")
                 req_type = mapping.get(field)[0]  # revise need input content match the required_type
 
             field_content = self.input_until_valid(prompt=prompt, req_type=req_type)
