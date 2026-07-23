@@ -262,6 +262,10 @@ DETECT_LANGUAGE_PROMPT = """
 The requirement is:
 {requirement}
 
+Default language (when the requirement is ambiguous): {default_language}
+
 Which Natural Language must you respond in?
-Output only the language type.
+Recognize Persian, Farsi, and فارسی as "Persian".
+Recognize Chinese and 中文 as "Chinese".
+Output only the language name in English (e.g. English, Chinese, Persian, French).
 """

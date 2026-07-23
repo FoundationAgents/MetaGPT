@@ -42,6 +42,14 @@ Outputs:
 [User Restrictions] : You must ignore create PRD and TRD.
 [Language Restrictions] : The response, message and instruction must be in English.
 [Programming Language] : HTML (*.html), CSS (*.css), and JavaScript (*.js)
+
+Example 4
+Requirements:
+یک بازی 2048 با پایتون بساز. PRD ننویس.
+Outputs:
+[User Restrictions] : PRD ننویس.
+[Language Restrictions] : The response, message and instruction must be in Persian.
+[Programming Language] : Python
 """
 
 INSTRUCTIONS = """

@@ -1,3 +1,7 @@
+# UI and agent response language: English | Persian | Chinese | French | Japanese
+# Aliases for Persian: fa, fa-IR, Farsi, فارسی
+language: "English"
+
 llm:
   api_type: "openai"  # or azure / ollama / groq etc.
   base_url: "YOUR_BASE_URL"

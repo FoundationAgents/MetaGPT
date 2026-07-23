@@ -207,8 +207,14 @@ class RoleZero(Role):
 
         if not self.planner.plan.goal:
             self.planner.plan.goal = self.get_memories()[-1].content
-            detect_language_prompt = DETECT_LANGUAGE_PROMPT.format(requirement=self.planner.plan.goal)
+            default_language = self.config.language or "English"
+            detect_language_prompt = DETECT_LANGUAGE_PROMPT.format(
+                requirement=self.planner.plan.goal,
+                default_language=default_language,
+            )
             self.respond_language = await self.llm.aask(detect_language_prompt)
+            if default_language == "Persian" and self.respond_language.strip().lower() in ("english", ""):
+                self.respond_language = "Persian"
         ### 1. Experience ###
         example = self._retrieve_experience()
 
