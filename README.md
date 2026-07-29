@@ -77,11 +77,28 @@ You can configure `~/.metagpt/config2.yaml` according to the [example](https://g
 
 ```yaml
 llm:
-  api_type: "openai"  # or azure / ollama / groq etc. Check LLMType for more options
+  api_type: "openai"  # or azure / ollama / minimax etc. Check LLMType for more options
   model: "gpt-4-turbo"  # or gpt-3.5-turbo
   base_url: "https://api.openai.com/v1"  # or forward url / other llm url
   api_key: "YOUR_API_KEY"
 ```
+
+<details>
+<summary>Example: Using MiniMax</summary>
+
+MiniMax exposes an OpenAI-compatible Chat Completions API. Two regional endpoints are available; pick the one for your account:
+
+```yaml
+llm:
+  api_type: "minimax"
+  model: "MiniMax-M3"  # or MiniMax-M2.7
+  base_url: "https://api.minimax.io/v1"  # global endpoint
+  # base_url: "https://api.minimaxi.com/v1"  # China endpoint
+  api_key: "YOUR_API_KEY"
+  temperature: 0.5  # MiniMax requires temperature in (0.0, 1.0]
+```
+
+</details>
 
 ### Usage
 
