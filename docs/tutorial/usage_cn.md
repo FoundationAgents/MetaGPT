@@ -15,7 +15,7 @@ cp config/config2.yaml ~/.metagpt/config2.yaml
 ```shell
 metagpt "写一个命令行贪吃蛇"
 # 开启code review模式会花费更多的金钱, 但是会提升代码质量和成功率
-metagpt "写一个命令行贪吃蛇" --code_review
+metagpt "写一个命令行贪吃蛇" --code-review
 ```
 
 运行脚本后，您可以在 `workspace/` 目录中找到您的新项目。

@@ -18,7 +18,7 @@ metagpt "Write a cli snake game"
 # Do not hire an engineer to implement the project
 metagpt "Write a cli snake game" --no-implement
 # Hire an engineer and perform code reviews
-metagpt "Write a cli snake game" --code_review
+metagpt "Write a cli snake game" --code-review
 ```
 
 After running the script, you can find your new project in the `workspace/` directory.
