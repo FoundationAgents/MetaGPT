@@ -83,6 +83,8 @@ llm:
   api_key: "YOUR_API_KEY"
 ```
 
+> **Note:** Any OpenAI-compatible multi-model gateway works via `base_url` — for example [DaoXE](https://daoxe.com/?utm_source=github&utm_medium=organic&utm_campaign=metagpt&utm_content=openai_base_url) at `https://api.daoxe.com/v1` (set `api_key` to your gateway key and pick an exact model id).
+
 ### Usage
 
 After installation, you can use MetaGPT at CLI
