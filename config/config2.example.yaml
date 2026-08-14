@@ -1,0 +1,129 @@
+llm:
+  api_type: "openai"  # or azure / ollama / groq etc.
+  base_url: "YOUR_BASE_URL"
+  api_key: "YOUR_API_KEY"
+  model: "gpt-4-turbo"  # or gpt-3.5-turbo
+  proxy: "YOUR_PROXY"  # for LLM API requests
+  # timeout: 600 # Optional. If set to 0, default value is 300.
+  # Details: https://azure.microsoft.com/en-us/pricing/details/cognitive-services/openai-service/
+  pricing_plan: "" # Optional. Use for Azure LLM when its model name is not the same as OpenAI's
+
+
+# RAG Embedding.
+# For backward compatibility, if the embedding is not set and the llm's api_type is either openai or azure, the llm's config will be used. 
+embedding:
+  api_type: "" # openai / azure / gemini / ollama etc. Check EmbeddingType for more options.
+  base_url: ""
+  api_key: ""
+  model: ""
+  api_version: ""
+  embed_batch_size: 100
+  dimensions: # output dimension of embedding model
+
+# Role's custom configuration
+roles:
+  - role: "ProductManager" # role's className or role's role_id
+    llm:
+      api_type: "openai"  # or azure / ollama / open_llm etc. Check LLMType for more options
+      base_url: "YOUR_BASE_URL"
+      api_key: "YOUR_API_KEY"
+      proxy: "YOUR_PROXY"  # for LLM API requests
+      model: "gpt-4-turbo-1106"
+  - role: "Architect"
+    llm:
+      api_type: "openai"  # or azure / ollama / open_llm etc. Check LLMType for more options
+      base_url: "YOUR_BASE_URL"
+      api_key: "YOUR_API_KEY"
+      proxy: "YOUR_PROXY"  # for LLM API requests
+      model: "gpt-35-turbo"
+  - role: "ProjectManager"
+    llm:
+      api_type: "azure"
+      base_url: "YOUR_BASE_URL"
+      api_key: "YOUR_API_KEY"
+      api_version: "YOUR_API_VERSION"
+      model: "gpt-4-1106"
+  - role: "Engineer"
+    llm:
+      api_type: "azure"
+      base_url: "YOUR_BASE_URL"
+      api_key: "YOUR_API_KEY"
+      api_version: "YOUR_API_VERSION"
+      model: "gpt-35-turbo-1106"
+
+repair_llm_output: true  # when the output is not a valid json, try to repair it
+
+proxy: "YOUR_PROXY"  # for tools like requests, playwright, selenium, etc.
+
+search:
+  api_type: "google"
+  api_key: "YOUR_API_KEY"
+  cse_id: "YOUR_CSE_ID"
+
+browser:
+  engine: "playwright"  # playwright/selenium
+  browser_type: "chromium"  # playwright: chromium/firefox/webkit; selenium: chrome/firefox/edge/ie
+
+mermaid:
+  engine: "pyppeteer"
+  pyppeteer_path: "/Applications/Google Chrome.app"
+
+redis:
+  host: "YOUR_HOST"
+  port: 32582
+  password: "YOUR_PASSWORD"
+  db: "0"
+
+s3:
+  access_key: "YOUR_ACCESS_KEY"
+  secret_key: "YOUR_SECRET_KEY"
+  endpoint: "YOUR_ENDPOINT"
+  secure: false
+  bucket: "test"
+
+exp_pool:
+  enabled: false
+  enable_read: false 
+  enable_write: false
+  persist_path: .chroma_exp_data # The directory.
+  retrieval_type: bm25 # Default is `bm25`, can be set to `chroma` for vector storage, which requires setting up embedding.
+  use_llm_ranker: true # Default is `true`, it will use LLM Reranker to get better result.
+  collection_name: experience_pool  # When `retrieval_type` is `chroma`, `collection_name` is the collection name in chromadb.
+
+role_zero:
+  enable_longterm_memory: false # Whether to use long-term memory. Default is `false`.
+  longterm_memory_persist_path: .role_memory_data # The directory to save data.
+  memory_k: 200 # The capacity of short-term memory.
+  similarity_top_k: 5 # The number of long-term memories to retrieve.
+  use_llm_ranker: false # Whether to use LLM Reranker to get better result. Default is `false`.
+
+azure_tts_subscription_key: "YOUR_SUBSCRIPTION_KEY"
+azure_tts_region: "eastus"
+
+iflytek_api_id: "YOUR_APP_ID"
+iflytek_api_key: "YOUR_API_KEY"
+iflytek_api_secret: "YOUR_API_SECRET"
+
+metagpt_tti_url: "YOUR_MODEL_URL"
+
+omniparse:
+    api_key: "YOUR_API_KEY"
+    base_url: "YOUR_BASE_URL"
+
+models:
+#  "YOUR_MODEL_NAME_1 or YOUR_API_TYPE_1": # model: "gpt-4-turbo"  # or gpt-3.5-turbo
+#    api_type: "openai"  # or azure / ollama / groq etc.
+#    base_url: "YOUR_BASE_URL"
+#    api_key: "YOUR_API_KEY"
+#    proxy: "YOUR_PROXY"  # for LLM API requests
+#    # timeout: 600 # Optional. If set to 0, default value is 300.
+#    # Details: https://azure.microsoft.com/en-us/pricing/details/cognitive-services/openai-service/
+#    pricing_plan: "" # Optional. Use for Azure LLM when its model name is not the same as OpenAI's
+#  "YOUR_MODEL_NAME_2 or YOUR_API_TYPE_2": # api_type: "openai"  # or azure / ollama / groq etc.
+#    api_type: "openai"  # or azure / ollama / groq etc.
+#    base_url: "YOUR_BASE_URL"
+#    api_key: "YOUR_API_KEY"
+#    proxy: "YOUR_PROXY"  # for LLM API requests
+#    # timeout: 600 # Optional. If set to 0, default value is 300.
+#    # Details: https://azure.microsoft.com/en-us/pricing/details/cognitive-services/openai-service/
+#    pricing_plan: "" # Optional. Use for Azure LLM when its model name is not the same as OpenAI's
