@@ -67,7 +67,7 @@ For detailed installation guidance, please refer to [cli_install](https://docs.d
 
 ### Configuration
 
-You can init the config of MetaGPT by running the following command, or manually create `~/.metagpt/config2.yaml` file:
+You can init the config of MetaGPT by running the following command, or manually create the `~/.metagpt/config2.yaml` file:
 ```bash
 # Check https://docs.deepwisdom.ai/main/en/guide/get_started/configuration.html for more details
 metagpt --init-config  # it will create ~/.metagpt/config2.yaml, just modify it to your needs
@@ -85,13 +85,13 @@ llm:
 
 ### Usage
 
-After installation, you can use MetaGPT at CLI
+After installation, you can use MetaGPT at the CLI
 
 ```bash
 metagpt "Create a 2048 game"  # this will create a repo in ./workspace
 ```
 
-or use it as library
+or use it as a library
 
 ```python
 from metagpt.software_company import generate_repo
@@ -141,7 +141,7 @@ https://github.com/user-attachments/assets/888cb169-78c3-4a42-9d62-9d90ed3928c9
 
 ## Support
 
-### Discord Join US
+### Discord Join Us
 
 📢 Join Our [Discord Channel](https://discord.gg/ZRHeExS6xv)! Looking forward to seeing you there! 🎉
 
