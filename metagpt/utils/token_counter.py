@@ -9,7 +9,8 @@ ref2: https://github.com/openai/openai-cookbook/blob/main/examples/How_to_count_
 ref3: https://github.com/Significant-Gravitas/Auto-GPT/blob/master/autogpt/llm/token_counter.py
 ref4: https://github.com/hwchase17/langchain/blob/master/langchain/chat_models/openai.py
 ref5: https://ai.google.dev/models/gemini
-"""
+from __future__ import annotations
+
 import anthropic
 import tiktoken
 
@@ -536,10 +537,15 @@ def get_max_completion_tokens(messages: list[dict], model: str, default: int) ->
     Args:
         messages: A list of messages.
         model: The model name.
+        default: Default token count if model is not recognized.
 
     Returns:
-        The maximum number of completion tokens.
+        The maximum number of completion tokens (clamped to non-negative).
     """
-    if model not in TOKEN_MAX:
+    target_model = model
+    if target_model not in TOKEN_MAX and "/" in target_model:
+        target_model = target_model.split("/", 1)[-1]
+    if target_model not in TOKEN_MAX:
         return default
-    return TOKEN_MAX[model] - count_message_tokens(messages, model) - 1
+    available = TOKEN_MAX[target_model] - count_message_tokens(messages, target_model) - 1
+    return max(0, available)

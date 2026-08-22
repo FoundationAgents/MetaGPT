@@ -69,5 +69,21 @@ def test_count_string_tokens_gpt_4():
     assert count_output_tokens(string, model="gpt-4-0314") == 4
 
 
+def test_get_max_completion_tokens():
+    from metagpt.utils.token_counter import get_max_completion_tokens
+
+    messages = [{"role": "user", "content": "Hello"}]
+    # gpt-4 has max 8192 tokens
+    max_tokens = get_max_completion_tokens(messages, model="gpt-4", default=4096)
+    assert max_tokens > 0
+
+    # test unknown model falls back to default
+    assert get_max_completion_tokens(messages, model="unknown_model", default=2048) == 2048
+
+    # test provider-prefixed model normalization
+    assert get_max_completion_tokens(messages, model="openai/gpt-4o", default=1000) > 100000
+
+
 if __name__ == "__main__":
     pytest.main([__file__, "-s"])
+
