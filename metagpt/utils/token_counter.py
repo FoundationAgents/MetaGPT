@@ -9,7 +9,8 @@ ref2: https://github.com/openai/openai-cookbook/blob/main/examples/How_to_count_
 ref3: https://github.com/Significant-Gravitas/Auto-GPT/blob/master/autogpt/llm/token_counter.py
 ref4: https://github.com/hwchase17/langchain/blob/master/langchain/chat_models/openai.py
 ref5: https://ai.google.dev/models/gemini
-"""
+from __future__ import annotations
+
 import anthropic
 import tiktoken
 
