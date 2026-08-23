@@ -62,7 +62,8 @@ metagpt "2048ゲームを作成する"  # これにより ./workspace にリポ�
 または、ライブラリとして使用することもできます
 
 ```python
-from metagpt.software_company import generate_repo, ProjectRepo
+from metagpt.software_company import generate_repo
+from metagpt.utils.project_repo import ProjectRepo
 repo: ProjectRepo = generate_repo("2048ゲームを作成する")  # または ProjectRepo("<パス>")
 print(repo)  # リポジトリの構造とファイルを出力します
 ```
@@ -78,7 +79,7 @@ Chromium のダウンロードをスキップすることができます。
   npm install @mermaid-js/mermaid-cli
   ```
 
-- config.yml に mmdc のコンフィグを記述するのを忘れないこと
+- config2.yaml に mmdc のコンフィグを記述するのを忘れないこと
 
   ```yml
   puppeteer_config: "./config/puppeteer-config.json"
@@ -98,7 +99,7 @@ Chromium のダウンロードをスキップすることができます。
 
     - **必要なブラウザのインストール**
 
-    PDF変換をサポートするには、Chrominumをインストールしてください。
+    PDF変換をサポートするには、Chromiumをインストールしてください。
 
     ```bash
     playwright install --with-deps chromium

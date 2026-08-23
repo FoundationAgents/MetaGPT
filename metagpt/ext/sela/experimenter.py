@@ -129,7 +129,7 @@ class Experimenter(DataInterpreter):
         return score_dict
 
     @model_validator(mode="after")
-    def set_plan_and_tool(self) -> "Interpreter":
+    def set_plan_and_tool(self) -> "DataInterpreter":
         if self.planner.plan.goal != "":
             self.set_actions([WriteAnalysisCode])
             self._set_state(0)
