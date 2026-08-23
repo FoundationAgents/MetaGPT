@@ -269,7 +269,6 @@ class TreeofThought(BaseModel):
 
         Args:
             init_prompt (str): The initial prompt for the solver.
-            strategy (str): The strategy to use for solving.
 
         Returns:
             Any: The solution obtained using the selected strategy.

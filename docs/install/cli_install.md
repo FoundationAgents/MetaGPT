@@ -45,7 +45,7 @@ sudo npm install -g @mermaid-js/mermaid-cli
   npm install @mermaid-js/mermaid-cli
   ```
 
-- don't forget to the configuration for mmdc path in config.yml
+- don't forget to set the configuration for the mmdc path in config2.yaml
 
   ```yaml
   mermaid:
@@ -66,7 +66,7 @@ sudo npm install -g @mermaid-js/mermaid-cli
 
     - **Install the Required Browsers**
 
-    to support PDF conversion, please install Chrominum.
+    to support PDF conversion, please install Chromium.
 
     ```bash
     playwright install --with-deps chromium
@@ -90,7 +90,7 @@ sudo npm install -g @mermaid-js/mermaid-cli
 
     - **Use your own Browsers**
 
-    pyppeteer allows you use installed browsers,  please set the following envirment
+    pyppeteer allows you use installed browsers,  please set the following environment
     
     ```bash
     export PUPPETEER_EXECUTABLE_PATH = /path/to/your/chromium or edge or chrome

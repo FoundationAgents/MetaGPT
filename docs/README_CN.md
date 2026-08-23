@@ -41,12 +41,13 @@ metagpt "创建一个 2048 游戏"  # 这将在 ./workspace 创建一个仓库
 或者您可以将其作为库使用
 
 ```python
-from metagpt.software_company import generate_repo, ProjectRepo
+from metagpt.software_company import generate_repo
+from metagpt.utils.project_repo import ProjectRepo
 repo: ProjectRepo = generate_repo("创建一个 2048 游戏")  # 或 ProjectRepo("<路径>")
 print(repo)  # 它将打印出仓库结构及其文件
 ```
 
-详细的安装请参考 [cli_install](https://docs.deepwisdom.ai/guide/get_started/installation.html#install-stable-version)
+详细的安装请参考 [cli_install](https://docs.deepwisdom.ai/main/zh/guide/get_started/installation.html#install-stable-version)
 
 ### Docker安装
 > 注意：在Windows中，你需要将 "/opt/metagpt" 替换为Docker具有创建权限的目录，比如"D:\Users\x\metagpt"

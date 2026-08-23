@@ -100,7 +100,8 @@ metagpt "Create a 2048 game"  #  ceci créera un repo dans ./workspace
 ou l'utiliser comme bibliothèque
 
 ```python
-from metagpt.software_company import generate_repo, ProjectRepo
+from metagpt.software_company import generate_repo
+from metagpt.utils.project_repo import ProjectRepo
 repo: ProjectRepo = generate_repo("Create a 2048 game")  # ou ProjectRepo("<path>")
 print(repo)  # il affichera la structure du repo avec les fichiers
 ```
