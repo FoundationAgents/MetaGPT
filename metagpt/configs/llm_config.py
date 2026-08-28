@@ -33,6 +33,8 @@ class LLMType(Enum):
     OLLAMA_EMBED = "ollama.embed"  # /embed at ollama api
     QIANFAN = "qianfan"  # Baidu BCE
     DASHSCOPE = "dashscope"  # Aliyun LingJi DashScope
+    QWEN = "qwen"  # QwenCloud / DashScope alias
+    QWENCLOUD = "qwencloud"  # QwenCloud alias
     MOONSHOT = "moonshot"
     MISTRAL = "mistral"
     YI = "yi"  # lingyiwanwu
