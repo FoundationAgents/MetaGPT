@@ -153,7 +153,7 @@ class AGeneration(Generation, BaseAioApi):
             return GenerationResponse.from_api_response(response)
 
 
-@register_provider(LLMType.DASHSCOPE)
+@register_provider([LLMType.DASHSCOPE, LLMType.QWEN, LLMType.QWENCLOUD])
 class DashScopeLLM(BaseLLM):
     def __init__(self, llm_config: LLMConfig):
         self.config = llm_config
