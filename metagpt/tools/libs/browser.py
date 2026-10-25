@@ -144,7 +144,7 @@ class Browser(BaseModel):
         return await self._wait_page()
 
     async def tab_focus(self, page_number: int):
-        """Open a new, empty browser tab."""
+        """Switch the browser's focus to a specific tab using its index."""
         page = self.browser_ctx.pages[page_number]
         await page.bring_to_front()
         return await self._wait_page()

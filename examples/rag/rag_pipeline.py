@@ -18,7 +18,7 @@ from metagpt.rag.schema import (
 )
 from metagpt.utils.exceptions import handle_exception
 
-LLM_TIP = "If you not sure, just answer I don't know."
+LLM_TIP = "If you're not sure, just answer I don't know."
 
 DOC_PATH = EXAMPLE_DATA_PATH / "rag/writer.txt"
 QUESTION = f"What are key qualities to be a good writer? {LLM_TIP}"

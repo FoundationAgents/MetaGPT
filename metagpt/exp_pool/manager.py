@@ -120,7 +120,7 @@ class ExperienceManager(BaseModel):
 
     @handle_exception
     def delete_all_exps(self):
-        """Delete the all experiences."""
+        """Delete all experiences."""
 
         if not self.is_writable:
             return

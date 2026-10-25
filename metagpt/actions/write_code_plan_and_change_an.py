@@ -19,7 +19,7 @@ from metagpt.utils.project_repo import ProjectRepo
 DEVELOPMENT_PLAN = ActionNode(
     key="Development Plan",
     expected_type=List[str],
-    instruction="Develop a comprehensive and step-by-step incremental development plan, providing the detail "
+    instruction="Develop a comprehensive and step-by-step incremental development plan, providing the detailed "
     "changes to be implemented at each step based on the order of 'Task List'",
     example=[
         "Enhance the functionality of `calculator.py` by extending it to incorporate methods for subtraction, ...",
@@ -215,8 +215,10 @@ class WriteCodePlanAndChange(Action):
     input_args: Optional[BaseModel] = Field(default=None, exclude=True)
 
     async def run(self, *args, **kwargs):
-        self.llm.system_prompt = "You are a professional software engineer, your primary responsibility is to "
-        "meticulously craft comprehensive incremental development plan and deliver detailed incremental change"
+        self.llm.system_prompt = (
+            "You are a professional software engineer, your primary responsibility is to "
+            "meticulously craft a comprehensive incremental development plan and deliver detailed incremental change"
+        )
         prd_doc = await Document.load(filename=self.i_context.prd_filename)
         design_doc = await Document.load(filename=self.i_context.design_filename)
         task_doc = await Document.load(filename=self.i_context.task_filename)
