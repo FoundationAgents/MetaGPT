@@ -167,6 +167,13 @@ def test_repair_json_format():
     output = repair_llm_raw_output(output=raw_output, req_keys=[None], repair_type=RepairType.JSON)
     assert output == target_output
 
+    import json
+    raw_output = json.dumps({"text": 'say "https://example.com"'}) + " // real comment"
+    target_output = json.dumps({"text": 'say "https://example.com"'})
+    output = repair_llm_raw_output(output=raw_output, req_keys=[None], repair_type=RepairType.JSON)
+    assert output == target_output
+    assert json.loads(output) == {"text": 'say "https://example.com"'}
+
 
 def test_repair_invalid_json():
     from metagpt.utils.repair_llm_raw_output import repair_invalid_json
