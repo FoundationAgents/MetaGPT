@@ -1,0 +1,26 @@
+name: Bartholomew AST Invariant Sentinel
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  ast-invariant-gate:
+    name: AST Invariant Sentinel & Zero-Day Injection Gate
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Run Bartholomew Invariant Security Test Suite
+        run: |
+          python -m unittest tests/metagpt/tools/test_bartholomew_guard.py

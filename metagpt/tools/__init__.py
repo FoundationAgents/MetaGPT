@@ -19,5 +19,8 @@ class SearchInterface:
     async def asearch(self, *args, **kwargs):
         ...
 
+from metagpt.tools.bartholomew_guard import BartholomewSecurityGuard
 
-__all__ = ["SearchEngineType", "WebBrowserEngineType", "TOOL_REGISTRY"]
+
+__all__ = ["SearchEngineType", "WebBrowserEngineType", "TOOL_REGISTRY", "BartholomewSecurityGuard"]
+
