@@ -18,6 +18,7 @@ class SearchEngineType(Enum):
     SERPER_GOOGLE = "serper"
     DIRECT_GOOGLE = "google"
     DUCK_DUCK_GO = "ddg"
+    DESEARCH = "desearch"
     CUSTOM_ENGINE = "custom"
     BING = "bing"
 
