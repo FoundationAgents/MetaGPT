@@ -991,5 +991,105 @@
                 }
             ]
         }
-    ]
+    ],
+    "aiohttp-post-http://api.webz.io/api/news/context-{\"data\": \"{\\\"k\\\": 8, \\\"query\\\": \\\"metagpt\\\"}\", \"headers\": {\"Authorization\": \"Bearer mock-webz-key\", \"Content-Type\": \"application/json\"}}": {
+        "query": "metagpt",
+        "total_results": 2,
+        "results": [
+            {
+                "score": 8.4,
+                "article": {
+                    "article_id": "32445ab27737dcdad9119b67fb1d379908a41ecf",
+                    "url": "https://www.example.com/ai/metagpt-multi-agent-framework",
+                    "title": "MetaGPT: Meta Programming for a Multi-Agent Collaborative Framework",
+                    "published_at": "2026-08-27T07:07:00.000+03:00",
+                    "summary": "MetaGPT is an open-source framework that assigns different roles to LLM-based agents to form a collaborative software entity."
+                },
+                "chunk": {
+                    "chunk_id": "32445ab27737dcdad9119b67fb1d379908a41ecf_6",
+                    "chunk_index": 6,
+                    "text": "MetaGPT assigns different roles to LLM-based agents to form a collaborative software entity for complex tasks."
+                },
+                "metadata": {
+                    "language": "english",
+                    "country": "US",
+                    "domain": "example.com",
+                    "sentiment": "positive"
+                }
+            },
+            {
+                "score": 7.6,
+                "article": {
+                    "article_id": "0f5b1c8d2a9e4f6b8d3c7a1e9b2f4d6c",
+                    "url": "https://news.example.org/tech/open-source-agent-frameworks",
+                    "title": "Open-source agent frameworks gain traction among developers",
+                    "published_at": "2026-08-25T14:30:00.000+02:00",
+                    "summary": "A survey of open-source multi-agent frameworks, including MetaGPT and its role-based workflow design."
+                },
+                "chunk": {
+                    "chunk_id": "0f5b1c8d2a9e4f6b8d3c7a1e9b2f4d6c_2",
+                    "chunk_index": 2,
+                    "text": "MetaGPT and other open-source multi-agent frameworks let developers compose role-based LLM workflows."
+                },
+                "metadata": {
+                    "language": "english",
+                    "country": "GB",
+                    "domain": "news.example.org",
+                    "sentiment": "neutral"
+                }
+            }
+        ],
+        "requests_left": 98,
+        "credits_used": 1
+    },
+    "aiohttp-post-http://api.webz.io/api/news/context-{\"data\": \"{\\\"k\\\": 6, \\\"query\\\": \\\"metagpt\\\"}\", \"headers\": {\"Authorization\": \"Bearer mock-webz-key\", \"Content-Type\": \"application/json\"}}": {
+        "query": "metagpt",
+        "total_results": 2,
+        "results": [
+            {
+                "score": 8.4,
+                "article": {
+                    "article_id": "32445ab27737dcdad9119b67fb1d379908a41ecf",
+                    "url": "https://www.example.com/ai/metagpt-multi-agent-framework",
+                    "title": "MetaGPT: Meta Programming for a Multi-Agent Collaborative Framework",
+                    "published_at": "2026-08-27T07:07:00.000+03:00",
+                    "summary": "MetaGPT is an open-source framework that assigns different roles to LLM-based agents to form a collaborative software entity."
+                },
+                "chunk": {
+                    "chunk_id": "32445ab27737dcdad9119b67fb1d379908a41ecf_6",
+                    "chunk_index": 6,
+                    "text": "MetaGPT assigns different roles to LLM-based agents to form a collaborative software entity for complex tasks."
+                },
+                "metadata": {
+                    "language": "english",
+                    "country": "US",
+                    "domain": "example.com",
+                    "sentiment": "positive"
+                }
+            },
+            {
+                "score": 7.6,
+                "article": {
+                    "article_id": "0f5b1c8d2a9e4f6b8d3c7a1e9b2f4d6c",
+                    "url": "https://news.example.org/tech/open-source-agent-frameworks",
+                    "title": "Open-source agent frameworks gain traction among developers",
+                    "published_at": "2026-08-25T14:30:00.000+02:00",
+                    "summary": "A survey of open-source multi-agent frameworks, including MetaGPT and its role-based workflow design."
+                },
+                "chunk": {
+                    "chunk_id": "0f5b1c8d2a9e4f6b8d3c7a1e9b2f4d6c_2",
+                    "chunk_index": 2,
+                    "text": "MetaGPT and other open-source multi-agent frameworks let developers compose role-based LLM workflows."
+                },
+                "metadata": {
+                    "language": "english",
+                    "country": "GB",
+                    "domain": "news.example.org",
+                    "sentiment": "neutral"
+                }
+            }
+        ],
+        "requests_left": 98,
+        "credits_used": 1
+    }
 }
