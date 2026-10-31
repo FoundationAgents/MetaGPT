@@ -11,6 +11,14 @@ import pytest
 from metagpt.utils.custom_decoder import CustomDecoder
 
 
+@pytest.mark.parametrize(
+    "input_data",
+    ["{'first': 1, 'second': 2}", "{\"first\": 1, 'second': 2}", "{'first': 1, \"second\": 2}"],
+)
+def test_parse_multiple_single_quoted_keys(input_data):
+    assert CustomDecoder().decode(input_data) == {"first": 1, "second": 2}
+
+
 def test_parse_single_quote():
     # Create a custom JSON decoder
     decoder = CustomDecoder(strict=False)
