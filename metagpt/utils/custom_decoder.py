@@ -251,8 +251,11 @@ def py_scanstring(s, end, strict=True, _b=BACKSLASH, _m=STRINGCHUNK.match, delim
             try:
                 char = _b[esc]
             except KeyError:
-                msg = "Invalid \\escape: {0!r}".format(esc)
-                raise JSONDecodeError(msg, s, end)
+                if esc == "'" and delimiter in ("'", "'''"):
+                    char = "'"
+                else:
+                    msg = "Invalid \\escape: {0!r}".format(esc)
+                    raise JSONDecodeError(msg, s, end)
             end += 1
         else:
             uni = _decode_uXXXX(s, end)

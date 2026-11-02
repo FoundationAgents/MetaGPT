@@ -115,3 +115,24 @@ def test_parse_triple_single_quote():
 
     parsed_data = decoder.decode(input_data)
     assert parsed_data["a"] == "b"
+
+
+@pytest.mark.parametrize("strict", [True, False])
+def test_parse_escaped_apostrophe_in_single_quotes(strict):
+    decoder = CustomDecoder(strict=strict)
+    input_data = r"{'text': 'It\'s ready'}"
+    assert decoder.decode(input_data) == {"text": "It's ready"}
+
+    input_data_key = r"{'It\'s key': 'value'}"
+    assert decoder.decode(input_data_key) == {"It's key": "value"}
+
+    input_data_triple = r"{'''text''': '''It\'s ready'''}"
+    assert decoder.decode(input_data_triple) == {"text": "It's ready"}
+
+
+def test_parse_escaped_apostrophe_in_double_quotes_rejected():
+    decoder = CustomDecoder()
+    input_data = r'{"text": "It\'s ready"}'
+    with pytest.raises(Exception):
+        decoder.decode(input_data)
+
