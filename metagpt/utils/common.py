@@ -961,7 +961,9 @@ def get_markdown_codeblock_type(filename: str = None, mime_type: str = None) -> 
 def get_project_srcs_path(workdir: str | Path) -> Path:
     src_workdir_path = workdir / ".src_workspace"
     if src_workdir_path.exists():
-        with open(src_workdir_path, "r") as file:
+        # awrite() stores this marker file as UTF-8; reading it with the platform
+        # default encoding mangles non-ASCII src names on legacy ANSI code pages.
+        with open(src_workdir_path, "r", encoding="utf-8") as file:
             src_name = file.read()
     else:
         src_name = Path(workdir).name
