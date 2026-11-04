@@ -133,7 +133,7 @@ def JSONObject(
             if object_hook is not None:
                 pairs = object_hook(pairs)
             return pairs, end + 1
-        elif nextchar != '"':
+        elif nextchar != '"' and nextchar != "'":
             raise JSONDecodeError("Expecting property name enclosed in double quotes", s, end)
     end += 1
     while True:
@@ -181,7 +181,7 @@ def JSONObject(
         end = _w(s, end).end()
         nextchar = s[end : end + 1]
         end += 1
-        if nextchar != '"':
+        if nextchar != '"' and nextchar != "'":
             raise JSONDecodeError("Expecting property name enclosed in double quotes", s, end - 1)
     if object_pairs_hook is not None:
         result = object_pairs_hook(pairs)

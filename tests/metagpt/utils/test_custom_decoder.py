@@ -44,8 +44,11 @@ def test_parse_single_quote():
 "
 }
 """
-    with pytest.raises(Exception):
-        parsed_data = decoder.decode(input_data)
+    # Before the fix this raised at the key boundary because the single-quoted
+    # key was rejected; it now parses the same way as the double-quoted key
+    # variant in test_parse_double_quote.
+    parsed_data = decoder.decode(input_data)
+    assert parsed_data["a"] == "\n    b\n"
 
     input_data = """{
     'a': '
@@ -53,8 +56,8 @@ def test_parse_single_quote():
 '
 }
 """
-    with pytest.raises(Exception):
-        parsed_data = decoder.decode(input_data)
+    parsed_data = decoder.decode(input_data)
+    assert parsed_data["a"] == "\n    b\n"
 
 
 def test_parse_double_quote():
@@ -115,3 +118,28 @@ def test_parse_triple_single_quote():
 
     parsed_data = decoder.decode(input_data)
     assert parsed_data["a"] == "b"
+
+
+def test_single_quoted_keys_after_comma():
+    """Regression for https://github.com/FoundationAgents/MetaGPT/issues/2187:
+    a single-quoted key after a comma (and after leading whitespace) must be
+    accepted, consistent with the first-key handling."""
+    decoder = CustomDecoder()
+
+    assert decoder.decode("{'name': 'MetaGPT', 'role': 'Engineer'}") == {
+        "name": "MetaGPT",
+        "role": "Engineer",
+    }
+    assert decoder.decode("{ 'step': 1 }") == {"step": 1}
+    # mixed quote delimiters keep working
+    assert decoder.decode('{"a": 1, \'b\': "two"}') == {"a": 1, "b": "two"}
+    # nested objects
+    assert decoder.decode("{'outer': {'inner': 'v'}, 'n': 2}") == {
+        "outer": {"inner": "v"},
+        "n": 2,
+    }
+    # invalid key boundaries still raise
+    with pytest.raises(Exception):
+        decoder.decode("{name: 1}")
+    with pytest.raises(Exception):
+        decoder.decode("{'a': 1, name: 2}")
