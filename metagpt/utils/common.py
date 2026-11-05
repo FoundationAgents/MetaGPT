@@ -99,7 +99,7 @@ class OutputParser:
         if match:
             code = match.group(1)
         else:
-            raise Exception
+            raise ValueError(f"No code block found matching language '{lang}' in text")
         return code
 
     @classmethod
@@ -316,7 +316,7 @@ class CodeParser:
             # Convert string representation of list to a Python list using ast.literal_eval.
             tasks = ast.literal_eval(tasks_list_str)
         else:
-            raise Exception
+            raise ValueError(f"No file list found matching pattern in code: {code[:100]}")
         return tasks
 
 
@@ -618,8 +618,8 @@ def read_jsonl_file(jsonl_file: str, encoding="utf-8") -> list[dict]:
             for line in fin:
                 data = json.loads(line)
                 datas.append(data)
-        except Exception:
-            raise ValueError(f"read jsonl file: {jsonl_file} failed")
+        except Exception as e:
+            raise ValueError(f"read jsonl file: {jsonl_file} failed: {e}") from e
     return datas
 
 
