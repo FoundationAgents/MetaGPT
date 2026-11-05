@@ -49,6 +49,9 @@ def generate_prompt_chunk(
 
     Yields:
         The chunk of text.
+
+    Raises:
+        ValueError: If the token budget cannot fit any content or a single character.
     """
     paragraphs = text.splitlines(keepends=True)
     current_token = 0
@@ -57,6 +60,8 @@ def generate_prompt_chunk(
     reserved = reserved + count_output_tokens(prompt_template + system_text, model_name)
     # 100 is a magic number to ensure the maximum context length is not exceeded
     max_token = TOKEN_MAX.get(model_name, 2048) - reserved - 100
+    if paragraphs and max_token <= 0:
+        raise ValueError("No token budget remains for content")
 
     while paragraphs:
         paragraph = paragraphs.pop(0)
@@ -65,6 +70,8 @@ def generate_prompt_chunk(
             current_lines.append(paragraph)
             current_token += token
         elif token > max_token:
+            if len(paragraph) <= 1:
+                raise ValueError("A character exceeds the available token budget")
             paragraphs = split_paragraph(paragraph) + paragraphs
             continue
         else:
