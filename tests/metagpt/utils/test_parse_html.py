@@ -1,3 +1,5 @@
+import pytest
+
 from metagpt.utils import parse_html
 
 PAGE = """
@@ -68,3 +70,16 @@ def test_web_page():
 def test_get_page_content():
     ret = parse_html.get_html_content(PAGE, "http://example.com")
     assert ret == CONTENT
+
+
+@pytest.mark.parametrize("scheme", ["http", "https"])
+def test_web_page_keeps_protocol_relative_host_links(scheme):
+    page = parse_html.WebPage(
+        inner_text="",
+        html='<a href="//docs.example.com">Docs</a><a href="//docs.example.com/guide">Guide</a>',
+        url=f"{scheme}://example.com/path",
+    )
+    assert list(page.get_links()) == [
+        f"{scheme}://docs.example.com",
+        f"{scheme}://docs.example.com/guide",
+    ]
