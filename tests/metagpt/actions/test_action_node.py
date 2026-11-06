@@ -7,12 +7,13 @@
 """
 from pathlib import Path
 from typing import List, Optional, Tuple
+from unittest.mock import AsyncMock
 
 import pytest
 from pydantic import BaseModel, Field, ValidationError
 
 from metagpt.actions import Action
-from metagpt.actions.action_node import ActionNode, ReviewMode, ReviseMode
+from metagpt.actions.action_node import ActionNode, FillMode, ReviewMode, ReviseMode
 from metagpt.environment import Environment
 from metagpt.llm import LLM
 from metagpt.roles import Role
@@ -314,6 +315,25 @@ def test_optional():
 
     t1 = t(**m)
     assert t1
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("mode", "fill_method"),
+    [(FillMode.CODE_FILL.value, "code_fill"), (FillMode.SINGLE_FILL.value, "single_fill")],
+)
+async def test_fill_with_dedicated_fill_mode(mocker, mode, fill_method):
+    """`fill` should forward the node context to `code_fill`/`single_fill`."""
+    node = ActionNode(key="code", expected_type=str, instruction="write a hello world program", example="")
+    mocked_fill = mocker.patch.object(
+        ActionNode, fill_method, new=AsyncMock(return_value={node.key: "print('hello world')"})
+    )
+
+    await node.fill(req="say hello in python", llm=None, mode=mode)
+
+    mocked_fill.assert_awaited_once()
+    assert mocked_fill.await_args.args[0] == "say hello in python"
+    assert node.instruct_content.code == "print('hello world')"
 
 
 if __name__ == "__main__":

@@ -633,7 +633,7 @@ class ActionNode:
             schema = self.schema
 
         if mode == FillMode.CODE_FILL.value:
-            result = await self.code_fill(context, function_name, timeout)
+            result = await self.code_fill(self.context, function_name, timeout)
             self.instruct_content = self.create_class()(**result)
             return self
 
@@ -644,7 +644,7 @@ class ActionNode:
             return self
 
         elif mode == FillMode.SINGLE_FILL.value:
-            result = await self.single_fill(context, images=images)
+            result = await self.single_fill(self.context, images=images)
             self.instruct_content = self.create_class()(**result)
             return self
 
