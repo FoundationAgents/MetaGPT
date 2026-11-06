@@ -271,7 +271,7 @@ def parse_accessibility_tree(accessibility_tree):
                 tree_str += f"{indent}{node_str}"
                 obs_nodes_info[obs_node_id] = {
                     "backend_id": node["backendDOMNodeId"],
-                    "union_bound": node["union_bound"],
+                    "union_bound": node.get("union_bound"),
                     "text": node_str,
                 }
 
