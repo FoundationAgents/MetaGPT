@@ -166,6 +166,22 @@ def test_compress_messages_long_no_sys_msg(compress_type):
     assert len(compressed[0]["content"]) < len(messages[0]["content"])
 
 
+@pytest.mark.parametrize("compress_type", CompressType.cut_types())
+def test_compress_messages_zero_remaining_budget(compress_type):
+    base_llm = MockBaseLLM()
+    base_llm.config.model = "test_llm"
+    max_token_limit = 10  # keep_token = int(10 * 0.8) = 8
+
+    messages = [
+        {"role": "system", "content": "s" * 16},  # int(16 * 0.5) = 8 tokens, the whole budget
+        {"role": "user", "content": "u" * 10},  # int(10 * 0.5) = 5 tokens, fits in none of the remaining budget
+    ]
+    compressed = base_llm.compress_messages(messages, compress_type=compress_type, max_token=max_token_limit)
+
+    # the oversized message must be truncated to fit within the remaining (zero) token budget
+    assert base_llm.count_tokens(compressed) <= int(max_token_limit * 0.8)
+
+
 def test_format_msg(mocker):
     base_llm = MockBaseLLM()
     messages = [UserMessage(content="req"), AIMessage(content="rsp")]
