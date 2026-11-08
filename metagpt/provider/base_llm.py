@@ -383,7 +383,9 @@ class BaseLLM(ABC):
                 else:
                     if compress_type == CompressType.POST_CUT_BY_TOKEN or len(compressed) == len(system_msgs):
                         # Truncate the message to fit within the remaining token count; Otherwise, discard the msg. If compressed has no user or assistant message, enforce cutting by token
-                        truncated_content = msg["content"][-(keep_token - current_token_count) :]
+                        # Guard against a non-positive remaining budget: `content[-0:]` would keep the whole content.
+                        remaining_token = keep_token - current_token_count
+                        truncated_content = msg["content"][-remaining_token:] if remaining_token > 0 else ""
                         compressed.insert(len(system_msgs), {"role": msg["role"], "content": truncated_content})
                     logger.warning(
                         f"Truncated messages with {compress_type} to fit within the token limit. "
