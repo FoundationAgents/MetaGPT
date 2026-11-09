@@ -34,7 +34,7 @@ class WebPage(BaseModel):
         for i in self.soup.find_all("a", href=True):
             url = i["href"]
             result = urlparse(url)
-            if not result.scheme and result.path:
+            if not result.scheme and (result.path or result.netloc):
                 yield urljoin(self.url, url)
             elif url.startswith(("http://", "https://")):
                 yield urljoin(self.url, url)

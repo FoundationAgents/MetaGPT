@@ -1,3 +1,5 @@
+import pytest
+
 from metagpt.utils import parse_html
 
 PAGE = """
@@ -68,3 +70,22 @@ def test_web_page():
 def test_get_page_content():
     ret = parse_html.get_html_content(PAGE, "http://example.com")
     assert ret == CONTENT
+
+
+@pytest.mark.parametrize(
+    ("base_url", "expected"),
+    [
+        (
+            "https://example.com/path",
+            ["https://docs.example.com", "https://docs.example.com/guide"],
+        ),
+        (
+            "http://example.com/path",
+            ["http://docs.example.com", "http://docs.example.com/guide"],
+        ),
+    ],
+)
+def test_web_page_get_links_protocol_relative(base_url, expected):
+    html = '<a href="//docs.example.com">Docs</a><a href="//docs.example.com/guide">Guide</a>'
+    page = parse_html.WebPage(inner_text="", html=html, url=base_url)
+    assert list(page.get_links()) == expected
