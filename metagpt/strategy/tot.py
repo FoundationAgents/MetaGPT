@@ -190,7 +190,7 @@ class DFSSolver(ThoughtSolverBase):
         """
         impossible_state_cnt = 0
         node = root_node
-        for step in range(self.max_steps):
+        for step in range(self.config.max_steps):
             current_state = self.config.parser(node.name)
             current_value = node.value
             thought_nodes = await self.generate_thoughts(current_state, current_node=node)
