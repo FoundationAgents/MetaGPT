@@ -24,7 +24,7 @@ class HumanInteraction(object):
                 lines.append(line)
             except EOFError:
                 break
-        return "".join(lines)
+        return "\n".join(lines)
 
     def check_input_type(self, input_str: str, req_type: Type) -> Tuple[bool, Any]:
         check_ret = True
