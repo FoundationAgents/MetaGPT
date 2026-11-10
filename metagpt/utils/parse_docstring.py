@@ -34,7 +34,7 @@ class GoogleDocstringParser(DocstringParser):
         docstring = remove_spaces(docstring)
 
         if "Args:" in docstring:
-            overall_desc, param_desc = docstring.split("Args:")
+            overall_desc, param_desc = docstring.rsplit("Args:", 1)
             param_desc = "Args:" + param_desc
         else:
             overall_desc = docstring
