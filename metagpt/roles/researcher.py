@@ -88,7 +88,7 @@ class Researcher(Role):
         return the previous implementation to have backward compatible
         Args:
             topic:
-            language:
+            current_task:
 
         Returns: str
         """

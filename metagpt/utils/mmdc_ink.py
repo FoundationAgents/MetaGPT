@@ -19,8 +19,6 @@ async def mermaid_to_file(mermaid_code, output_file_without_suffix, suffixes: Op
     Args:
         mermaid_code (str): The Mermaid code to be converted.
         output_file_without_suffix (str): The output file name without the suffix.
-        width (int, optional): The width of the output image. Defaults to 2048.
-        height (int, optional): The height of the output image. Defaults to 2048.
         suffixes (Optional[List[str]], optional): The file suffixes to generate. Supports "png", "pdf", and "svg". Defaults to ["png"].
 
     Returns:

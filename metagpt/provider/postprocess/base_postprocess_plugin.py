@@ -57,7 +57,7 @@ class BasePostProcessPlugin(object):
             [/REQ_KEY]
 
         Args
-            outer (str): llm raw output
+            output (str): llm raw output
             schema: output json schema
             req_key: outer pair right key, usually in `[/REQ_KEY]` format
         """
