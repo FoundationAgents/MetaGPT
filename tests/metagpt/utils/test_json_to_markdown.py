@@ -58,3 +58,25 @@ This is the second section content.
     # Print or use the generated Markdown
     # print(markdown_output)
     assert expected == markdown_output
+
+
+def test_json_to_markdown_empty_list():
+    json_data = {
+        "title": "Title",
+        "empty_list": [],
+        "items": ["a", "b"],
+    }
+    markdown_output = json_to_markdown(json_data)
+    expected = """## title
+
+Title
+
+## empty_list
+
+## items
+
+- a
+- b
+
+"""
+    assert markdown_output == expected
