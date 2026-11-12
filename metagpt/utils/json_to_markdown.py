@@ -27,7 +27,8 @@ def json_to_markdown(data, depth=2):
                 # Handle JSON arrays
                 markdown += "#" * depth + f" {key}\n\n"
                 items = [str(item) for item in value]
-                markdown += "- " + "\n- ".join(items) + "\n\n"
+                if items:
+                    markdown += "- " + "\n- ".join(items) + "\n\n"
             elif isinstance(value, dict):
                 # Handle nested JSON objects
                 markdown += "#" * depth + f" {key}\n\n"
