@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 from __future__ import annotations
 
+import asyncio
 import subprocess
 from pathlib import Path
 from typing import Dict, List, Tuple, Union
@@ -49,5 +50,8 @@ async def shell_execute(
     """
     cwd = str(cwd) if cwd else None
     shell = True if isinstance(command, str) else False
-    result = subprocess.run(command, cwd=cwd, capture_output=True, text=True, env=env, timeout=timeout, shell=shell)
+    # Run the blocking `subprocess.run` in a worker thread, otherwise the whole event loop is frozen.
+    result = await asyncio.to_thread(
+        subprocess.run, command, cwd=cwd, capture_output=True, text=True, env=env, timeout=timeout, shell=shell
+    )
     return result.stdout, result.stderr, result.returncode
