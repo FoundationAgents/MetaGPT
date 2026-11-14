@@ -8,6 +8,7 @@
 """
 from __future__ import annotations
 
+import json
 from pathlib import Path
 from typing import Optional, Set, Union
 
@@ -59,6 +60,22 @@ async def test_dependency_file():
     assert await file1.get("a/b.txt") == {"c/e.txt", "d.txt"}
     file1.delete_file()
     assert not file.exists
+
+
+@pytest.mark.asyncio
+async def test_dependency_file_with_non_ascii_filename(tmp_path):
+    """Dependencies of non-ASCII filenames must survive the json round-trip of the dependency file."""
+    name, dependency = "中文模块.py", "中文依赖.py"
+
+    file = DependencyFile(workdir=tmp_path)
+    await file.update(filename=name, dependencies={dependency})
+
+    # The json file on disk stores the correct mapping.
+    assert json.loads((tmp_path / ".dependencies.json").read_text(encoding="utf-8")) == {name: [dependency]}
+
+    # ... and it must still be readable after reloading it from disk.
+    reloaded_file = DependencyFile(workdir=tmp_path)
+    assert await reloaded_file.get(filename=name) == {dependency}
 
 
 if __name__ == "__main__":
