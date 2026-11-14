@@ -9,7 +9,6 @@
 from __future__ import annotations
 
 import json
-import re
 from pathlib import Path
 from typing import Set
 
@@ -36,8 +35,12 @@ class DependencyFile:
         if not self._filename.exists():
             return
         json_data = await aread(self._filename)
-        json_data = re.sub(r"\\+", "/", json_data)  # Compatible with windows path
-        self._dependencies = json.loads(json_data)
+        # Compatible with windows path. The paths are normalized after json decoding: rewriting the raw
+        # text would also mangle json escape sequences, e.g. `\u4e2d` in a non-ASCII filename.
+        self._dependencies = {
+            str(key).replace("\\", "/"): [str(i).replace("\\", "/") for i in value]
+            for key, value in json.loads(json_data).items()
+        }
 
     @handle_exception
     async def save(self):
