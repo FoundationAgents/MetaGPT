@@ -6,8 +6,11 @@
 @File    : test_brain_memory.py
 """
 
+import json
+
 import pytest
 
+from metagpt.config2 import Config
 from metagpt.llm import LLM
 from metagpt.memory.brain_memory import BrainMemory
 from metagpt.schema import Message
@@ -64,6 +67,39 @@ async def test_memory_llm(llm):
     assert res
     assert "Lily" in res
     assert memory.history or memory.historical_summary
+
+
+def test_default_config_is_applied():
+    # The field default must go through the validator, otherwise `config` stays
+    # None and every method touching it raises AttributeError.
+    memory = BrainMemory()
+    assert isinstance(memory.config, Config)
+
+
+@pytest.mark.asyncio
+async def test_dumps_with_default_config():
+    memory = BrainMemory()
+    memory.add_talk(Message(content="talk"))
+    # Used to raise AttributeError: 'NoneType' object has no attribute 'redis'
+    await memory.dumps(redis_key=BrainMemory.to_redis_key("none", "user_id", "chat_id"))
+    assert not memory.is_dirty
+
+
+def test_config_is_not_serialized():
+    # `config` holds llm.api_key, and model_dump_json() is what gets written to redis.
+    memory = BrainMemory()
+    dumped = memory.model_dump_json()
+    assert "config" not in json.loads(dumped)
+    assert "api_key" not in dumped
+
+
+@pytest.mark.asyncio
+async def test_metagpt_summarize_uses_config_redis_key():
+    memory = BrainMemory()
+    memory.add_talk(Message(content="Lily is a girl."))
+    # Used to raise AttributeError: 'NoneType' object has no attribute 'key'
+    res = await memory._metagpt_summarize(max_words=200)
+    assert json.loads(res) == [{"content": "Lily is a girl.", "role": "user"}]
 
 
 if __name__ == "__main__":
