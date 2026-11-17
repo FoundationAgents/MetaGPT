@@ -32,7 +32,7 @@ class BrainMemory(BaseModel):
     last_talk: Optional[str] = None
     cacheable: bool = True
     llm: Optional[BaseLLM] = Field(default=None, exclude=True)
-    config: Optional[_Config] = None
+    config: Optional[_Config] = Field(default=None, exclude=True, validate_default=True)
 
     @field_validator("config")
     @classmethod
@@ -169,7 +169,7 @@ class BrainMemory(BaseModel):
         msgs.reverse()
         self.history = msgs
         self.is_dirty = True
-        await self.dumps(redis_key=self.config.redis.key)
+        await self.dumps(redis_key=self.config.redis_key)
         self.is_dirty = False
 
         return BrainMemory.to_metagpt_history_format(self.history)
