@@ -12,6 +12,7 @@ import platform
 import uuid
 from pathlib import Path
 from typing import Any, Set
+from unittest.mock import patch
 
 import pytest
 from pydantic import BaseModel
@@ -29,6 +30,7 @@ from metagpt.utils.common import (
     awrite,
     check_cmd_exists,
     concat_namespace,
+    download_model,
     extract_and_encode_images,
     extract_image_paths,
     import_class_inst,
@@ -233,6 +235,22 @@ def test_extract_image_paths():
 
 def test_extract_and_encode_images():
     assert not extract_and_encode_images("a non-existing.jpg")
+
+
+def test_download_model(tmp_path):
+    class _FakeResponse:
+        def raise_for_status(self):
+            return None
+
+        def iter_content(self, chunk_size=8192):
+            yield b"weights"
+
+    file_url = "https://example.com/groundingdino_swint_ogc.pth"
+    with patch("metagpt.utils.common.requests.get", return_value=_FakeResponse()):
+        file_path = download_model(file_url, tmp_path / "weights")
+
+    assert file_path.is_file()
+    assert file_path.read_bytes() == b"weights"
 
 
 if __name__ == "__main__":
