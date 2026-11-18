@@ -1229,7 +1229,7 @@ def download_model(file_url: str, target_folder: Path) -> Path:
     file_name = file_url.split("/")[-1]
     file_path = target_folder.joinpath(f"{file_name}")
     if not file_path.exists():
-        file_path.mkdir(parents=True, exist_ok=True)
+        file_path.parent.mkdir(parents=True, exist_ok=True)
         try:
             response = requests.get(file_url, stream=True)
             response.raise_for_status()  # 检查请求是否成功
