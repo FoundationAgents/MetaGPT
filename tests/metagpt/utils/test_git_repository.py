@@ -121,5 +121,25 @@ async def test_git_open():
     shutil.rmtree(path=str(local_path), ignore_errors=True)
 
 
+@pytest.mark.asyncio
+async def test_open_repo_without_gitignore(tmp_path):
+    """A git repository does not have to contain a `.gitignore` file."""
+    local_path = tmp_path / "repo_without_gitignore"
+    repo, _ = await mock_repo(local_path)
+    assert (local_path / ".gitignore").exists()
+    await mock_file(local_path / "a.txt")
+    repo.add_change(repo.changed_files)
+    repo.commit("commit1")
+
+    (local_path / ".gitignore").unlink()
+    assert not (local_path / ".gitignore").exists()
+
+    reopened = GitRepository(local_path=local_path, auto_init=False)
+    assert reopened.is_valid
+    assert reopened.workdir == local_path
+    assert reopened.filter_gitignore(filenames=["a.txt"]) == ["a.txt"]
+    assert "a.txt" in reopened.get_files(relative_path=".")
+
+
 if __name__ == "__main__":
     pytest.main([__file__, "-s"])

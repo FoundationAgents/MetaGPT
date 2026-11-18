@@ -89,7 +89,7 @@ class GitRepository:
         local_path = Path(local_path)
         if self.is_git_dir(local_path):
             self._repository = Repo(local_path)
-            self._gitignore_rules = parse_gitignore(full_path=str(local_path / ".gitignore"))
+            self._gitignore_rules = self._parse_gitignore(local_path)
             return
         if not auto_init:
             return
@@ -109,7 +109,21 @@ class GitRepository:
             writer.write("\n".join(ignores))
         self._repository.index.add([".gitignore"])
         self._repository.index.commit("Add .gitignore")
-        self._gitignore_rules = parse_gitignore(full_path=gitignore_filename)
+        self._gitignore_rules = self._parse_gitignore(local_path)
+
+    @staticmethod
+    def _parse_gitignore(local_path: Path):
+        """Parse the ignore rules of the repository.
+
+        A repository is not required to have a `.gitignore` file, so a missing file means "no rules".
+
+        :param local_path: The root directory of the Git repository.
+        :return: The parsed ignore rules, or None if the repository has no `.gitignore` file.
+        """
+        gitignore_filename = Path(local_path) / ".gitignore"
+        if not gitignore_filename.is_file():
+            return None
+        return parse_gitignore(full_path=str(gitignore_filename))
 
     def add_change(self, files: Dict):
         """Add or remove files from the staging area based on the provided changes.
@@ -345,7 +359,7 @@ class GitRepository:
                 return
         logger.info(f"Rename directory {str(self.workdir)} to {str(new_path)}")
         self._repository = Repo(new_path)
-        self._gitignore_rules = parse_gitignore(full_path=str(new_path / ".gitignore"))
+        self._gitignore_rules = self._parse_gitignore(new_path)
 
     def get_files(self, relative_path: Path | str, root_relative_path: Path | str = None, filter_ignored=True) -> List:
         """
@@ -408,7 +422,7 @@ class GitRepository:
         files = []
         for filename in filenames:
             pathname = root_relative_path / filename
-            if self._gitignore_rules(str(pathname)):
+            if self._gitignore_rules and self._gitignore_rules(str(pathname)):
                 continue
             files.append(filename)
         return files
