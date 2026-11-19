@@ -7,8 +7,9 @@
 """
 
 import re
-from typing import NamedTuple
+from typing import NamedTuple, Optional
 
+import llm_prices
 from pydantic import BaseModel
 
 from metagpt.logs import logger
@@ -22,6 +23,19 @@ class Costs(NamedTuple):
     total_budget: float
 
 
+def maintained_token_costs(model: str) -> Optional[dict[str, float]]:
+    """Per-1K-token prompt/completion prices for `model` from the llm-prices table, or None when it is not listed.
+
+    TOKEN_COSTS is a hand-kept table; models released after it was last edited (gpt-4.1, GPT-5, o3, Claude 4,
+    Gemini 2.5, ...) are not in it. llm-prices keeps dated, source-cited list prices and resolves provider
+    prefixes and dated snapshot ids.
+    """
+    price = llm_prices.lookup(model)
+    if price is None or price.input is None:
+        return None
+    return {"prompt": price.input / 1000, "completion": (price.output or 0) / 1000}
+
+
 class CostManager(BaseModel):
     """Calculate the overhead of using the interface."""
 
@@ -31,6 +45,7 @@ class CostManager(BaseModel):
     max_budget: float = 10.0
     total_cost: float = 0
     token_costs: dict[str, dict[str, float]] = TOKEN_COSTS  # different model's token cost
+    unpriced_models: set[str] = set()  # models whose usage could not be priced, so it is missing from total_cost
 
     def update_cost(self, prompt_tokens, completion_tokens, model):
         """
@@ -45,14 +60,16 @@ class CostManager(BaseModel):
             return
         self.total_prompt_tokens += prompt_tokens
         self.total_completion_tokens += completion_tokens
-        if model not in self.token_costs:
-            logger.warning(f"Model {model} not found in TOKEN_COSTS.")
+        token_costs = self.token_costs.get(model) or maintained_token_costs(model)
+        if token_costs is None:
+            self.unpriced_models.add(model)
+            logger.warning(
+                f"Model {model} has no price in TOKEN_COSTS or llm-prices; its usage is not counted in total_cost, "
+                f"so max_budget does not cover it."
+            )
             return
 
-        cost = (
-            prompt_tokens * self.token_costs[model]["prompt"]
-            + completion_tokens * self.token_costs[model]["completion"]
-        ) / 1000
+        cost = (prompt_tokens * token_costs["prompt"] + completion_tokens * token_costs["completion"]) / 1000
         self.total_cost += cost
         logger.info(
             f"Total running cost: ${self.total_cost:.3f} | Max budget: ${self.max_budget:.3f} | "
