@@ -17,7 +17,7 @@ from metagpt.logs import logger
 
 TOKEN_COSTS = {
     "anthropic/claude-3.5-sonnet": {"prompt": 0.003, "completion": 0.015},
-    "gpt-3.5-turbo": {"prompt": 0.0015, "completion": 0.002},
+    "gpt-3.5-turbo": {"prompt": 0.0005, "completion": 0.0015},
     "gpt-3.5-turbo-0301": {"prompt": 0.0015, "completion": 0.002},
     "gpt-3.5-turbo-0613": {"prompt": 0.0015, "completion": 0.002},
     "gpt-3.5-turbo-16k": {"prompt": 0.003, "completion": 0.004},
@@ -25,12 +25,12 @@ TOKEN_COSTS = {
     "gpt-35-turbo": {"prompt": 0.0015, "completion": 0.002},
     "gpt-35-turbo-16k": {"prompt": 0.003, "completion": 0.004},
     "gpt-3.5-turbo-1106": {"prompt": 0.001, "completion": 0.002},
-    "gpt-3.5-turbo-0125": {"prompt": 0.001, "completion": 0.002},
+    "gpt-3.5-turbo-0125": {"prompt": 0.0005, "completion": 0.0015},
     "gpt-4-0314": {"prompt": 0.03, "completion": 0.06},
     "gpt-4": {"prompt": 0.03, "completion": 0.06},
     "gpt-4-32k": {"prompt": 0.06, "completion": 0.12},
     "gpt-4-32k-0314": {"prompt": 0.06, "completion": 0.12},
-    "gpt-4-0613": {"prompt": 0.06, "completion": 0.12},
+    "gpt-4-0613": {"prompt": 0.03, "completion": 0.06},
     "gpt-4-turbo-preview": {"prompt": 0.01, "completion": 0.03},
     "gpt-4-1106-preview": {"prompt": 0.01, "completion": 0.03},
     "gpt-4-0125-preview": {"prompt": 0.01, "completion": 0.03},
@@ -38,7 +38,7 @@ TOKEN_COSTS = {
     "gpt-4-turbo-2024-04-09": {"prompt": 0.01, "completion": 0.03},
     "gpt-4-vision-preview": {"prompt": 0.01, "completion": 0.03},  # TODO add extra image price calculator
     "gpt-4-1106-vision-preview": {"prompt": 0.01, "completion": 0.03},
-    "gpt-4o": {"prompt": 0.005, "completion": 0.015},
+    "gpt-4o": {"prompt": 0.0025, "completion": 0.01},
     "gpt-4o-mini": {"prompt": 0.00015, "completion": 0.0006},
     "gpt-4o-mini-2024-07-18": {"prompt": 0.00015, "completion": 0.0006},
     "gpt-4o-2024-05-13": {"prompt": 0.005, "completion": 0.015},
@@ -47,7 +47,7 @@ TOKEN_COSTS = {
     "o1-preview-2024-09-12": {"prompt": 0.015, "completion": 0.06},
     "o1-mini": {"prompt": 0.003, "completion": 0.012},
     "o1-mini-2024-09-12": {"prompt": 0.003, "completion": 0.012},
-    "text-embedding-ada-002": {"prompt": 0.0004, "completion": 0.0},
+    "text-embedding-ada-002": {"prompt": 0.0001, "completion": 0.0},
     "glm-3-turbo": {"prompt": 0.0007, "completion": 0.0007},  # 128k version, prompt + completion tokens=0.005￥/k-tokens
     "glm-4": {"prompt": 0.014, "completion": 0.014},  # 128k version, prompt + completion tokens=0.1￥/k-tokens
     "glm-4-flash": {"prompt": 0, "completion": 0},
