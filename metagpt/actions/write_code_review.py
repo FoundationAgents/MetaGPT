@@ -13,14 +13,19 @@ from pathlib import Path
 from typing import Optional
 
 from pydantic import BaseModel, Field
-from tenacity import retry, stop_after_attempt, wait_random_exponential
+from tenacity import (
+    retry,
+    retry_if_exception,
+    stop_after_attempt,
+    wait_random_exponential,
+)
 
 from metagpt.actions import WriteCode
 from metagpt.actions.action import Action
 from metagpt.logs import logger
 from metagpt.schema import CodingContext, Document
 from metagpt.tools.tool_registry import register_tool
-from metagpt.utils.common import CodeParser, aread, awrite
+from metagpt.utils.common import CodeParser, aread, awrite, is_retryable_llm_error
 from metagpt.utils.project_repo import ProjectRepo
 from metagpt.utils.report import EditorReporter
 
@@ -144,7 +149,11 @@ class WriteCodeReview(Action):
     repo: Optional[ProjectRepo] = Field(default=None, exclude=True)
     input_args: Optional[BaseModel] = Field(default=None, exclude=True)
 
-    @retry(wait=wait_random_exponential(min=1, max=60), stop=stop_after_attempt(6))
+    @retry(
+        wait=wait_random_exponential(min=1, max=60),
+        stop=stop_after_attempt(6),
+        retry=retry_if_exception(is_retryable_llm_error),
+    )
     async def write_code_review_and_rewrite(self, context_prompt, cr_prompt, doc):
         filename = doc.filename
         cr_rsp = await self._aask(context_prompt + cr_prompt)
