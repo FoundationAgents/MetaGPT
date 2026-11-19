@@ -15,7 +15,12 @@ from enum import Enum
 from typing import Any, Dict, List, Optional, Tuple, Type, Union
 
 from pydantic import BaseModel, Field, create_model, model_validator
-from tenacity import retry, stop_after_attempt, wait_random_exponential
+from tenacity import (
+    retry,
+    retry_if_exception,
+    stop_after_attempt,
+    wait_random_exponential,
+)
 
 from metagpt.actions.action_outcls_registry import register_action_outcls
 from metagpt.const import MARKDOWN_TITLE_PREFIX, USE_CONFIG_TIMEOUT
@@ -24,7 +29,11 @@ from metagpt.exp_pool.serializers import ActionNodeSerializer
 from metagpt.llm import BaseLLM
 from metagpt.logs import logger
 from metagpt.provider.postprocess.llm_output_postprocess import llm_output_postprocess
-from metagpt.utils.common import OutputParser, general_after_log
+from metagpt.utils.common import (
+    OutputParser,
+    general_after_log,
+    is_retryable_llm_error,
+)
 from metagpt.utils.human_interaction import HumanInteraction
 from metagpt.utils.sanitize import sanitize
 
@@ -423,6 +432,7 @@ class ActionNode:
     @retry(
         wait=wait_random_exponential(min=1, max=20),
         stop=stop_after_attempt(6),
+        retry=retry_if_exception(is_retryable_llm_error),
         after=general_after_log(logger),
     )
     async def _aask_v1(

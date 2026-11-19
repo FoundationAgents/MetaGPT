@@ -20,14 +20,23 @@ from pathlib import Path
 from typing import Optional
 
 from pydantic import BaseModel, Field
-from tenacity import retry, stop_after_attempt, wait_random_exponential
+from tenacity import (
+    retry,
+    retry_if_exception,
+    stop_after_attempt,
+    wait_random_exponential,
+)
 
 from metagpt.actions.action import Action
 from metagpt.actions.project_management_an import REFINED_TASK_LIST, TASK_LIST
 from metagpt.actions.write_code_plan_and_change_an import REFINED_TEMPLATE
 from metagpt.logs import logger
 from metagpt.schema import CodingContext, Document, RunCodeResult
-from metagpt.utils.common import CodeParser, get_markdown_code_block_type
+from metagpt.utils.common import (
+    CodeParser,
+    get_markdown_code_block_type,
+    is_retryable_llm_error,
+)
 from metagpt.utils.project_repo import ProjectRepo
 from metagpt.utils.report import EditorReporter
 
@@ -91,7 +100,11 @@ class WriteCode(Action):
     repo: Optional[ProjectRepo] = Field(default=None, exclude=True)
     input_args: Optional[BaseModel] = Field(default=None, exclude=True)
 
-    @retry(wait=wait_random_exponential(min=1, max=60), stop=stop_after_attempt(6))
+    @retry(
+        wait=wait_random_exponential(min=1, max=60),
+        stop=stop_after_attempt(6),
+        retry=retry_if_exception(is_retryable_llm_error),
+    )
     async def write_code(self, prompt) -> str:
         code_rsp = await self._aask(prompt)
         code = CodeParser.parse_code(text=code_rsp)

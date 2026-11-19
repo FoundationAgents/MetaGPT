@@ -536,6 +536,28 @@ def remove_affix(text, affix: Literal["brace", "url", "none"] = "brace"):
     return decoder(text)
 
 
+# 4xx statuses worth sending again: request timeout, conflict, rate limit.
+_RETRYABLE_CLIENT_STATUS = frozenset({408, 409, 429})
+
+
+def is_retryable_llm_error(exception: BaseException) -> bool:
+    """False for an API error the provider will return again for the same request.
+
+    A 400 (context too long, bad parameter), 401, 403, 404 or 422 is rejected the same
+    way on every attempt, so a retry only pays for the prompt again. Every other error,
+    including parse failures of the model's answer and 429/5xx, stays retryable.
+    Works with any SDK whose errors carry an integer ``status_code`` (openai, anthropic,
+    httpx-based clients).
+    """
+    status = getattr(exception, "status_code", None)
+    if not isinstance(status, int):
+        response = getattr(exception, "response", None)
+        status = getattr(response, "status_code", None)
+    if isinstance(status, int) and 400 <= status < 500:
+        return status in _RETRYABLE_CLIENT_STATUS
+    return True
+
+
 def general_after_log(i: "loguru.Logger", sec_format: str = "%0.3f") -> Callable[["RetryCallState"], None]:
     """
     Generates a logging function to be used after a call is retried.
