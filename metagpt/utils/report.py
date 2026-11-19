@@ -167,10 +167,20 @@ class ResourceReporter(BaseModel):
 
     async def __aexit__(self, exc_type, exc_value, exc_tb):
         """Exit the asynchronous streaming callback context."""
-        if self.enable_llm_stream and exc_type != asyncio.CancelledError:
-            await get_llm_stream_queue().put(None)
-            await self._llm_task
+        if self.enable_llm_stream and self._llm_task is not None:
+            task = self._llm_task
             self._llm_task = None
+            if exc_type is asyncio.CancelledError:
+                # The sentinel below is not reached on a cancelled exit, and `_llm_stream_report`
+                # only returns after it reads that sentinel, so stopping the task is on us here.
+                task.cancel()
+                try:
+                    await task
+                except asyncio.CancelledError:
+                    pass
+            else:
+                await get_llm_stream_queue().put(None)
+                await task
         await self.async_report(None, END_MARKER_NAME)
 
     async def _llm_stream_report(self, queue: asyncio.Queue):
