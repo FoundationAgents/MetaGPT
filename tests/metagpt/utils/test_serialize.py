@@ -66,3 +66,28 @@ def test_serialize_and_deserialize_message():
     assert new_message.content == message.content
     assert new_message.cause_by == message.cause_by
     assert new_message.instruct_content.field1 == out_data["field1"]
+
+
+def test_serialize_and_deserialize_message_with_non_string_fields():
+    out_mapping = {
+        "page_count": (int, ...),
+        "confidence": (float, ...),
+        "is_final": (bool, ...),
+        "payload": (dict, ...),
+        "summary": (str, ...),
+    }
+    out_data = {
+        "page_count": 7,
+        "confidence": 0.87,
+        "is_final": True,
+        "payload": {"key": "value"},
+        "summary": "prd demand",
+    }
+    ic_obj = ActionNode.create_model_class("plan", out_mapping)
+    message = Message(content="prd demand", instruct_content=ic_obj(**out_data))
+
+    new_message = deserialize_message(serialize_message(message))
+    assert new_message.instruct_content.model_dump() == out_data
+
+    restored_message = Message.model_validate_json(message.model_dump_json())
+    assert restored_message.instruct_content.model_dump() == out_data
