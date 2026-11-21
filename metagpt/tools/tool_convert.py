@@ -118,22 +118,43 @@ class CodeVisitor(ast.NodeVisitor):
 
     def _get_function_signature(self, node):
         args = []
-        defaults = dict(zip([arg.arg for arg in node.args.args][-len(node.args.defaults) :], node.args.defaults))
-        for arg in node.args.args:
-            arg_str = arg.arg
-            if arg.annotation:
-                annotation = ast.unparse(arg.annotation)
-                arg_str += f": {annotation}"
-            if arg.arg in defaults:
-                default_value = ast.unparse(defaults[arg.arg])
-                arg_str += f" = {default_value}"
+        positional_args = node.args.posonlyargs + node.args.args
+        defaults = dict(zip([arg.arg for arg in positional_args][-len(node.args.defaults) :], node.args.defaults))
+
+        args.extend(self._get_argument_str(arg, defaults) for arg in node.args.posonlyargs)
+        if node.args.posonlyargs:
+            args.append("/")
+        args.extend(self._get_argument_str(arg, defaults) for arg in node.args.args)
+
+        if node.args.vararg:
+            args.append(f"*{self._get_argument_str(node.args.vararg, {})}")
+        elif node.args.kwonlyargs:
+            args.append("*")
+        for arg, default in zip(node.args.kwonlyargs, node.args.kw_defaults):
+            arg_str = self._get_argument_str(arg, {})
+            if default is not None:
+                arg_str += f" = {ast.unparse(default)}"
             args.append(arg_str)
+
+        if node.args.kwarg:
+            args.append(f"**{self._get_argument_str(node.args.kwarg, {})}")
 
         return_annotation = ""
         if node.returns:
             return_annotation = f" -> {ast.unparse(node.returns)}"
 
         return f"({', '.join(args)}){return_annotation}"
+
+    @staticmethod
+    def _get_argument_str(arg, defaults):
+        arg_str = arg.arg
+        if arg.annotation:
+            annotation = ast.unparse(arg.annotation)
+            arg_str += f": {annotation}"
+        if arg.arg in defaults:
+            default_value = ast.unparse(defaults[arg.arg])
+            arg_str += f" = {default_value}"
+        return arg_str
 
     def get_tool_schemas(self):
         return self.tool_schemas
