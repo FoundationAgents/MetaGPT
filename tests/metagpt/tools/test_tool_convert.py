@@ -239,3 +239,22 @@ def test_convert_code_to_tool_schema_ast():
     }
     schemas = convert_code_to_tool_schema_ast(TEST_CODE_FILE_TEXT)
     assert schemas == expected
+
+
+def test_convert_code_to_tool_schema_ast_keeps_all_parameters():
+    code = '''
+def search(query, /, limit=10, *filters, exact=False, **options) -> list:
+    """Search things."""
+    return []
+'''
+    schemas = convert_code_to_tool_schema_ast(code)
+    assert schemas["search"]["signature"] == "(query, /, limit = 10, *filters, exact = False, **options) -> list"
+
+
+def test_convert_code_to_tool_schema_ast_keyword_only_without_vararg():
+    code = '''
+def configure(*, timeout=30, retries=3):
+    """Configure things."""
+'''
+    schemas = convert_code_to_tool_schema_ast(code)
+    assert schemas["configure"]["signature"] == "(*, timeout = 30, retries = 3)"
