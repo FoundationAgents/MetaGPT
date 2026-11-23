@@ -497,9 +497,12 @@ def count_message_tokens(messages, model="gpt-3.5-turbo-0125"):
             content = value
             if isinstance(value, list):
                 # for gpt-4v
-                for item in value:
-                    if isinstance(item, dict) and item.get("type") in ["text"]:
-                        content = item.get("text", "")
+                content = "".join(
+                    item.get("text", "") for item in value if isinstance(item, dict) and item.get("type") in ["text"]
+                )
+            if not isinstance(content, str):
+                # tool_calls lists and empty tool-result content carry no text of their own
+                continue
             num_tokens += len(encoding.encode(content))
             if key == "name":
                 num_tokens += tokens_per_name

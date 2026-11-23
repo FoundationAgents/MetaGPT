@@ -71,3 +71,33 @@ def test_count_string_tokens_gpt_4():
 
 if __name__ == "__main__":
     pytest.main([__file__, "-s"])
+
+
+def test_count_message_tokens_tool_call_message_without_text():
+    """An assistant message carrying only tool_calls (content None) adds no text tokens and must not raise."""
+    with_tool_calls = [
+        {"role": "user", "content": "Hello"},
+        {
+            "role": "assistant",
+            "content": None,
+            "tool_calls": [
+                {"id": "1", "type": "function", "function": {"name": "f", "arguments": "{}"}}
+            ],
+        },
+    ]
+    empty_assistant = [
+        {"role": "user", "content": "Hello"},
+        {"role": "assistant", "content": ""},
+    ]
+
+    assert count_message_tokens(with_tool_calls) == count_message_tokens(empty_assistant)
+
+
+def test_count_message_tokens_counts_every_text_part():
+    """Multimodal content is counted over all of its text parts, not only the last one."""
+    one_part = [{"role": "user", "content": [{"type": "text", "text": "abcdefghij"}]}]
+    two_parts = [
+        {"role": "user", "content": [{"type": "text", "text": "abcde"}, {"type": "text", "text": "fghij"}]}
+    ]
+
+    assert count_message_tokens(two_parts) == count_message_tokens(one_part)
