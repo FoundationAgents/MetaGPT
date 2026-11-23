@@ -36,6 +36,7 @@ from metagpt.utils.common import (
     print_members,
     read_file_block,
     read_json_file,
+    remove_comments,
     require_python_version,
     split_namespace,
 )
@@ -234,6 +235,17 @@ def test_extract_image_paths():
 def test_extract_and_encode_images():
     assert not extract_and_encode_images("a non-existing.jpg")
 
+
+
+def test_remove_comments_keeps_a_hash_inside_a_string_with_an_escaped_quote():
+    """A # inside a string is not a comment, even when the string holds an escaped quote."""
+    source = 'message = "quote \\" then # not a comment"  # a comment'
+    assert remove_comments(source) == 'message = "quote \\" then # not a comment"'
+
+
+def test_remove_comments_keeps_a_hash_inside_a_single_quoted_string():
+    source = "s = 'it\\'s # here'"
+    assert remove_comments(source) == "s = 'it\\'s # here'"
 
 if __name__ == "__main__":
     pytest.main([__file__, "-s"])
