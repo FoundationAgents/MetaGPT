@@ -374,7 +374,7 @@ def parse_recipient(text):
 
 def remove_comments(code_str: str) -> str:
     """Remove comments from code."""
-    pattern = r"(\".*?\"|\'.*?\')|(\#.*?$)"
+    pattern = r"(\"(?:\\.|[^\"\\])*\"|'(?:\\.|[^'\\])*')|(\#.*?$)"
 
     def replace_func(match):
         if match.group(2) is not None:
