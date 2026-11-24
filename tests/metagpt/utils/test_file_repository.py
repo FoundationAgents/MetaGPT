@@ -16,6 +16,22 @@ from tests.metagpt.utils.test_git_repository import mock_file
 
 
 @pytest.mark.asyncio
+async def test_file_dependencies_follow_workspace_rename(tmp_path):
+    old_path = tmp_path / "generated"
+    git_repo = GitRepository(local_path=old_path, auto_init=True)
+    docs = git_repo.new_file_repository("docs")
+    await docs.save("plan.md", "Plan", ["docs/requirements.md"])
+
+    git_repo.rename_root("chosen-project")
+
+    assert await docs.get_dependency("plan.md") == {"docs/requirements.md"}
+    await docs.save("tasks.md", "Tasks", ["docs/plan.md"])
+    reopened = GitRepository(local_path=git_repo.workdir).new_file_repository("docs")
+    assert await reopened.get_dependency("tasks.md") == {"docs/plan.md"}
+    assert not old_path.exists()
+
+
+@pytest.mark.asyncio
 async def test_file_repo():
     local_path = Path(__file__).parent / "file_repo_git"
     if local_path.exists():

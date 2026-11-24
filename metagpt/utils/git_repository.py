@@ -345,6 +345,7 @@ class GitRepository:
                 return
         logger.info(f"Rename directory {str(self.workdir)} to {str(new_path)}")
         self._repository = Repo(new_path)
+        self._dependency = None
         self._gitignore_rules = parse_gitignore(full_path=str(new_path / ".gitignore"))
 
     def get_files(self, relative_path: Path | str, root_relative_path: Path | str = None, filter_ignored=True) -> List:
