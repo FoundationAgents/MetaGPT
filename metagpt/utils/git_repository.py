@@ -319,31 +319,23 @@ class GitRepository:
         return self._dependency
 
     def rename_root(self, new_dir_name):
-        """Rename the root directory of the Git repository.
+        """Rename the root directory of the Git repository if the destination is unused.
 
         :param new_dir_name: The new name for the root directory.
         """
-        if self.workdir.name == new_dir_name:
+        workdir = self.workdir
+        if workdir.name == new_dir_name:
             return
-        new_path = self.workdir.parent / new_dir_name
-        if new_path.exists():
-            logger.info(f"Delete directory {str(new_path)}")
-            try:
-                shutil.rmtree(new_path)
-            except Exception as e:
-                logger.warning(f"rm {str(new_path)} error: {e}")
-        if new_path.exists():  # Recheck for windows os
-            logger.warning(f"Failed to delete directory {str(new_path)}")
+        new_path = workdir.parent / new_dir_name
+        if new_path.exists() or new_path.is_symlink():
+            logger.warning(f"Workspace {new_path} already exists. Keeping current workspace at {workdir}")
             return
         try:
-            shutil.move(src=str(self.workdir), dst=str(new_path))
-        except Exception as e:
-            logger.warning(f"Move {str(self.workdir)} to {str(new_path)} error: {e}")
-        finally:
-            if not new_path.exists():  # Recheck for windows os
-                logger.warning(f"Failed to move {str(self.workdir)} to {str(new_path)}")
-                return
-        logger.info(f"Rename directory {str(self.workdir)} to {str(new_path)}")
+            workdir.rename(new_path)
+        except OSError as e:
+            logger.warning(f"Failed to rename workspace {workdir} to {new_path}: {e}")
+            return
+        logger.info(f"Rename directory {workdir} to {new_path}")
         self._repository = Repo(new_path)
         self._gitignore_rules = parse_gitignore(full_path=str(new_path / ".gitignore"))
 

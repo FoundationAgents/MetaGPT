@@ -13,6 +13,7 @@ import os
 from datetime import datetime
 from pathlib import Path
 from typing import Dict, List, Set
+from uuid import uuid4
 
 from metagpt.logs import logger
 from metagpt.schema import Document
@@ -187,7 +188,7 @@ class FileRepository:
         :return: A new filename string.
         """
         current_time = datetime.now().strftime("%Y%m%d%H%M%S")
-        return current_time
+        return f"{current_time}-{uuid4().hex}"
 
     async def save_doc(self, doc: Document, dependencies: List[str] = None):
         """Save content to a file and update its dependencies.
