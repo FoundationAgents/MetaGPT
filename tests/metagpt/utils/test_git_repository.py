@@ -8,11 +8,13 @@
 """
 
 import shutil
+from datetime import datetime
 from pathlib import Path
 
 import pytest
 
 from metagpt.utils.common import awrite
+from metagpt.utils.file_repository import FileRepository
 from metagpt.utils.git_repository import GitRepository
 
 
@@ -67,6 +69,30 @@ async def test_git():
 
     repo.delete_repository()
     assert not local_path.exists()
+
+
+def test_rename_root_preserves_existing_project(tmp_path):
+    existing = GitRepository(local_path=tmp_path / "game", auto_init=True)
+    (existing.workdir / "main.py").write_text("original project", encoding="utf-8")
+
+    new_project = GitRepository(local_path=tmp_path / "new-project", auto_init=True)
+    (new_project.workdir / "main.py").write_text("new project", encoding="utf-8")
+
+    new_project.rename_root("game")
+
+    assert (existing.workdir / "main.py").read_text(encoding="utf-8") == "original project"
+    assert new_project.workdir == tmp_path / "new-project"
+    assert (new_project.workdir / "main.py").read_text(encoding="utf-8") == "new project"
+
+
+def test_new_filename_distinguishes_two_runs_in_one_second(monkeypatch):
+    class FrozenDateTime(datetime):
+        @classmethod
+        def now(cls):
+            return cls(2026, 11, 24, 10, 0, 0)
+
+    monkeypatch.setattr("metagpt.utils.file_repository.datetime", FrozenDateTime)
+    assert FileRepository.new_filename() != FileRepository.new_filename()
 
 
 @pytest.mark.asyncio
