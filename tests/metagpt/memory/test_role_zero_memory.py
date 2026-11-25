@@ -25,6 +25,18 @@ class TestRoleZeroLongTermMemory:
         assert mock_memory.storage[-1] == message
         mock_memory._transfer_to_longterm_memory.assert_called_once()
 
+    def test_add_duplicate_does_not_archive_the_same_message_again(self, mock_memory: RoleZeroLongTermMemory):
+        mock_memory.memory_k = 1
+        first = UserMessage(content="First request")
+        second = AIMessage(content="First reply")
+        third = UserMessage(content="Next request")
+
+        mock_memory.add_batch([first, second, second.model_copy(), third])
+
+        assert mock_memory.storage == [first, second, third]
+        archived = [call.args[0][0].message for call in mock_memory.rag_engine.add_objs.call_args_list]
+        assert archived == [first, second]
+
     def test_get(self, mocker, mock_memory: RoleZeroLongTermMemory):
         mock_memory._should_use_longterm_memory_for_get = mocker.Mock(return_value=True)
         mock_memory._build_longterm_memory_query = mocker.Mock(return_value="query")

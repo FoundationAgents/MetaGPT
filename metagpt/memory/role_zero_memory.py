@@ -71,9 +71,10 @@ class RoleZeroLongTermMemory(Memory):
     def add(self, message: Message):
         """Add a new message and potentially transfer it to long-term memory."""
 
+        previous_count = self.count()
         super().add(message)
 
-        if not self._should_use_longterm_memory_for_add():
+        if self.count() == previous_count or not self._should_use_longterm_memory_for_add():
             return
 
         self._transfer_to_longterm_memory()
